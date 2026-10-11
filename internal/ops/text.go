@@ -4,7 +4,6 @@ import (
 	"errors"
 	"flag"
 	"os"
-	"strings"
 
 	"github.com/example/vidproc/internal/ffmpeg"
 )
@@ -60,50 +59,14 @@ func init() {
 				}
 			}
 
-			// The text goes through a temp file so arbitrary content
-			// (%, :, ', newline, non-ASCII) needs no escaping at all.
-			// expansion=none keeps drawtext from interpreting %{...} sequences.
-			tf, err := os.CreateTemp("", "vidproc-drawtext-*.txt")
+			textFile, err := writeTempText(text)
 			if err != nil {
 				return err
 			}
-			tmpName := tf.Name()
-			defer os.Remove(tmpName)
-			if _, err := tf.WriteString(text); err != nil {
-				tf.Close()
-				return err
-			}
-			if err := tf.Close(); err != nil {
-				return err
-			}
+			defer os.Remove(textFile)
 
-			opts := []string{
-				"fontfile='" + escapeFilterPath(font) + "'",
-				"textfile='" + escapeFilterPath(tmpName) + "'",
-				"expansion=none",
-				"fontsize='" + fs.Lookup("size").Value.String() + "'",
-				"fontcolor='" + fs.Lookup("color").Value.String() + "'",
-			}
-
-			xf, yf := fs.Lookup("x").Value.String(), fs.Lookup("y").Value.String()
-			if xf == "" {
-				xf = "(w-text_w)/2"
-			}
-			if yf == "" {
-				yf = "(h-text_h)/2"
-			}
-			opts = append(opts, "x='"+xf+"'", "y='"+yf+"'")
-
-			if fs.Lookup("box").Value.String() == "true" {
-				opts = append(opts, "box=1",
-					"boxcolor='"+fs.Lookup("boxcolor").Value.String()+"'",
-					"boxborderw='"+fs.Lookup("boxpad").Value.String()+"'")
-			}
-			if b := fs.Lookup("border").Value.String(); b != "" {
-				opts = append(opts, "borderw='"+b+"'",
-					"bordercolor='"+fs.Lookup("bordercolor").Value.String()+"'")
-			}
 			start, end := fs.Lookup("start").Value.String(), fs.Lookup("end").Value.String()
+			var enable string
 			if start != "" || end != "" {
 				if start == "" {
 					start = "0"
@@ -111,12 +74,25 @@ func init() {
 				if end == "" {
 					end = "99999"
 				}
-				opts = append(opts, "enable='between(t,"+start+","+end+")'")
+				enable = "between(t," + start + "," + end + ")"
 			}
 
 			ffargs := []string{
 				"-i", in,
-				"-vf", "drawtext=" + strings.Join(opts, ":"),
+				"-vf", drawtextFilter(drawtextOpts{
+					TextFile:    textFile,
+					Font:        font,
+					Size:        fs.Lookup("size").Value.String(),
+					Color:       fs.Lookup("color").Value.String(),
+					X:           fs.Lookup("x").Value.String(),
+					Y:           fs.Lookup("y").Value.String(),
+					Box:         fs.Lookup("box").Value.String() == "true",
+					BoxColor:    fs.Lookup("boxcolor").Value.String(),
+					BoxPad:      fs.Lookup("boxpad").Value.String(),
+					Border:      fs.Lookup("border").Value.String(),
+					BorderColor: fs.Lookup("bordercolor").Value.String(),
+					Enable:      enable,
+				}),
 				"-c:a", "copy",
 				"-y", out,
 			}

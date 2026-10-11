@@ -66,6 +66,99 @@ func atempoChain(rate float64) []string {
 	return chain
 }
 
+// drawtextOpts holds the parameters for building a drawtext filter.
+type drawtextOpts struct {
+	TextFile    string // path to a UTF-8 file containing the text
+	Font        string // font file path; "" = auto-detect
+	Size        string // "" = 32
+	Color       string // "" = white
+	X, Y        string // "" = centered
+	Box         bool
+	BoxColor    string // "" = black@0.5
+	BoxPad      string // "" = 10 (maps to boxborderw)
+	Border      string // "" = no outline (maps to borderw)
+	BorderColor string // "" = black
+	Enable      string // time expression, e.g. "between(t,1,2)"; "" = always on
+}
+
+// drawtextFilter builds a complete drawtext filtergraph string.
+func drawtextFilter(d drawtextOpts) string {
+	font := d.Font
+	if font == "" {
+		font = defaultFontFile()
+	}
+	size := d.Size
+	if size == "" {
+		size = "32"
+	}
+	color := d.Color
+	if color == "" {
+		color = "white"
+	}
+	x := d.X
+	if x == "" {
+		x = "(w-text_w)/2"
+	}
+	y := d.Y
+	if y == "" {
+		y = "(h-text_h)/2"
+	}
+	boxColor := d.BoxColor
+	if boxColor == "" {
+		boxColor = "black@0.5"
+	}
+	boxPad := d.BoxPad
+	if boxPad == "" {
+		boxPad = "10"
+	}
+	borderColor := d.BorderColor
+	if borderColor == "" {
+		borderColor = "black"
+	}
+
+	// Text goes through a file so arbitrary content needs no escaping.
+	// expansion=none stops drawtext interpreting %{...} sequences.
+	opts := []string{
+		"fontfile='" + escapeFilterPath(font) + "'",
+		"textfile='" + escapeFilterPath(d.TextFile) + "'",
+		"expansion=none",
+		"fontsize='" + size + "'",
+		"fontcolor='" + color + "'",
+		"x='" + x + "'",
+		"y='" + y + "'",
+	}
+	if d.Box {
+		opts = append(opts, "box=1", "boxcolor='"+boxColor+"'", "boxborderw='"+boxPad+"'")
+	}
+	if d.Border != "" {
+		opts = append(opts, "borderw='"+d.Border+"'", "bordercolor='"+borderColor+"'")
+	}
+	if d.Enable != "" {
+		opts = append(opts, "enable='"+d.Enable+"'")
+	}
+	return "drawtext=" + strings.Join(opts, ":")
+}
+
+// writeTempText writes text to a temp file and returns its path.
+// Caller must os.Remove the returned path.
+func writeTempText(text string) (string, error) {
+	tf, err := os.CreateTemp("", "vidproc-drawtext-*.txt")
+	if err != nil {
+		return "", err
+	}
+	name := tf.Name()
+	if _, err := tf.WriteString(text); err != nil {
+		tf.Close()
+		os.Remove(name)
+		return "", err
+	}
+	if err := tf.Close(); err != nil {
+		os.Remove(name)
+		return "", err
+	}
+	return name, nil
+}
+
 // DryRunFlag returns true if the global --dry-run flag is set.
 // The pipeline engine sets this via env var VIDPROC_DRY_RUN=1.
 func DryRunFlag() bool {
