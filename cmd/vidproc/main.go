@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/example/vidproc/internal/ffmpeg"
@@ -52,7 +50,6 @@ Commands:
   metadata <input> -o <out> [flags]   read/write format tags
   boxes <list|extract|inject> ...     raw MP4 box operations
   timestamp <target> <ref>          copy mtime
-  workflow -dir D -prefix P -out-dir O  full pipeline
 
 Run 'vidproc <command> -h' for command-specific help.
 `)
@@ -113,8 +110,6 @@ func main() {
 		err = cmdBoxes(cfg, args)
 	case "timestamp":
 		err = cmdTimestamp(cfg, args)
-	case "workflow":
-		err = cmdWorkflow(cfg, args)
 	default:
 		fatal("unknown command: " + cmd)
 	}
@@ -305,7 +300,7 @@ func cmdMetadata(cfg *ffmpeg.Config, args []string) error {
 	delTags := stringSliceFlag{}
 	stripAll := fs.Bool("strip-all", false, "remove all format tags before applying")
 	fs.Var(&setTags, "set", "set tag key=value (repeatable)")
-	fs.Var(&delTags, "delete", "delete tag key (repeatable))
+	fs.Var(&delTags, "delete", "delete tag key (repeatable)")
 	fs.Parse(args)
 
 	if *input == "" || *output == "" {
@@ -427,48 +422,3 @@ func cmdTimestamp(cfg *ffmpeg.Config, args []string) error {
 	return os.Chtimes(target, refInfo.ModTime(), refInfo.ModTime())
 }
 
-func cmdWorkflow(cfg *ffmpeg.Config, args []string) error {
-	fs := flag.NewFlagSet("workflow", flag.ContinueOnError)
-	dir := fs.String("dir", "", "source directory (required)")
-	prefix := fs.String("prefix", "VID_", "filename prefix")
-	outDir := fs.String("out-dir", "", "output directory (required)")
-	force := fs.Bool("force", false, "overwrite output")
-	fs.Parse(args)
-
-	if *dir == "" || *outDir == "" {
-		return errors.New("workflow: -dir and -out-dir are required")
-	}
-
-	pattern := filepath.Join(*dir, *prefix+"*.mp4")
-	files, err := filepath.Glob(pattern)
-	if err != nil {
-		return err
-	}
-	if len(files) < 2 {
-		return fmt.Errorf("workflow: need >=2 matching files, found %d (pattern: %s)", len(files), pattern)
-	}
-	sort.Strings(files)
-
-	first := filepath.Base(files[0])
-	last := filepath.Base(files[len(files)-1])
-	firstTime := strings.TrimSuffix(strings.TrimPrefix(first, "VID_"), ".mp4")
-	lastTime := strings.TrimSuffix(strings.TrimPrefix(last, "VID_"), ".mp4")
-	outName := fmt.Sprintf("VID_%s_to_%s.mp4", firstTime, lastTime)
-	outPath := filepath.Join(*outDir, outName)
-
-	if !*force {
-		if _, err := os.Stat(outPath); err == nil {
-			return fmt.Errorf("output %s exists; use --force to overwrite", outPath)
-		}
-	}
-
-	if err := cfg.Concat(files, outPath); err != nil {
-		return fmt.Errorf("concat failed: %w", err)
-	}
-	if err := cfg.Patch(outPath, files[0]); err != nil {
-		return fmt.Errorf("patch failed: %w", err)
-	}
-
-	fmt.Printf("Workflow complete: %s\n", outPath)
-	return nil
-}
