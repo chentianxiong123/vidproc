@@ -38,15 +38,18 @@ func init() {
 			preset := fs.Lookup("preset").Value.String()
 			var nvencPreset, crf, tune string
 
+			// h264_nvenc takes -preset as p1..p7 and -tune as only hq|ll, so the
+			// old names ("ld", "zerolatency", "ssim") failed at option parsing
+			// before ffmpeg ever reached the driver check.
 			switch preset {
 			case "fast":
-				nvencPreset, crf, tune = "ld", "28", "zerolatency"
+				nvencPreset, crf, tune = "p2", "28", "ll"
 			case "balanced":
-				nvencPreset, crf, tune = "medium", "23", "zerolatency"
+				nvencPreset, crf, tune = "p4", "23", "ll"
 			case "high":
-				nvencPreset, crf, tune = "hq", "20", "ssim"
+				nvencPreset, crf, tune = "p6", "20", "hq"
 			case "best":
-				nvencPreset, crf, tune = "p4", "18", "ssim"
+				nvencPreset, crf, tune = "p7", "18", "hq"
 			default:
 				return fmt.Errorf("nvenc: unknown preset %s (use fast, balanced, high, best)", preset)
 			}

@@ -1,7 +1,9 @@
 package ops
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -196,8 +198,12 @@ func RunFFmpeg(cfg *ffmpeg.Config, args []string, dryRun bool) error {
 	}
 	cmd := exec.Command(cfg.FFmpeg, args...)
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	tail := tailWriter{max: 512 << 10}
+	cmd.Stderr = io.MultiWriter(os.Stderr, &tail)
+	if err := cmd.Run(); err != nil {
+		return withHint(err, tail.String())
+	}
+	return nil
 }
 
 // MakeTempDir creates a temp directory for pipeline intermediate files.
@@ -217,4 +223,48 @@ func (s *stringSliceFlag) String() string { return strings.Join(*s, ",") }
 func (s *stringSliceFlag) Set(v string) error {
 	*s = append(*s, v)
 	return nil
+}
+
+// tailWriter keeps only the most recent max bytes. ffmpeg writes its real
+// error last, after many progress lines, so keeping the head is useless.
+type tailWriter struct {
+	buf bytes.Buffer
+	max int
+}
+
+func (t *tailWriter) String() string { return t.buf.String() }
+
+func (t *tailWriter) Write(p []byte) (int, error) {
+	t.buf.Write(p)
+	if t.buf.Len() > t.max {
+		all := t.buf.Bytes()
+		t.buf.Reset()
+		t.buf.Write(all[len(all)-t.max:])
+	}
+	return len(p), nil
+}
+
+// withHint makes a bare "exit status 0xffffffea" actionable. ffmpeg's own
+// explanation is buried in multi-line output, so failures look random without
+// it — notably a too-old NVIDIA driver for NVENC.
+func withHint(err error, output string) error {
+	const nvencMin = "minimum required Nvidia driver for nvenc is "
+	if i := strings.Index(output, nvencMin); i >= 0 {
+		tail := output[i+len(nvencMin):]
+		if j := strings.Index(tail, " or"); j > 0 {
+			return fmt.Errorf("%w\n  fix: NVIDIA driver is too old — NVENC needs %s+.\n        Upgrade the driver, use an ffmpeg built against an older NVENC API (try 8.x),\n        or encode on CPU with: vidproc cpuenc -i <in> -o <out>",
+				err, strings.TrimSpace(tail[:j]))
+		}
+	}
+	if strings.Contains(output, "Driver does not support the required nvenc API version") {
+		var need string
+		for _, line := range strings.Split(output, "\n") {
+			if i := strings.Index(line, "Required:"); i >= 0 {
+				need = strings.TrimSpace(line[i+len("Required:"):])
+			}
+		}
+		return fmt.Errorf("%w\n  fix: NVIDIA driver is too old for this ffmpeg's NVENC API %s — upgrade the driver, use an older ffmpeg, or use 'vidproc cpuenc'",
+			err, need)
+	}
+	return err
 }
