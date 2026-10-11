@@ -11,7 +11,7 @@ func init() {
 	Register(&Op{
 		Name:        "concat",
 		Description: "Concatenate multiple videos (lossless)",
-		Usage:       "concat <files...> -o <output>",
+		Usage:       "concat -o <output> [--force] <files...>",
 		NewFlags: func() *flag.FlagSet {
 			fs := flag.NewFlagSet("concat", flag.ContinueOnError)
 			fs.String("o", "", "output file (required)")
@@ -23,9 +23,14 @@ func init() {
 				out = fs.Lookup("o").Value.String()
 			}
 			if out == "" {
-				return errors.New("concat: -o <output> required")
+				return errors.New("concat: -o <output> required (flags must precede the file list)")
 			}
 			inputs := fs.Args()
+			for _, a := range inputs {
+				if len(a) > 0 && a[0] == '-' {
+					return errors.New("concat: flags must come before the file list, e.g. concat -o out.mp4 [--force] a.mp4 b.mp4")
+				}
+			}
 			if len(inputs) < 2 {
 				return errors.New("concat: need at least 2 input files")
 			}

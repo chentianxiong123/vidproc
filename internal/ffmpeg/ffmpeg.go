@@ -157,29 +157,44 @@ func (c *Config) Concat(inputs []string, output string) error {
 	if len(inputs) < 2 {
 		return errors.New("concat requires at least 2 input files")
 	}
-	// Expand globs
+	// Expand globs.
 	var allInputs []string
 	for _, pattern := range inputs {
 		files, err := filepath.Glob(pattern)
 		if err != nil {
 			return fmt.Errorf("glob failed: %w", err)
 		}
-		if len(files) == 0 {
-			return fmt.Errorf("no files matched pattern: %s", pattern)
+		if len(files) > 0 {
+			allInputs = append(allInputs, files...)
+			continue
 		}
-		allInputs = append(allInputs, files...)
+		// Glob only understands the native path syntax of this OS, and treats
+		// brackets as character classes. A literal file named e.g. clip[01].mp4
+		// matches nothing, so fall back to it as a plain path.
+		if _, err := os.Stat(pattern); err == nil {
+			allInputs = append(allInputs, pattern)
+			continue
+		}
+		return fmt.Errorf("no files matched pattern: %s", pattern)
 	}
 	sort.Strings(allInputs)
 
-	// Write concat list
+	// Write concat list. The concat demuxer resolves relative paths in the list
+	// relative to the list file's own directory, not the caller's working
+	// directory. The list lives in os.TempDir(), so entries must be made
+	// absolute here or they resolve one level too high.
 	listFile := filepath.Join(os.TempDir(), "vidproc_concat_list.txt")
 	f, err := os.Create(listFile)
 	if err != nil {
-		return fmt.Errorf("failed to create concat list: %w", err)
+		return fmt.Errorf("failed to create concat list: %s", err)
 	}
 	defer os.Remove(listFile)
 	for _, file := range allInputs {
-		fmt.Fprintf(f, "file '%s'\n", file)
+		abs, err := filepath.Abs(file)
+		if err != nil {
+			return fmt.Errorf("absolute path for %s: %w", file, err)
+		}
+		fmt.Fprintf(f, "file '%s'\n", abs)
 	}
 	f.Close()
 
