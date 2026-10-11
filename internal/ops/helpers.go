@@ -22,6 +22,28 @@ func CheckOutput(force bool, output string) error {
 	return nil
 }
 
+// probeDuration returns the container duration of a file in seconds.
+func probeDuration(cfg *ffmpeg.Config, path string) (float64, error) {
+	out, err := exec.Command(cfg.FFprobe,
+		"-v", "error",
+		"-show_entries", "format=duration",
+		"-of", "csv=p=0",
+		path,
+	).Output()
+	if err != nil {
+		return 0, fmt.Errorf("ffprobe: %w", err)
+	}
+	s := strings.TrimSpace(string(out))
+	if s == "" || s == "N/A" {
+		return 0, fmt.Errorf("ffprobe: no duration for %s", path)
+	}
+	d, err := strconv.ParseFloat(s, 64)
+	if err != nil || d <= 0 {
+		return 0, fmt.Errorf("ffprobe: bad duration %q for %s", s, path)
+	}
+	return d, nil
+}
+
 // escapeFilterPath escapes a filesystem path for use as a filter option value.
 // Forward slashes are used and the drive-letter colon is escaped.
 func escapeFilterPath(p string) string {
