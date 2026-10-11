@@ -4,6 +4,7 @@
 
 ## Features
 
+**MP4 container**
 - **probe** — Extract full metadata (streams + format tags) as JSON
 - **concat** — Lossless concatenation (`-c copy`) with optional stream compatibility verification
 - **metadata** — Read/write standard format tags (creation_time, location, etc.)
@@ -11,7 +12,15 @@
 - **timestamp** — Copy file timestamps (mtime, atime) from reference file
 - **workflow** — One-shot composition: concat + metadata + boxes + timestamp
 
-All operations are **lossless** (no re-encoding unless you explicitly re-encode). Original files are never modified — output goes to the path you specify.
+**Video editing** — 13 atomic ops, each doing one thing:
+- **crop**, **rotate**, **flip** — geometry
+- **speed**, **volume**, **text** — filters
+- **audio**, **replace-audio**, **title** — audio
+- **thumbnail**, **gif**, **loop**, **split** — export
+
+Atomic ops compose into **pipelines** (`vidproc run -c "a | b"`) and **YAML workflows**.
+
+MP4 container operations are **lossless** (no re-encoding). Video editing ops re-encode where the change requires it, and stream-copy video whenever a filter only touches audio. Original files are never modified — output goes to the path you specify.
 
 ## Installation
 
@@ -165,6 +174,85 @@ Flags:
 ```
 Equivalent to: concat → metadata --copy-from --copy-unknown-boxes → timestamp
 
+
+### Video Editing Operations
+
+Beyond the MP4-level commands above, vidproc ships a set of **atomic video ops**. Each one does exactly one thing and takes a single input and output. They work standalone, in a **pipeline** (`|`), and in **YAML workflows** — new ops are automatically available in all three.
+
+#### Geometry
+
+```
+crop -i <input> -o <output> -w <width> -h <height> [-x <left>] [-y <top>]
+rotate -i <input> -o <output> -angle <90|180|270>
+flip -i <input> -o <output> -dir <h|v>
+```
+
+| Op | Flags | Notes |
+|----|-------|-------|
+| `crop` | `-w`, `-h` (required); `-x`, `-y` | `-x`/`-y` default to centering. Re-encodes. |
+| `rotate` | `-angle 90\|180\|270` (required) | Clockwise. 90/270 swap width and height. |
+| `flip` | `-dir h\|v` (required) | `h` mirrors horizontally, `v` flips vertically. |
+
+#### Filters
+
+```
+speed -i <input> -o <output> -rate <n> [-noaudio]
+volume -i <input> -o <output> [-level <n>] [-mute]
+text -i <input> -o <output> -text <s> [-x <n>] [-y <n>] [-font <path>] [-size <n>] \
+     [-color <c>] [-box] [-boxcolor <c>] [-boxpad <n>] [-border <n>] [-bordercolor <c>] \
+     [-start <t>] [-end <t>]
+```
+
+| Op | Flags | Notes |
+|----|-------|-------|
+| `speed` | `-rate` (required); `-noaudio` | `2` = 2x faster, `0.5` = half speed. Audio is time-stretched to match. |
+| `volume` | `-level`, `-mute` | `2` = louder, `0.5` = quieter. Video is stream-copied — no re-encode. |
+| `text` | `-text` (required); see usage | `-x`/`-y` default to centering and accept expressions. `-start`/`-end` gate the visible window. `-border`/`-boxpad` set outline and box padding. |
+
+Text rendering handles `%`, `:`, `'`, `\`, newlines, and CJK without escaping — pass a non-Latin font via `-font` (defaults probe common system fonts).
+
+#### Audio
+
+```
+audio -i <input> -o <output> [-codec copy|aac|mp3|opus|flac|pcm_s16le]
+replace-audio -i <video> -o <output> -a <audio> [-start <t>]
+title -o <output> -text <s> [-duration <t>] [-w <n>] [-h <n>] [-bg <color>] \
+      [-color <color>] [-size <n>] [-font <path>]
+```
+
+| Op | Flags | Notes |
+|----|-------|-------|
+| `audio` | `-codec copy` (default) | Extracts audio only. Output format is inferred from `-o`'s extension. Use `-codec pcm_s16le` for WAV (`wav` is a container, not a codec). |
+| `replace-audio` | `-a` (required); `-start` | Video stream is copied losslessly; only audio is muxed. `-start` delays the new track. |
+| `title` | `-text` (required) | Generates a title card from scratch (default 1280x720, 3s). `-i` is accepted but ignored. Output is `concat`-compatible h264/aac. |
+
+#### Export
+
+```
+thumbnail -i <input> -o <img> [-ss <t>] [-w <width>]
+gif -i <input> -o <out.gif> [-ss <t>] [-t <seconds>] [-w <width>] [-fps <n>]
+loop -i <input> -o <output> -times <n>
+split -i <input> -o <prefix> -every <seconds> [-copy]
+```
+
+| Op | Flags | Notes |
+|----|-------|-------|
+| `thumbnail` | `-o` (required); `-ss`, `-w` | `-ss` defaults to `0`. `-w` scales height proportionally. Output `.jpg` or `.png`. |
+| `gif` | `-o` (required) | Two-pass palette for stable colors. Defaults: width 480, 12 fps. |
+| `loop` | `-times` | Total plays. `3` plays the clip 3 times; `1` is a passthrough. Stream-copied. |
+| `split` | `-every` (required) | Writes `<prefix>0.mp4`, `1.mp4`, ... Default re-encodes so cuts land exactly on the boundary. |
+
+**`split -copy` caveat:** stream copying cannot seek inside a GOP, so cuts snap to the nearest keyframe and segment lengths drift. Prefer the re-encoding default unless speed matters more than accuracy.
+
+#### Pipelines and YAML
+
+Ops compose with `|`. Each step runs on the previous step's output:
+
+```bash
+vidproc run -i in.mp4 -o out.mp4 -c "crop -w 320 -h 180 | flip -dir h"
+vidproc run -i in.mp4 -o out.mp4 -c "speed -rate 1.5 | text -text 'Fast!' -x 10 -y 10"
+```
+
 ## Examples
 
 ### Batch process Xiaomi clips (preserve private tags)
@@ -213,6 +301,13 @@ vidproc --dry-run workflow clip*.mp4 -o out.mp4 --metadata-from clip1.mp4
 MIT License — see [LICENSE](LICENSE) for details.
 
 ## Changelog
+
+### 0.2.0 (2026-10-11)
+- 13 atomic video ops: `crop`, `rotate`, `flip`, `speed`, `volume`, `text`, `audio`, `replace-audio`, `title`, `thumbnail`, `gif`, `loop`, `split`
+- Pipeline engine: compose ops with `vidproc run -c "op a | op b"`
+- YAML workflows for repeatable multi-step jobs
+- `--dry-run` prints the ffmpeg command without executing
+- Preset-driven UX — no raw ffmpeg parameters exposed
 
 ### 0.1.0 (2026-10-11)
 - Initial release
