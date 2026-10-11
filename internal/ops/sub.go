@@ -12,7 +12,7 @@ func init() {
 	Register(&Op{
 		Name:        "sub",
 		Description: "Burn subtitles into video",
-		Usage:       "sub -i <input> <subtitle.srt> -o <output>",
+		Usage:       "sub -i <input> -o <output> [-font <name>] [-size <n>] [--force] <subtitle.srt>",
 		NewFlags: func() *flag.FlagSet {
 			fs := flag.NewFlagSet("sub", flag.ContinueOnError)
 			fs.String("i", "", "input file (required)")

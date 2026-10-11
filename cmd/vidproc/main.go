@@ -17,12 +17,17 @@ var (
 	ffmpegPath  string
 	ffprobePath string
 	dryRun      bool
+	showVersion bool
 )
 
 func init() {
 	flag.StringVar(&ffmpegPath, "ffmpeg", "", "path to ffmpeg binary")
 	flag.StringVar(&ffprobePath, "ffprobe", "", "path to ffprobe binary")
 	flag.BoolVar(&dryRun, "dry-run", false, "print commands without executing")
+	// Declared here instead of hand-checked after flag.Parse(): an undefined
+	// flag makes Parse() print usage and exit before main() gets control.
+	flag.BoolVar(&showVersion, "v", false, "print version")
+	flag.BoolVar(&showVersion, "version", false, "print version")
 }
 
 func usage() {
@@ -90,11 +95,15 @@ func fatal(msg string) {
 // globalFlags are accepted at any position on the command line. Go's flag
 // package stops at the first positional argument, so "vidproc run ... --dry-run"
 // would otherwise reach the command's own FlagSet and be silently ignored.
-// Values indicate whether the flag takes an argument.
+// Keys are bare flag names because Go treats "-x" and "--x" as the same flag,
+// so leading dashes are stripped before lookup. Values indicate whether the
+// flag takes an argument.
 var globalFlags = map[string]bool{
-	"--ffmpeg":  true,
-	"--ffprobe": true,
-	"--dry-run": false,
+	"ffmpeg":  true,
+	"ffprobe": true,
+	"dry-run": false,
+	"v":       false,
+	"version": false,
 }
 
 // hoistGlobals moves global flags (and their values) ahead of the positional
@@ -104,8 +113,11 @@ func hoistGlobals(args []string) []string {
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		key := a
-		if eq := strings.IndexByte(a, '='); eq >= 0 {
+		if eq := strings.IndexByte(a, '='); eq > 0 {
 			key = a[:eq]
+		}
+		if strings.HasPrefix(key, "-") {
+			key = strings.TrimLeft(key, "-")
 		}
 		takesValue, ok := globalFlags[key]
 		if !ok {
@@ -127,19 +139,14 @@ func main() {
 	flag.Parse()
 
 	args := flag.Args()
-	if len(args) == 0 {
-		usage()
-		os.Exit(0)
-	}
-
-	if args[0] == "-v" || args[0] == "--version" {
+	// Must precede the no-arguments check: "vidproc -v" leaves flag.Args() empty.
+	if showVersion {
 		fmt.Println(version)
 		return
 	}
-
-	if args[0] == "-h" || args[0] == "--help" {
+	if len(args) == 0 {
 		usage()
-		return
+		os.Exit(0)
 	}
 
 	cfg, err := newConfig()
@@ -161,7 +168,30 @@ func main() {
 		}
 		// Create flags and parse
 		fs := op.NewFlags()
-		fs.Parse(cmdArgs)
+		// The top-level help promises "vidproc <command> -h" shows that command's
+		// flags, but a ContinueOnError FlagSet only reports an undefined flag.
+		// Only offered when the op has no -h of its own: crop, scale and title
+		// use -h for height.
+		if fs.Lookup("h") == nil {
+			for _, a := range cmdArgs {
+				if a == "-h" || a == "--help" {
+					fmt.Fprintln(os.Stderr, op.Usage)
+					return
+				}
+			}
+		}
+		if err := fs.Parse(cmdArgs); err != nil {
+			fatal(err.Error())
+		}
+		// Go's flag parser stops at the first positional argument, so flags written
+		// after one would be silently dropped. Fail loudly instead: this is what
+		// broke "mark -i in logo.png -o out" (the -o was never parsed).
+		for _, a := range fs.Args() {
+			if len(a) > 0 && a[0] == '-' {
+				fatal("flags must come before positional arguments, found " + a +
+					" (Go stops parsing there, so it would be silently ignored)")
+			}
+		}
 		// Execute with empty in/out (standalone mode)
 		err = op.Execute(cfg, "", "", fs)
 	}
@@ -178,7 +208,9 @@ func cmdRun(cfg *ffmpeg.Config, args []string) error {
 	input := fs.String("i", "", "input file (for pipeline)")
 	output := fs.String("o", "", "output file (for pipeline)")
 	force := fs.Bool("force", false, "overwrite output")
-	fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
 
 	if *cmd != "" {
 		// Pipeline mode

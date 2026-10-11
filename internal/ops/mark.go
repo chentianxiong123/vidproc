@@ -12,7 +12,7 @@ func init() {
 	Register(&Op{
 		Name:        "mark",
 		Description: "Add watermark/logo to video",
-		Usage:       "mark -i <input> <logo.png> -o <output> [-pos top|bottom|left|right|center]",
+		Usage:       "mark -i <input> -o <output> [-pos top|bottom|left|right|center] [-margin <n>] [--force] <logo.png>",
 		NewFlags: func() *flag.FlagSet {
 			fs := flag.NewFlagSet("mark", flag.ContinueOnError)
 			fs.String("i", "", "input file (required)")
