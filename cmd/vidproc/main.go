@@ -36,11 +36,14 @@ func usage() {
 Usage: vidproc [global flags] <command> [args]
 
 Global flags:
-  --ffmpeg <path>    path to ffmpeg binary
+  --ffmpeg <path>    path to ffmpeg binary (also picks up ffprobe next to it)
   --ffprobe <path>   path to ffprobe binary
   --dry-run          print commands without executing
   -h, --help         show this help
   -v, --version      print version
+
+ffmpeg/ffprobe otherwise come from VIDPROC_FFMPEG / VIDPROC_FFPROBE, then PATH.
+Set VIDPROC_FFMPEG to pin a version without editing PATH.
 
 Commands:
 `)
@@ -71,15 +74,9 @@ Run 'vidproc <command> -h' for command-specific help.
 }
 
 func newConfig() (*ffmpeg.Config, error) {
-	cfg, err := ffmpeg.NewConfig()
+	cfg, err := ffmpeg.Resolve(ffmpegPath, ffprobePath)
 	if err != nil {
 		return nil, err
-	}
-	if ffmpegPath != "" {
-		cfg = cfg.WithFFmpeg(ffmpegPath)
-	}
-	if ffprobePath != "" {
-		cfg = cfg.WithFFprobe(ffprobePath)
 	}
 	if dryRun {
 		os.Setenv("VIDPROC_DRY_RUN", "1")

@@ -16,20 +16,79 @@ type Config struct {
 	FFprobe string
 }
 
-// NewConfig returns a Config with ffmpeg and ffprobe from PATH.
-// If not found, returns an error.
-func NewConfig() (*Config, error) {
-	cfg := &Config{}
-	var err error
-	cfg.FFmpeg, err = exec.LookPath("ffmpeg")
+// NewConfig locates ffmpeg and ffprobe from env vars and PATH.
+// Callers that already know the path (e.g. the --ffmpeg flag) should use
+// Resolve instead, so a broken PATH cannot mask a working explicit path.
+//
+//	ffmpeg:  VIDPROC_FFMPEG, else PATH
+//	ffprobe: VIDPROC_FFPROBE, else PATH, else the ffprobe next to ffmpeg
+func NewConfig() (*Config, error) { return Resolve("", "") }
+
+// Resolve builds a Config, preferring an explicitly supplied path over the env
+// var and PATH. Explicit wins because a caller that already knows where ffmpeg
+// lives must not need PATH to be correct at all.
+//
+// The sibling fallback matters because the common Windows builds (gyan.dev,
+// BtbN) ship both executables in one bin/. Without it, pinning ffmpeg to an
+// older build would silently keep using PATH's newer ffprobe.
+func Resolve(explicitFFmpeg, explicitFFprobe string) (*Config, error) {
+	ff, err := pick("ffmpeg", "VIDPROC_FFMPEG", explicitFFmpeg, lookPath("ffmpeg"))
 	if err != nil {
-		return nil, fmt.Errorf("ffmpeg not found in PATH: %w", err)
+		return nil, err
 	}
-	cfg.FFprobe, err = exec.LookPath("ffprobe")
+	if ff == "" {
+		return nil, errors.New("ffmpeg not found: put it on PATH, set VIDPROC_FFMPEG, or pass --ffmpeg <path>")
+	}
+
+	fp, err := pick("ffprobe", "VIDPROC_FFPROBE", explicitFFprobe, lookPath("ffprobe"), SiblingProbe(ff))
 	if err != nil {
-		return nil, fmt.Errorf("ffprobe not found in PATH: %w", err)
+		return nil, err
 	}
-	return cfg, nil
+	if fp == "" {
+		return nil, errors.New("ffprobe not found: put it on PATH, set VIDPROC_FFPROBE, or place it next to ffmpeg")
+	}
+
+	return &Config{FFmpeg: ff, FFprobe: fp}, nil
+}
+
+// pick returns the first candidate that exists, in order: the explicit value,
+// then the env var, then the fallbacks (PATH). A value that does not exist is
+// an error rather than a fallthrough — a typo must not silently resolve to a
+// different version.
+func pick(which, envKey, explicit string, fallbacks ...string) (string, error) {
+	env := os.Getenv(envKey)
+	for _, c := range append([]string{explicit, env}, fallbacks...) {
+		if c == "" {
+			continue
+		}
+		if _, err := os.Stat(c); err == nil {
+			return c, nil
+		}
+		if c == env {
+			return "", fmt.Errorf("%s=%s does not exist", envKey, c)
+		}
+		return "", fmt.Errorf("%s path %s does not exist", which, c)
+	}
+	return "", nil
+}
+
+// lookPath returns the PATH location of exe, or "" if it is not on PATH.
+func lookPath(exe string) string {
+	if p, err := exec.LookPath(exe); err == nil {
+		return p
+	}
+	return ""
+}
+
+// SiblingProbe returns the ffprobe next to ffmpegExe, reusing that file's own
+// extension so it matches "ffmpeg.exe" -> "ffprobe.exe" and "ffmpeg" ->
+// "ffprobe". Returns "" if no such file exists.
+func SiblingProbe(ffmpegExe string) string {
+	p := filepath.Join(filepath.Dir(ffmpegExe), "ffprobe"+filepath.Ext(ffmpegExe))
+	if _, err := os.Stat(p); err != nil {
+		return ""
+	}
+	return p
 }
 
 // WithFFmpeg sets a custom ffmpeg path.
