@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/example/vidproc/internal/ffmpeg"
 	"github.com/example/vidproc/internal/ops"
@@ -86,8 +87,43 @@ func fatal(msg string) {
 	os.Exit(1)
 }
 
+// globalFlags are accepted at any position on the command line. Go's flag
+// package stops at the first positional argument, so "vidproc run ... --dry-run"
+// would otherwise reach the command's own FlagSet and be silently ignored.
+// Values indicate whether the flag takes an argument.
+var globalFlags = map[string]bool{
+	"--ffmpeg":  true,
+	"--ffprobe": true,
+	"--dry-run": false,
+}
+
+// hoistGlobals moves global flags (and their values) ahead of the positional
+// arguments so that flag.Parse() sees them regardless of where they were given.
+func hoistGlobals(args []string) []string {
+	var globals, rest []string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		key := a
+		if eq := strings.IndexByte(a, '='); eq >= 0 {
+			key = a[:eq]
+		}
+		takesValue, ok := globalFlags[key]
+		if !ok {
+			rest = append(rest, a)
+			continue
+		}
+		globals = append(globals, a)
+		if takesValue && i+1 < len(args) {
+			i++
+			globals = append(globals, args[i])
+		}
+	}
+	return append(globals, rest...)
+}
+
 func main() {
 	flag.Usage = usage
+	os.Args = append([]string{os.Args[0]}, hoistGlobals(os.Args[1:])...)
 	flag.Parse()
 
 	args := flag.Args()
