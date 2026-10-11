@@ -9,8 +9,8 @@ import (
 
 func init() {
 	Register(&Op{
-		Name:        "audio",
-		Usage:       "audio -i <input> -o <output> [-codec copy|aac|mp3|opus|flac|pcm_s16le]",
+		Name:  "audio",
+		Usage: "audio -i <input> -o <output> [-codec copy|aac|mp3|opus|flac|pcm_s16le]",
 		NewFlags: func() *flag.FlagSet {
 			fs := flag.NewFlagSet("audio", flag.ContinueOnError)
 			fs.String("i", "", "input file (required)")

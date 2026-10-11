@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
-	"os/exec"
 )
 
 // Config holds the paths to ffmpeg and ffprobe.
@@ -122,21 +122,21 @@ type ProbeResult struct {
 
 // StreamInfo holds video/audio stream information.
 type StreamInfo struct {
-	Width       int
-	Height      int
-	CodecName   string
-	PixFmt      string
-	RFrameRate  string
-	SampleRate  string
-	Channels    int
+	Width      int
+	Height     int
+	CodecName  string
+	PixFmt     string
+	RFrameRate string
+	SampleRate string
+	Channels   int
 }
 
 // FileInfo holds the essential information needed for concatenation and patching.
 type FileInfo struct {
-	Path         string
-	Video        *StreamInfo
-	Audio        *StreamInfo
-	FormatTags   map[string]string
+	Path       string
+	Video      *StreamInfo
+	Audio      *StreamInfo
+	FormatTags map[string]string
 }
 
 // Probe runs ffprobe on the given file and returns the ProbeResult.

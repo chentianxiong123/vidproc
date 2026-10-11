@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"os"
 )
+
 type Box struct {
 	Type    string
 	Offset  int64

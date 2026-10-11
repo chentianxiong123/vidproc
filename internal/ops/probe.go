@@ -1,9 +1,9 @@
 package ops
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
-	"encoding/json"
 	"fmt"
 
 	"github.com/example/vidproc/internal/ffmpeg"

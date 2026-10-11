@@ -16,11 +16,12 @@ type Workflow struct {
 
 // ParseYAML parses a simple YAML workflow file.
 // This is a minimal parser that supports the workflow format:
-//   input: input.mp4
-//   output: output.mp4
-//   steps:
-//     - "cut -ss 0:10 -t 5"
-//     - "scale -preset 720p"
+//
+//	input: input.mp4
+//	output: output.mp4
+//	steps:
+//	  - "cut -ss 0:10 -t 5"
+//	  - "scale -preset 720p"
 func ParseYAML(path string) (*Workflow, error) {
 	f, err := os.Open(path)
 	if err != nil {

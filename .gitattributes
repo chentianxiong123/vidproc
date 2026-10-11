@@ -1,0 +1,8 @@
+# Go source must stay LF in the working tree.
+#
+# With core.autocrlf=true, Git rewrites LF -> CRLF on checkout, so the working
+# copy diverges from the repository (which stores LF). gofmt reads the working
+# copy, so it reports every CRLF file as unformatted and produces a whole-file
+# diff that changes nothing but line endings. eol=lf overrides autocrlf for
+# these files.
+*.go text eol=lf
