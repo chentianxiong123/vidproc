@@ -1,6 +1,7 @@
 package ffmpeg
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,7 +9,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+
+	"github.com/example/vidproc/internal/mp4"
 )
+
 
 // Config holds the paths to ffmpeg and ffprobe.
 type Config struct {
@@ -270,10 +274,84 @@ func (c *Config) Concat(inputs []string, output string) error {
 		RemoveEmpty(output)
 		return fmt.Errorf("ffmpeg concat failed: %w, output: %s", err, string(out))
 	}
+	// Insert the first input file's udta box into the output, preserving
+	// non-standard MP4 boxes (e.g. xiaomi vendor tags). This runs after
+	// the ffmpeg concat succeeds so it won't affect the zero-byte file
+	// detection above.
+	if len(allInputs) > 0 {
+		udtaBox, err := extractFirstInputUDTA(allInputs[0])
+		if err == nil {
+			if err := mp4.InsertUDTABox(output, udtaBox); err != nil {
+				// Non-fatal: the video still plays fine without the udta box.
+				_ = err
+			}
+		}
+	}
 	return nil
 }
 
-// Patch copies metadata from ref to target using ffmpeg -map_metadata,
+// extractFirstInputUDTA extracts the full udta box (header+payload)
+// from the first input file's moov/udta, searching recursively.
+func extractFirstInputUDTA(filePath string) ([]byte, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	moov := findMoovRecursive(data)
+	if moov == nil {
+		return nil, fmt.Errorf("no moov in %s", filePath)
+	}
+	udta := findUdtaInMoov(moov)
+	if udta == nil {
+		return nil, fmt.Errorf("no udta in %s", filePath)
+	}
+	// Rebuild the full udta box (header + payload) since mp4.Box only
+	// exposes the payload slice.
+	var buf []byte
+	binary.BigEndian.PutUint32(buf, uint32(8+len(udta.Payload)))
+	buf = append(buf, []byte("udta")...)
+	buf = append(buf, udta.Payload...)
+	return buf, nil
+}
+
+// findMoovRecursive recursively searches for a moov box in the given data.
+func findMoovRecursive(data []byte) *mp4.Box {
+	boxes := mp4.ScanBoxes(data)
+	for _, b := range boxes {
+		if b.Type == "moov" {
+			return &b
+		}
+		// Recursively search inside potential container boxes
+		if b.Type == "free" || b.Type == "trak" || b.Type == "mdia" || b.Type == "minf" || b.Type == "stbl" || b.Type == "udta" || b.Type == "moof" || b.Type == "mfra" {
+			if found := findMoovRecursive(b.Payload); found != nil {
+				return found
+			}
+		}
+	}
+	return nil
+}
+
+// findUdtaInMoov searches for a udta box within a moov box's payload.
+func findUdtaInMoov(moov *mp4.Box) *mp4.Box {
+	inner := mp4.ScanBoxes(moov.Payload)
+	for _, b := range inner {
+		if b.Type == "udta" {
+			return &b
+		}
+		// Recursively search inside container boxes within moov
+		if b.Type == "trak" || b.Type == "mdia" || b.Type == "minf" || b.Type == "stbl" || b.Type == "udta" {
+			if found := findUdtaInMoov(&mp4.Box{
+				Type:    b.Type,
+				Offset:  b.Offset,
+				Size:    b.Size,
+				Payload: b.Payload,
+			}); found != nil {
+				return found
+			}
+		}
+	}
+	return nil
+}
 // then appends non-standard MP4 boxes, and copies mtime.
 func (c *Config) Patch(target, ref string) error {
 	// Step 1: Inject standard metadata using ffmpeg -map_metadata

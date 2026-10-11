@@ -2,8 +2,11 @@ package mp4
 
 import (
 	"bytes"
+	"encoding/binary"
+	"os"
 	"testing"
 )
+
 
 func TestScanBoxes(t *testing.T) {
 	// Construct a simple MP4 with two top-level boxes: ftyp (standard) and free (custom) containing a known string.
@@ -96,5 +99,187 @@ func TestNonStandardBoxes(t *testing.T) {
 	}
 	if ns[0].Type != "free" {
 		t.Fatalf("expected free box, got %s", ns[0].Type)
+	}
+}
+func TestInsertUDTA(t *testing.T) {
+	// Build a minimal MP4: ftyp + moov(mvhd) + mdat
+	var ftyp []byte
+	// ftyp box: size=16
+	ftyp = append(ftyp, 0,0,0,16)
+	ftyp = append(ftyp, 'f','t','y','p')
+	ftyp = append(ftyp, 'i','s','o','m') // brand
+	ftyp = append(ftyp, 0,0,0,0)         // minor version
+	// mvhd box: size=108 (enough for header)
+	var mvhd []byte
+	mvhd = append(mvhd, 0,0,0,108)
+	mvhd = append(mvhd, 'm','v','h','d')
+	mvhd = append(mvhd, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0) // version+flags
+	mvhd = append(mvhd, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0) // creation/modification
+	mvhd = append(mvhd, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0) // rate/volume
+	mvhd = append(mvhd, 0,0,0,0, 0,0,0,0) // matrix (9*4=36 bytes, zero)
+	mvhd = append(mvhd, 0,0,0,0, 0,0,0,0) // pre_defined (6*4=24 bytes, zero)
+	mvhd = append(mvhd, 0,0,0,0, 0,0,0,1) // next_track_ID
+	// moov box: contains mvhd
+	var moov []byte
+	moovSize := uint64(8 + len(mvhd)) // moov header (8) + mvhd
+	var moovHdr [8]byte
+	binary.BigEndian.PutUint32(moovHdr[:4], uint32(moovSize))
+	moovHdr[4] = 'm'; moovHdr[5] = 'o'; moovHdr[6] = 'o'; moovHdr[7] = 'v'
+	moov = append(moov, moovHdr[:]...)
+	moov = append(moov, mvhd...)
+	// mdat box: size=8
+	var mdat []byte
+	mdat = append(mdat, 0,0,0,8)
+	mdat = append(mdat, 'm','d','a','t')
+	// Assemble: ftyp + moov + mdat
+	var data []byte
+	data = append(data, ftyp...)
+	data = append(data, moov...)
+	data = append(data, mdat...)
+	// udta box to insert (full box with header + payload)
+	udtaPayload := []byte("test udta payload")
+	var udtaBox []byte
+	udtaSize := uint64(8 + len(udtaPayload))
+	var udtaHdr [8]byte
+	binary.BigEndian.PutUint32(udtaHdr[:4], uint32(udtaSize))
+	udtaHdr[4] = 'u'; udtaHdr[5] = 'd'; udtaHdr[6] = 't'; udtaHdr[7] = 'a'
+	udtaBox = append(udtaBox, udtaHdr[:]...)
+	udtaBox = append(udtaBox, udtaPayload...)
+	// Write to temp file
+	tmpFile := os.TempDir() + "/vidproc_udta_test.mp4"
+	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	defer os.Remove(tmpFile)
+	// Insert udta box into moov
+	if err := InsertUDTABox(tmpFile, udtaBox); err != nil {
+		t.Fatalf("InsertUDTABox failed: %v", err)
+	}
+	// Read back
+	out, err := os.ReadFile(tmpFile)
+	if err != nil {
+		t.Fatalf("failed to read temp file: %v", err)
+	}
+	// Verify file grew by udta box size
+	expectedSize := 16 + int(moovSize) + 8 + len(udtaBox)
+	if len(out) != expectedSize {
+		t.Fatalf("expected size %d, got %d", expectedSize, len(out))
+	}
+	// Verify udta box exists in moov
+	boxes := ScanBoxes(out)
+	var moovBox *Box
+	for _, b := range boxes {
+		if b.Type == "moov" {
+			moovBox = &b
+			break
+		}
+	}
+	if moovBox == nil {
+		t.Fatalf("moov not found after insert")
+	}
+	inner := ScanBoxes(moovBox.Payload)
+	var found bool
+	for _, b := range inner {
+		if b.Type == "udta" {
+			found = true
+			if !bytes.Equal(b.Payload, udtaPayload) {
+				t.Fatalf("udta payload mismatch: got %s, want %s", b.Payload, udtaPayload)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("udta box not inserted into moov")
+	}
+}
+func TestInsertUDTABox(t *testing.T) {
+	// Build a minimal MP4: ftyp + moov(mvhd) + mdat
+	var ftyp []byte
+	// ftyp box: size=16
+	ftyp = append(ftyp, 0,0,0,16)
+	ftyp = append(ftyp, 'f','t','y','p')
+	ftyp = append(ftyp, 'i','s','o','m') // brand
+	ftyp = append(ftyp, 0,0,0,0)         // minor version
+	// mvhd box: size=108 (enough for header)
+	var mvhd []byte
+	mvhd = append(mvhd, 0,0,0,108)
+	mvhd = append(mvhd, 'm','v','h','d')
+	mvhd = append(mvhd, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0) // version+flags
+	mvhd = append(mvhd, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0) // creation/modification
+	mvhd = append(mvhd, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0) // rate/volume
+	mvhd = append(mvhd, 0,0,0,0, 0,0,0,0) // matrix (9*4=36 bytes, zero)
+	mvhd = append(mvhd, 0,0,0,0, 0,0,0,0) // pre_defined (6*4=24 bytes, zero)
+	mvhd = append(mvhd, 0,0,0,0, 0,0,0,1) // next_track_ID
+	// moov box: contains mvhd
+	var moov []byte
+	moovSize := uint64(8 + len(mvhd)) // moov header (8) + mvhd
+	var moovHdr [8]byte
+	binary.BigEndian.PutUint32(moovHdr[:4], uint32(moovSize))
+	moovHdr[4] = 'm'; moovHdr[5] = 'o'; moovHdr[6] = 'o'; moovHdr[7] = 'v'
+	moov = append(moov, moovHdr[:]...)
+	moov = append(moov, mvhd...)
+	// mdat box: size=8
+	var mdat []byte
+	mdat = append(mdat, 0,0,0,8)
+	mdat = append(mdat, 'm','d','a','t')
+	// Assemble: ftyp + moov + mdat
+	var data []byte
+	data = append(data, ftyp...)
+	data = append(data, moov...)
+	data = append(data, mdat...)
+	// udta box to insert (full box with header + payload)
+	udtaPayload := []byte("test udta payload")
+	var udtaBox []byte
+	udtaSize := uint64(8 + len(udtaPayload))
+	var udtaHdr [8]byte
+	binary.BigEndian.PutUint32(udtaHdr[:4], uint32(udtaSize))
+	udtaHdr[4] = 'u'; udtaHdr[5] = 'd'; udtaHdr[6] = 't'; udtaHdr[7] = 'a'
+	udtaBox = append(udtaBox, udtaHdr[:]...)
+	udtaBox = append(udtaBox, udtaPayload...)
+	// Write to temp file
+	tmpFile := os.TempDir() + "/vidproc_udta_box_test.mp4"
+	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	defer os.Remove(tmpFile)
+	// Insert udta box into moov
+	if err := InsertUDTABox(tmpFile, udtaBox); err != nil {
+		t.Fatalf("InsertUDTABox failed: %v", err)
+	}
+	// Read back
+	out, err := os.ReadFile(tmpFile)
+	if err != nil {
+		t.Fatalf("failed to read temp file: %v", err)
+	}
+	// Verify file grew by udta box size
+	expectedSize := 16 + int(moovSize) + 8 + len(udtaBox)
+	if len(out) != expectedSize {
+		t.Fatalf("expected size %d, got %d", expectedSize, len(out))
+	}
+	// Verify udta box exists in moov
+	boxes := ScanBoxes(out)
+	var moovBox *Box
+	for _, b := range boxes {
+		if b.Type == "moov" {
+			moovBox = &b
+			break
+		}
+	}
+	if moovBox == nil {
+		t.Fatalf("moov not found after insert")
+	}
+	inner := ScanBoxes(moovBox.Payload)
+	var found bool
+	for _, b := range inner {
+		if b.Type == "udta" {
+			found = true
+			if !bytes.Equal(b.Payload, udtaPayload) {
+				t.Fatalf("udta payload mismatch: got %s, want %s", b.Payload, udtaPayload)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("udta box not inserted into moov")
 	}
 }

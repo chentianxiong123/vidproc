@@ -3,6 +3,7 @@ package mp4
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"os"
 )
 
@@ -140,4 +141,79 @@ func AppendBoxes(dstPath string, boxes []Box) error {
 	defer f.Close()
 	_, err = f.Write(data)
 	return err
+}
+// InsertUDTA inserts a udta box with the given payload as a child of the moov box.
+// It reads the entire file, locates the moov box, inserts the udta box at the
+// beginning of the moov's payload, and updates the moov size accordingly.
+func InsertUDTA(dstPath string, udtaPayload []byte) error {
+	data, err := os.ReadFile(dstPath)
+	if err != nil {
+		return err
+	}
+	boxes := ScanBoxes(data)
+	var moov *Box
+	for i := range boxes {
+		if boxes[i].Type == "moov" {
+			moov = &boxes[i]
+			break
+		}
+	}
+	if moov == nil {
+		return fmt.Errorf("moov box not found")
+	}
+	// udta box size: 8 byte header + payload
+	udtaSize := uint64(8 + len(udtaPayload))
+	// construct udta box bytes
+	var udtaBuf bytes.Buffer
+	binary.Write(&udtaBuf, binary.BigEndian, udtaSize)
+	udtaBuf.WriteString("udta")
+	if _, err := udtaBuf.Write(udtaPayload); err != nil {
+		return err
+	}
+	insertOff := moov.Offset + 8 // after moov header
+	// splice: [0:insertOff] + udtaBuf + [insertOff:]
+	newData := make([]byte, 0, len(data)+int(udtaSize))
+	newData = append(newData, data[:insertOff]...)
+	newData = append(newData, udtaBuf.Bytes()...)
+	newData = append(newData, data[insertOff:]...)
+	// update moov size in newData
+	// moov size field is at moov.Offset, 4 bytes (assuming normal size < 4GB)
+	sizeOff := moov.Offset
+	binary.BigEndian.PutUint32(newData[sizeOff:sizeOff+4], uint32(moov.Size+udtaSize))
+	return os.WriteFile(dstPath, newData, 0o644)
+}
+// InsertUDTABox inserts a udta box (with header and payload) as a child of the moov box.
+// It reads the entire file, locates the moov box, inserts the udta box at the
+// beginning of the moov's payload, and updates the moov size accordingly.
+func InsertUDTABox(dstPath string, udtaBox []byte) error {
+	data, err := os.ReadFile(dstPath)
+	if err != nil {
+		return err
+	}
+	boxes := ScanBoxes(data)
+	var moov *Box
+	for i := range boxes {
+		if boxes[i].Type == "moov" {
+			moov = &boxes[i]
+			break
+		}
+	}
+	if moov == nil {
+		return fmt.Errorf("moov box not found")
+	}
+	// udtaBox should be a full box (header+payload)
+	if len(udtaBox) < 8 {
+		return fmt.Errorf("udta box too small: %d bytes", len(udtaBox))
+	}
+	insertOff := moov.Offset + 8 // after moov header
+	// splice: [0:insertOff] + udtaBox + [insertOff:]
+	newData := make([]byte, 0, len(data)+len(udtaBox))
+	newData = append(newData, data[:insertOff]...)
+	newData = append(newData, udtaBox...)
+	newData = append(newData, data[insertOff:]...)
+	// update moov size in newData
+	// moov size field is at moov.Offset, 4 bytes (assuming normal size < 4GB)
+	sizeOff := moov.Offset
+	binary.BigEndian.PutUint32(newData[sizeOff:sizeOff+4], uint32(moov.Size+uint64(len(udtaBox))))
+	return os.WriteFile(dstPath, newData, 0o644)
 }
