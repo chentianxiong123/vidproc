@@ -3,19 +3,22 @@ package ops
 import (
 	"errors"
 	"flag"
+	"os"
 
 	"github.com/example/vidproc/internal/ffmpeg"
 )
+
 
 func init() {
 	Register(&Op{
 		Name:        "concat",
 		Description: "Concatenate multiple videos (lossless)",
-		Usage:       "concat -o <output> [--force] <files...>",
+		Usage:       "concat -o <output> [--force] [--keep-mtime] <files...>",
 		NewFlags: func() *flag.FlagSet {
 			fs := flag.NewFlagSet("concat", flag.ContinueOnError)
 			fs.String("o", "", "output file (required)")
 			fs.Bool("force", false, "overwrite output")
+			fs.Bool("keep-mtime", false, "keep mtime from first input file")
 			return fs
 		},
 		Execute: func(cfg *ffmpeg.Config, in, out string, fs *flag.FlagSet) error {
@@ -37,7 +40,17 @@ func init() {
 			if err := CheckOutput(fs.Lookup("force").Value.String() == "true", out); err != nil {
 				return err
 			}
-			return cfg.Concat(inputs, out)
+			if err := cfg.Concat(inputs, out); err != nil {
+				return err
+			}
+			if fs.Lookup("keep-mtime").Value.String() == "true" && len(inputs) > 0 {
+				fi, err := os.Stat(inputs[0])
+				if err != nil {
+					return err
+				}
+				_ = os.Chtimes(out, fi.ModTime(), fi.ModTime())
+			}
+			return nil
 		},
 	})
 }
