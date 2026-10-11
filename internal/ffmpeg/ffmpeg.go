@@ -267,6 +267,7 @@ func (c *Config) Concat(inputs []string, output string) error {
 		output)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		RemoveEmpty(output)
 		return fmt.Errorf("ffmpeg concat failed: %w, output: %s", err, string(out))
 	}
 	return nil
@@ -288,6 +289,7 @@ func (c *Config) Patch(target, ref string) error {
 		tmp)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		RemoveEmpty(tmp)
 		return fmt.Errorf("ffmpeg metadata injection failed: %w, output: %s", err, string(out))
 	}
 	// Replace target with tmp (Windows: remove target first to avoid file lock)
@@ -306,4 +308,14 @@ func (c *Config) Patch(target, ref string) error {
 		return fmt.Errorf("changing times: %w", err)
 	}
 	return nil
+}
+
+// RemoveEmpty deletes path if it exists and is empty. ffmpeg opens the output
+// file before the encoder runs, so a hard encoder failure (unsupported preset,
+// wrong GPU driver) leaves a zero-byte file that otherwise looks like a
+// successful result. Non-empty partial outputs are left alone for inspection.
+func RemoveEmpty(path string) {
+	if st, err := os.Stat(path); err == nil && st.Size() == 0 {
+		os.Remove(path)
+	}
 }

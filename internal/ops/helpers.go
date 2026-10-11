@@ -201,9 +201,21 @@ func RunFFmpeg(cfg *ffmpeg.Config, args []string, dryRun bool) error {
 	tail := tailWriter{max: 512 << 10}
 	cmd.Stderr = io.MultiWriter(os.Stderr, &tail)
 	if err := cmd.Run(); err != nil {
+		ffmpeg.RemoveEmpty(outputPath(args))
 		return withHint(err, tail.String())
 	}
 	return nil
+}
+
+// outputPath returns the file named after "-y" in args, or "" if there is none.
+// Every operation that writes a file ends its ffmpeg invocation with "-y <out>".
+func outputPath(args []string) string {
+	for i, a := range args {
+		if a == "-y" && i+1 < len(args) {
+			return args[i+1]
+		}
+	}
+	return ""
 }
 
 // MakeTempDir creates a temp directory for pipeline intermediate files.
