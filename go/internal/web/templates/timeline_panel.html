@@ -1,6 +1,9 @@
-{{/* 时间轴面板（对齐 vidonex TimelineContainer：工具栏 + 标尺 + 轨道行） */}}
-<div class="h-full flex flex-col bg-gray-950 select-none overflow-hidden" dir="ltr">
-  <!-- Timeline Actions Toolbar（对齐 vidonex：h-10 + 按钮组 + 吸附开关） -->
+{{/* 时间轴面板（对齐 vidonex TimelineContainer：工具栏 + 标尺 + 真实 clip 轨道行） */}}
+{{/* 数据源：/api/projects/{id}/timeline —— 解析项目 spec 的数值化时间轴 */}}
+<div class="h-full flex flex-col bg-gray-950 select-none overflow-hidden" dir="ltr"
+     x-data="timelineEditor({{if .Project}}{{.Project.ID}}{{else}}null{{end}})"
+     x-init="init()">
+  <!-- Timeline Actions Toolbar（对齐 vidonex：h-10 + 按钮组 + Snap 开关） -->
   <div class="h-10 border-b border-gray-800 px-3 bg-gray-950/80 flex items-center justify-between z-20 flex-shrink-0">
     <div class="flex items-center gap-1.5">
       <button type="button" class="px-2.5 py-1 rounded-md bg-gray-900 border border-gray-700 text-xs text-gray-200 hover:border-indigo-500 transition flex items-center gap-1">
@@ -15,79 +18,141 @@
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14l5-5-5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 9H10a6 6 0 0 0 0 12h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <div class="h-4 w-px bg-gray-800 mx-1"></div>
-      <button type="button" class="px-2 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition text-[11px]" title="在播放头处分割 (S)" disabled>
-        <svg class="w-3.5 h-3.5 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4v16l8-8zM14 12l4-8v16z"/></svg>
+      <button type="button" class="px-2 py-1 rounded-md text-xs text-gray-300 hover:text-white hover:bg-gray-900 transition flex items-center gap-1"
+              title="在播放头处分割 (S)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="split()">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4v16l8-8zM14 12l4-8v16z"/></svg>
+        <span class="hidden md:inline">分割</span>
       </button>
-      <button type="button" class="px-2 py-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition text-[11px] hidden sm:inline" title="裁剪 (C)" disabled>裁剪</button>
-      <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-red-400 transition" title="删除选中 (Del)" disabled>
+      <button type="button" class="px-2 py-1 rounded-md text-xs text-gray-300 hover:text-white hover:bg-gray-900 transition flex items-center gap-1"
+              title="删除选中 (Del)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="deleteSelected()">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 14H7z" stroke-linejoin="round"/><path d="M9 4h6l1 3H8z" stroke-linejoin="round"/></svg>
+        <span class="hidden md:inline">删除</span>
       </button>
       <div class="h-4 w-px bg-gray-800 mx-1"></div>
-      <!-- Snapping Toggle，对齐 vidonex Snap ON/OFF -->
-      <button type="button" x-data="{on:true}" @click="on=!on"
-              class="px-2 py-1 rounded-md transition text-[10px] font-mono font-semibold"
-              :class="on ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40' : 'text-gray-500 border border-gray-800 hover:border-gray-600'"
-              title="磁吸吸附 (N)">
+      <!-- Snap 开关（对齐 vidonex Snap ON/OFF，N 键切换） -->
+      <button type="button" data-snap="on" @click="toggleSnap()"
+              class="px-2 py-1 rounded-md transition text-[10px] font-mono font-semibold snap-on"
+              :class="['']" title="磁吸吸附 (N)">
         <svg class="w-3 h-3 inline mr-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>
-        <span x-text="on ? 'Snap ON' : 'Snap OFF'"></span>
+        <span>Snap ON</span>
       </button>
     </div>
     <div class="flex items-center gap-1">
-      <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="快捷键 (?)">
-        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.8 2.1c-.8.5-1.3 1-1.3 1.9" stroke-linecap="round"/><path d="M12 17h.01" stroke-linecap="round"/></svg>
-      </button>
+      <!-- 播放头时间（对齐 vidonex 标尺时间戳） -->
+      <span class="text-[10px] font-mono text-indigo-300 w-24 text-right" x-text="fmt(playhead)"></span>
       <div class="h-4 w-px bg-gray-800 mx-1"></div>
-      <!-- Zoom 控件（对齐 vidonex zoom range） -->
+      <!-- Zoom 控件（对齐 vidonex zoom range，驱动 像素/秒） -->
       <div class="flex items-center gap-1">
-        <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="缩小">
+        <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="缩小" @click="zoom = Math.max(0.25, zoom * 0.8)">
           <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" stroke-linecap="round"/></svg>
         </button>
-        <input type="range" min="0.25" max="4" step="0.05" value="1"
-               class="w-24 accent-indigo-500" x-data x-init="$el.addEventListener('input', e => window.dispatchEvent(new CustomEvent('timeline-zoom', {detail: +e.target.value})))">
-        <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="放大">
+        <input type="range" min="0.25" max="4" step="0.05" x-model.number="zoom"
+               class="w-24 accent-indigo-500">
+        <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="放大" @click="zoom = Math.min(4, zoom * 1.25)">
           <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         </button>
       </div>
     </div>
   </div>
 
-  <div class="flex-1 min-h-0 overflow-auto">
-    <div class="min-w-full inline-block">
-      <!-- Ruler（对齐 TimelineRuler：标尺 + 播放头） -->
-      <div class="h-6 border-b border-gray-800 bg-gray-950/60 relative text-[9px] font-mono text-gray-500" x-data="{zoom:1}" @timeline-zoom.window="zoom=$event.detail">
-        <div class="absolute inset-y-0 left-12 right-0 flex items-end">
-          <template x-for="i in 24" :key="i">
-            <div class="flex-1 flex items-end border-l border-gray-800/60 pl-0.5 text-[8px] leading-4" x-text="(i-1)*5"></div>
+  <!-- 时间轴主体 -->
+  <div class="flex-1 min-h-0 overflow-auto relative" @click="seek($event)" @keydown="onKey($event)" tabindex="0">
+    <div class="min-w-full inline-block" :style="'width:' + trackWidth + 'px'">
+      <!-- Ruler（对齐 TimelineRuler：刻度 + 播放头三角标） -->
+      <div class="h-6 border-b border-gray-800 bg-gray-950/60 relative text-[9px] font-mono text-gray-500" @click.stop="seek($event)">
+        <div class="absolute inset-y-0 left-12 right-0 flex items-end overflow-hidden">
+          <!-- 刻度：每 0.5s 一格（zoom 自适应） -->
+          <template x-for="i in 400" :key="i">
+            <div class="flex items-end size-0" :style="'margin-left:' + (pps*0.5 - 1) + 'px'">
+              <template x-if="i % 4 === 0">
+                <span class="block border-l border-gray-700 pl-0.5 leading-4" x-text="((i-1)*0.5).toFixed(1) + 's'"></span>
+              </template>
+              <template x-else>
+                <span class="block border-l border-gray-800/60 leading-4"></span>
+              </template>
+            </div>
           </template>
         </div>
-        <!-- Playhead -->
-        <div class="absolute top-0 bottom-0 border-l-2 border-indigo-500 z-20" :style="'left:' + (50 + 120 * zoom) + 'px'">
-          <div class="w-0 h-0 border-l-[5px] border-r-[5px] border-b-[6px] border-l-transparent border-r-transparent border-b-indigo-500 -ml-[5px]"></div>
-        </div>
       </div>
-      <!-- Track List（对齐 vidonex TrackHeader + TrackRow） -->
+
+      <!-- 轨道区 -->
       <div class="flex">
         <!-- 轨道头列（对齐 TrackHeader） -->
-        <div class="w-12 flex-shrink-0 border-r border-gray-800 bg-gray-950/60">
-          <div class="h-12 border-b border-gray-800/80 flex items-center justify-center text-gray-500">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          </div>
-          <div class="h-12 border-b border-gray-800/80 flex items-center justify-center text-gray-500">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z"/></svg>
-          </div>
+        <div class="w-12 flex-shrink-0 border-r border-gray-800 bg-gray-950/60 z-10 relative">
+          <template x-for="tr in videoTracks()" :key="'h' + tr.id">
+            <div class="h-12 border-b border-gray-800/80 flex items-center justify-center text-gray-500">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+          </template>
+          <template x-for="tr in audioTracks()" :key="'h' + tr.id">
+            <div class="h-12 border-b border-gray-800/80 flex items-center justify-center text-gray-500">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z"/></svg>
+            </div>
+          </template>
+          <template x-for="tr in otherTracks()" :key="'h' + tr.id">
+            <div class="h-12 border-b border-gray-800/80 flex items-center justify-center text-gray-500">
+              <span class="text-[9px] font-mono" x-text="tr.kind.slice(0,2)"></span>
+            </div>
+          </template>
         </div>
-        <!-- 轨道区 -->
-        <div class="flex-1">
-          <!-- Video Track -->
-          <div class="h-12 border-b border-gray-800/80 bg-gray-950/40 relative flex items-center justify-center text-gray-600 text-[10px]">
-            {{if .Project}}<span class="text-gray-600 text-[10px] font-mono">track v1 — 从视口"渲染"后此处显示 clip</span>{{else}}<span class="text-gray-600 text-[10px]">打开项目查看轨道</span>{{end}}
+
+        <!-- 轨道内容 -->
+        <div class="flex-1 relative">
+          <!-- 每条视频/overlay 轨道一行 -->
+          <template x-for="(tr, ti) in videoTracks()" :key="tr.id">
+            <div class="h-12 border-b border-gray-800/80 bg-gray-950/40 relative">
+              <template x-for="clip in tr.clips" :key="clip.id">
+                <div :style="clipStyle(clip)" :class="clipClass(clip)"
+                     @mousedown.stop="startDrag($event, clip, ti)"
+                     @click.stop="select(clip)"
+                     @dblclick.stop="">
+                  <div class="absolute inset-0 flex items-center px-1.5 gap-1 pointer-events-none">
+                    <svg class="w-3 h-3 text-indigo-300 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                    <span class="text-[10px] font-medium text-gray-100 truncate" x-text="clip.name"></span>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+          <!-- 音频/波形轨道 -->
+          <template x-for="(tr, ti) in audioTracks()" :key="tr.id">
+            <div class="h-12 border-b border-gray-800/80 bg-gray-950/40 relative">
+              <template x-for="clip in tr.clips" :key="clip.id">
+                <div :style="clipStyle(clip)" :class="clipClass(clip)"
+                     @mousedown.stop="startDrag($event, clip, ti)"
+                     @click.stop="select(clip)">
+                  <div class="absolute inset-0 flex items-center px-1.5 gap-1 pointer-events-none">
+                    <svg class="w-3 h-3 text-emerald-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z"/></svg>
+                    <span class="text-[10px] font-medium text-gray-300 truncate" x-text="clip.name"></span>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+          <!-- 空轨道提示 -->
+          <div x-show="!loading && !videoTracks().length && !audioTracks().length"
+               class="absolute inset-0 flex items-center justify-center text-gray-600 text-[10px]">
+            <span>轨道为空 — 从媒体库添加素材</span>
           </div>
-          <!-- Audio Track -->
-          <div class="h-12 border-b border-gray-800/80 bg-gray-950/40 relative flex items-center justify-center text-gray-600 text-[10px]">
-            <span class="text-gray-600 text-[10px] opacity-50">audio track a1</span>
+
+          <!-- 播放头（对齐 TimelineRuler playhead：indigo 竖线 + 顶部三角） -->
+          <div class="absolute top-[-24px] bottom-0 border-l-2 border-indigo-500 z-20 pointer-events-none"
+               :style="'left:' + (48 + playhead * pps) + 'px'">
+            <div class="w-0 h-0 border-l-[5px] border-r-[5px] border-b-[6px] border-l-transparent border-r-transparent border-b-indigo-500 -ml-[5px]"></div>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- 加载态 / 错误态 -->
+    <div x-show="loading" class="absolute inset-0 flex items-center justify-center bg-gray-950/70 text-gray-500 text-xs">
+      <svg class="animate-spin w-4 h-4 mr-2 text-indigo-400" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+      加载时间轴…
+    </div>
+    <div x-show="error" class="absolute inset-0 flex items-center justify-center bg-gray-950/80 text-red-400 text-xs p-4 text-center" x-text="error"></div>
+    <!-- 未打开项目 -->
+    <div x-show="!loading && !pid" class="absolute inset-0 flex items-center justify-center text-gray-600 text-[10px]">
+      <span>从左侧打开项目查看时间轴</span>
     </div>
   </div>
 </div>

@@ -36,6 +36,9 @@ type Options struct {
 	GPU string
 	// Logger 自定义日志,空 = slog.Default()。
 	Logger *slog.Logger
+	// OnProgress 渲染进度回调(每 ~0.5s 触发一次,含百分比/帧/speed)。
+	// 空 = 不报告。Web/CLI 进度条都从这拿数。
+	OnProgress composer.ProgressHandler
 }
 
 // Filtergraph 编译结果(dry-run 用)。
@@ -162,7 +165,7 @@ func Render(ctx context.Context, specPath string, opts Options) (*Result, error)
 	composerInstance := composer.New(composerOptions...)
 
 	start := time.Now()
-	renderResult, err := composerInstance.Render(ctx, compositionTimeline, finalOutputPath, nil)
+	renderResult, err := composerInstance.Render(ctx, compositionTimeline, finalOutputPath, opts.OnProgress)
 	elapsed := time.Since(start)
 	if err != nil {
 		return nil, err

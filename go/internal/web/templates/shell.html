@@ -112,6 +112,9 @@
     </div>
   </footer>
 
+  <!-- vidproc 业务逻辑(timelineEditor/projectView/播放头总线)在布局脚本之前,
+        Alpine defer 初始化时组件已定义 -->
+  <script src="/assets/nav.js"></script>
   <script>
     // 可拖拽分栏布局（对齐 vidonex USplitter 行为；状态存 localStorage）
     function studioLayout() {

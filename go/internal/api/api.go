@@ -147,6 +147,14 @@ func Router(db *sql.DB) http.Handler {
 		w.WriteHeader(204)
 	})
 
+	// 时间轴(前端 clip 渲染数据源)
+	mux.HandleFunc("GET /api/projects/{id}/timeline", TimelineHandler(db))
+	// 画布预览:播放头时刻抽帧
+	mux.HandleFunc("GET /api/projects/{id}/frame", FrameHandler(db))
+	// 异步渲染:POST 启动,GET 轮询进度
+	mux.HandleFunc("POST /api/projects/{id}/render", RenderStartHandler(db))
+	mux.HandleFunc("GET /api/render/{jobID}", RenderStatusHandler)
+
 	return mux
 }
 
