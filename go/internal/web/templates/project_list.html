@@ -1,0 +1,92 @@
+{{/* 项目视口页（对齐 vidonex 深色语言：视口区 = 项目选择 + 新建） */}}
+<div class="h-full flex flex-col">
+  <!-- 视口顶栏（对齐 CanvasViewport 顶部工具区） -->
+  <div class="h-10 border-b border-gray-800 px-3 bg-gray-950/80 flex items-center justify-between flex-shrink-0">
+    <span class="text-xs font-semibold text-gray-300">项目</span>
+    <div class="flex items-center gap-2">
+      <a href="/api/projects" target="_blank" class="text-[11px] text-gray-400 hover:text-indigo-400 transition">JSON API</a>
+      <span class="text-[11px] text-gray-600">{{len .Projects}} 个</span>
+    </div>
+  </div>
+
+  <div class="flex-1 overflow-y-auto p-4">
+    {{if not .Projects}}
+    <!-- 空态（对齐 vidonex 风格：灰底 + 图标 + 引导） -->
+    <div class="text-center py-16 text-gray-500">
+      <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-900 border border-gray-800 flex items-center justify-center">
+        <svg class="w-8 h-8 text-gray-600" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polygon points="14 2 14 8 20 8"/></svg>
+      </div>
+      <p class="text-sm font-medium text-gray-300">还没有项目</p>
+      <p class="text-xs mt-1 text-gray-500">在下方创建第一个视频编辑项目</p>
+    </div>
+    {{else}}
+    <!-- 项目网格（对齐 vidonex 媒体网格视觉） -->
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {{range .Projects}}
+      <div class="group rounded-xl overflow-hidden bg-gray-900/60 border border-gray-800 hover:border-indigo-500/50 transition-all duration-200">
+        <a href="/project/{{.ID}}" class="block"
+           hx-get="/project/{{.ID}}" hx-select="#main" hx-target="#main" hx-swap="innerHTML" hx-push-url="true">
+          <div class="aspect-video bg-gradient-to-br from-gray-800 to-gray-900 relative flex items-center justify-center">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+            <button class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <span class="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-indigo-500 text-white text-xs font-medium shadow-lg">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8v4l2 2"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+                打开
+              </span>
+            </button>
+          </div>
+          <div class="p-3">
+            <h3 class="text-sm font-semibold text-gray-200 truncate">{{.Name}}</h3>
+            <div class="flex items-center justify-between mt-1.5">
+              <span class="text-[11px] text-gray-500">#{{.ID}} · {{.UpdatedAt.Format "01-02 15:04"}}</span>
+            </div>
+          </div>
+        </a>
+        <div class="px-3 pb-3 -mt-1">
+          <button hx-delete="/project/{{.ID}}" hx-confirm="删除项目 {{.ID}}？" hx-target="#main" hx-swap="innerHTML" hx-push-url="/"
+                  class="text-[11px] text-gray-600 hover:text-red-400 transition flex items-center gap-1">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 7h12l-1 14H7zM9 4h6l1 3H8z"/></svg>
+            删除
+          </button>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
+    <!-- 新建项目卡片（对齐 vidonex NewProjectModal 字段：名称/画布/输出/spec） -->
+    <div id="new" class="mt-6 rounded-xl bg-gray-900/60 border border-gray-800 p-4">
+      <h2 class="text-sm font-semibold text-gray-200 mb-3 flex items-center gap-2">
+        <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+        新建项目
+      </h2>
+      <form hx-post="/project" hx-target="#main" hx-swap="innerHTML">
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label class="block text-[11px] font-medium text-gray-400 mb-1">名称</label>
+            <input type="text" name="name" placeholder="我的项目" required
+                   class="w-full px-2.5 py-1.5 rounded-lg bg-gray-950 border border-gray-800 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition">
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-gray-400 mb-1">输出路径</label>
+            <input type="text" name="output" placeholder="C:/out/video.mp4"
+                   class="w-full px-2.5 py-1.5 rounded-lg bg-gray-950 border border-gray-800 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition">
+          </div>
+        </div>
+        <div class="mt-3">
+          <label class="block text-[11px] font-medium text-gray-400 mb-1">Spec YAML（vidonex 兼容 project.yaml）</label>
+          <textarea name="spec" required rows="6" placeholder='version: "1.0"&#10;canvas:&#10;  preset: "1080p"&#10;tracks: []'
+                    class="w-full px-2.5 py-1.5 rounded-lg bg-gray-950 border border-gray-800 text-xs font-mono text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition"></textarea>
+        </div>
+        <div class="mt-3">
+          <button type="submit" class="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-medium transition shadow-lg shadow-indigo-500/20">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+            创建项目
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

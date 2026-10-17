@@ -1,0 +1,46 @@
+{{/* 检查器面板（对齐 vidonex PanelsInspectorPanel：属性分组 + 值） */}}
+<div class="h-full w-full flex flex-col bg-gray-950 border-l border-gray-800 select-none">
+  <div class="h-10 border-b border-gray-800 px-3 flex items-center bg-gray-950/80 flex-shrink-0">
+    <span class="text-xs font-semibold text-gray-300">检查器</span>
+  </div>
+  <div class="flex-1 overflow-y-auto p-3 space-y-4">
+    {{if .Project}}
+    <div>
+      <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">项目</p>
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] text-gray-500">ID</span>
+          <span class="text-[11px] font-mono text-gray-200">#{{.Project.ID}}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] text-gray-500">名称</span>
+          <span class="text-[11px] text-gray-200 truncate max-w-[140px]">{{.Project.Name}}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] text-gray-500">创建</span>
+          <span class="text-[11px] font-mono text-gray-400">{{.Project.CreatedAt.Format "01-02 15:04"}}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] text-gray-500">更新</span>
+          <span class="text-[11px] font-mono text-gray-400">{{.Project.UpdatedAt.Format "01-02 15:04"}}</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">输出</p>
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-[11px] text-gray-500 flex-shrink-0">路径</span>
+          <span class="text-[11px] font-mono text-gray-400 break-all text-right">{{if .Project.OutputPath}}{{.Project.OutputPath}}{{else}}—{{end}}</span>
+        </div>
+      </div>
+    </div>
+    {{else}}
+    <div class="text-center py-10 text-gray-500">
+      <svg class="w-8 h-8 mx-auto mb-2 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 15l4-4 3 3 4-5 5 6"/></svg>
+      <p class="text-xs">未选择项目</p>
+      <p class="text-[10px] mt-1">从媒体库或视口打开一个项目</p>
+    </div>
+    {{end}}
+  </div>
+</div>

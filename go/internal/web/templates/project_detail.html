@@ -1,0 +1,78 @@
+{{/* 项目详情视口（对齐 vidonex 深色语言：视口区 = spec 编辑 + 渲染） */}}
+<div class="h-full flex flex-col">
+  <!-- 视口顶栏 -->
+  <div class="h-10 border-b border-gray-800 px-3 bg-gray-950/80 flex items-center justify-between flex-shrink-0">
+    <div class="flex items-center gap-2 min-w-0">
+      <a href="/" class="p-1 text-gray-400 hover:text-white transition" title="返回列表"
+         hx-get="/" hx-select="#main" hx-target="#main" hx-swap="innerHTML" hx-push-url="true">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </a>
+      <h2 class="text-sm font-semibold text-gray-200 truncate">{{.Project.Name}}</h2>
+      <span class="text-[10px] font-mono text-gray-500 flex-shrink-0">#{{.Project.ID}}</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="text-[10px] text-gray-500 hidden sm:inline">创建 {{.Project.CreatedAt.Format "01-02 15:04"}}</span>
+    </div>
+  </div>
+
+  <div class="flex-1 overflow-y-auto p-4">
+    <div class="grid gap-4 lg:grid-cols-3">
+      <!-- Spec 编辑器（主） -->
+      <div class="lg:col-span-2 rounded-xl bg-gray-900/60 border border-gray-800 p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-semibold text-gray-300 flex items-center gap-2">
+            <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polygon points="14 2 14 8 20 8"/></svg>
+            project.yaml
+          </h3>
+          <span class="text-[10px] font-mono text-gray-600">vidonex spec · yaml</span>
+        </div>
+        <form hx-put="/project/{{.Project.ID}}" hx-target="#main" hx-swap="innerHTML" hx-push-url="/project/{{.Project.ID}}">
+          <textarea name="spec" rows="16" spellcheck="false"
+                    class="w-full px-2.5 py-2 rounded-lg bg-gray-950 border border-gray-800 text-xs font-mono text-gray-200 focus:outline-none focus:border-indigo-500 transition">{{.Project.SpecYAML}}</textarea>
+          <div class="mt-3 flex items-center gap-2">
+            <button type="submit" class="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gray-900 border border-gray-700 text-white text-xs font-medium hover:border-indigo-500 transition">
+              <svg class="w-3.5 h-3.5 text-emerald-500" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13l4 4L19 7"/></svg>
+              保存 spec
+            </button>
+            <label class="flex items-center gap-1.5 text-[11px] text-gray-400">
+              输出
+              <input type="text" name="output" value="{{.Project.OutputPath}}" placeholder="C:/out/video.mp4"
+                     class="w-48 px-2 py-1 rounded-lg bg-gray-950 border border-gray-800 text-[11px] font-mono text-gray-300 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition">
+            </label>
+          </div>
+        </form>
+      </div>
+
+      <!-- 渲染控制（检查器侧） -->
+      <div class="rounded-xl bg-gray-900/60 border border-gray-800 p-4 h-fit">
+        <h3 class="text-xs font-semibold text-gray-300 mb-3 flex items-center gap-2">
+          <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          渲染
+        </h3>
+        <div class="space-y-2 text-[11px]">
+          <div class="flex items-center justify-between">
+            <span class="text-gray-500">输出</span>
+            <span class="text-gray-300 font-mono truncate max-w-[140px]">{{if .Project.OutputPath}}{{.Project.OutputPath}}{{else}}—{{end}}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-gray-500">更新</span>
+            <span class="text-gray-400 font-mono">{{.Project.UpdatedAt.Format "01-02 15:04"}}</span>
+          </div>
+        </div>
+        <div class="mt-4 space-y-2">
+          <button type="button" hx-post="/project/{{.Project.ID}}/render" hx-target="#render-result" hx-swap="innerHTML" hx-disabled-elt="this"
+                  class="w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-medium transition shadow-lg shadow-indigo-500/20">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <span>渲染</span>
+          </button>
+          <button hx-delete="/project/{{.Project.ID}}" hx-confirm="删除项目 {{.Project.ID}}？" hx-target="body" hx-swap="innerHTML" hx-push-url="/"
+                  class="w-full flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-950/30 transition text-xs">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 7h12l-1 14H7zM9 4h6l1 3H8z"/></svg>
+            删除项目
+          </button>
+        </div>
+        <div id="render-result" class="mt-3"></div>
+      </div>
+    </div>
+  </div>
+</div>

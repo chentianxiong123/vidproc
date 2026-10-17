@@ -1,0 +1,14 @@
+/* Tailwind CDN 之外仅有的补充样式（对齐 HomeCast style.css 的导航部分） */
+.htmx-indicator { display: none; }
+.htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline; }
+/* 导航 tab 激活态（由 nav.js 按 URL 推导添加，替代服务端 if/else） */
+.nav-tab.nav-active {
+  background-image: linear-gradient(to right, #ec4899, #8b5cf6);
+  color: #fff;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+/* 导航激活态 hover 不变色（渐变优先级） */
+.nav-tab.nav-active:hover {
+  background-image: linear-gradient(to right, #ec4899, #8b5cf6);
+  color: #fff;
+}
