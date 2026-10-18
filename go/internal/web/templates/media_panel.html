@@ -1,7 +1,21 @@
 {{/* 媒体库面板(对齐 vidonex PanelsMediaLibrary):
     双模式 —— 未打开项目 = 项目列表;已打开 = 项目素材库(上传/搜索/拖拽入时间轴)。 */}}
-<div class="h-full w-full flex flex-col bg-gray-950 border-r border-gray-800 select-none"
-     x-data="mediaLibrary({{if .Project}}{{.Project.ID}}{{else}}null{{end}})">
+<div class="h-full w-full flex flex-col bg-gray-950 border-r border-gray-800 select-none relative transition-colors"
+     :class="isDraggingOver ? 'bg-indigo-950/20 ring-2 ring-inset ring-indigo-500/40' : ''"
+     x-data="mediaLibrary({{if .Project}}{{.Project.ID}}{{else}}null{{end}})"
+     @dragover.prevent="isDraggingOver = true"
+     @dragleave.prevent="if (!$event.currentTarget.contains($event.relatedTarget)) isDraggingOver = false"
+     @drop.prevent="uploadDrop($event)">
+  <!-- 自定义拖拽徽章(对齐 vidonex sleek drag ghost:fixed 顶层,setDragImage 用) -->
+  <div x-ref="dragGhost" class="fixed -top-[9999px] left-0 pointer-events-none flex items-center gap-2 px-3 py-1.5 bg-gray-900 text-white rounded-full shadow-2xl border border-indigo-400 text-xs font-medium z-[9999]">
+    <div class="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center bg-indigo-950 border border-indigo-400/50 flex-shrink-0">
+      <svg x-show="dragGhostAsset && dragGhostAsset.thumbnail_url" class="w-full h-full" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      <svg x-show="!dragGhostAsset || !dragGhostAsset.thumbnail_url" class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    </div>
+    <span class="max-w-[130px] truncate text-[11px] font-medium text-gray-100" x-text="dragGhostAsset ? dragGhostAsset.file_name : ''"></span>
+    <span class="text-[9px] bg-indigo-500/30 text-indigo-200 px-1.5 py-0.5 rounded-full font-mono uppercase tracking-wider"
+          x-text="dragGhostAsset ? dragGhostAsset.file_type : ''"></span>
+  </div>
   <!-- Header:打开项目时 = 项目名 + 素材数;否则 = 标题 -->
   <div class="h-10 border-b border-gray-800 px-3 flex items-center justify-between bg-gray-950/80 flex-shrink-0">
     <template x-if="!pid">
@@ -19,8 +33,29 @@
       <!-- 搜索过滤栏(对齐 vidonex fast search filter) -->
       <div class="p-2 border-b border-gray-800/60 flex items-center gap-1.5 bg-gray-950/20 flex-shrink-0">
         <svg class="w-3.5 h-3.5 text-gray-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
-        <input type="text" x-model="query" placeholder="过滤素材…"
-               class="w-full bg-gray-900/60 border border-gray-800 rounded px-2 py-1 text-[11px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500">
+        <div class="relative flex-1">
+          <input type="text" x-model="query" placeholder="过滤素材…"
+                 class="w-full bg-gray-900/60 border border-gray-800 rounded px-2 py-1 text-[11px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500">
+          <!-- 搜索清除按钮(对齐 vidonex:query 非空时显示 ×) -->
+          <button type="button" x-show="query" @click="query = ''"
+                  class="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-gray-500 hover:text-gray-200 transition"
+                  title="清除搜索">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <!-- 视图切换:树/网格(对齐 vidonex viewMode switcher) -->
+        <div class="flex items-center rounded-md border border-gray-800 overflow-hidden flex-shrink-0">
+          <button type="button" @click="viewMode = 'tree'"
+                  class="p-1 transition" :class="viewMode === 'tree' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
+                  title="分类树视图">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h6M4 12h6M4 18h6M14 6h6M14 12h6M14 18h6" stroke-linecap="round"/></svg>
+          </button>
+          <button type="button" @click="viewMode = 'grid'"
+                  class="p-1 transition border-l border-gray-800" :class="viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
+                  title="网格视图">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          </button>
+        </div>
       </div>
       <!-- 上传按钮 -->
       <div class="p-2 border-b border-gray-800/60 flex-shrink-0">
@@ -31,44 +66,105 @@
           <input type="file" class="hidden" multiple @change="uploadFiles($event)">
         </label>
       </div>
-      <!-- 素材网格 -->
+      <!-- 素材区:空态 / 分类树 / 网格(对齐 vidonex MediaLibrary 三态) -->
       <div class="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-0">
-        <template x-for="a in filtered" :key="a.id">
-          <!-- 素材卡片:可拖拽到时间轴 -->
-          <div class="flex items-center gap-2 p-2 rounded-lg bg-gray-900/60 hover:bg-gray-800 transition cursor-grab active:cursor-grabbing border border-transparent hover:border-indigo-500/40"
-               :draggable="true"
-               @dragstart="onDragStart($event, a)"
-               :title="a.file_name + ' · ' + (a.duration_seconds ? a.duration_seconds.toFixed(2) + 's' : '') + ' · ' + a.width + '×' + a.height">
-            <!-- 缩略图 -->
-            <div class="w-12 h-8 rounded-md bg-gray-950 flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-800">
-              <template x-if="a.thumbnail_url && a.file_type !== 'audio'">
-                <img :src="a.thumbnail_url" class="w-full h-full object-cover">
-              </template>
-              <template x-if="a.file_type === 'audio' || !a.thumbnail_url">
-                <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z"/></svg>
-              </template>
-            </div>
-            <div class="min-w-0 flex-1">
-              <p class="text-[11px] font-medium text-gray-200 truncate" x-text="a.file_name"></p>
-              <p class="text-[9px] text-gray-500 font-mono"
-                 x-text="(a.file_type) + (a.duration_seconds ? ' · ' + a.duration_seconds.toFixed(2) + 's' : '') + (a.width ? ' · ' + a.width + '×' + a.height : '')"></p>
-            </div>
-            <!-- 详情 -->
-            <button type="button" @click="openProbeModal(a)" class="p-1 rounded text-gray-600 hover:text-indigo-400 transition flex-shrink-0" title="素材详情">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 12v4" stroke-linecap="round"/></svg>
-            </button>
-            <!-- 删除 -->
-            <button type="button" @click="removeAsset(a)" class="p-1 rounded text-gray-600 hover:text-red-400 transition flex-shrink-0" title="删除素材">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 14H7z" stroke-linejoin="round"/><path d="M9 4h6l1 3H8z" stroke-linejoin="round"/></svg>
-            </button>
+        <!-- 空态(无素材且无搜索) -->
+        <div x-show="assets.length === 0" class="text-center py-10 px-4 space-y-3 border border-dashed border-gray-800 rounded-xl m-1 bg-gray-950/30">
+          <div class="w-10 h-10 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center mx-auto text-gray-400">
+            <svg class="w-5 h-5 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
-        </template>
-        <!-- 空态 -->
-        <div x-show="!assets.length" class="text-center py-8 text-gray-500">
-          <p class="text-xs mb-1">暂无素材</p>
-          <p class="text-[10px]">上传 mp4/mov/mp3/wav/图片,拖到时间轴剪辑</p>
+          <p class="text-xs font-medium text-gray-300">媒体库为空</p>
+          <p class="text-[11px] text-gray-500 max-w-[200px] mx-auto leading-relaxed">上传素材,或直接从文件夹拖入本面板</p>
         </div>
-        <div x-show="assets.length && !filtered.length" class="text-center py-8 text-gray-500 text-xs">无匹配素材</div>
+        <!-- 搜索无结果 -->
+        <div x-show="assets.length > 0 && filtered.length === 0" class="text-center py-8 text-gray-500 text-xs">
+          没有匹配的素材
+        </div>
+
+        <!-- 分类树视图(对齐 vidonex compact tree:可折叠分类分支 + 计数) -->
+        <div x-show="assets.length > 0 && filtered.length > 0 && viewMode === 'tree'" class="space-y-1.5">
+          <template x-for="cat in activeCategories()" :key="cat.id">
+            <div class="rounded-lg border border-gray-800/60 bg-gray-950/40 overflow-hidden">
+              <!-- 分类头(点击折叠) -->
+              <div class="flex items-center justify-between px-2.5 py-1.5 hover:bg-gray-800/50 cursor-pointer select-none transition-colors group"
+                   @click="toggleCategory(cat.id)">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <svg class="w-3.5 h-3.5 text-gray-500 transition-transform duration-200"
+                       :class="expanded[cat.id] ? 'rotate-90 text-gray-300' : ''"
+                       viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span class="text-xs font-semibold tracking-wide truncate" :class="cat.color" x-text="cat.label"></span>
+                </div>
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded-full" :class="cat.badge"
+                      x-text="categorized()[cat.id].length"></span>
+              </div>
+              <!-- 分类子项 -->
+              <div x-show="expanded[cat.id]" class="px-1 pb-1 pt-0.5 space-y-0.5">
+                <template x-for="a in categorized()[cat.id]" :key="a.id">
+                  <div class="group/item flex items-center justify-between px-2 py-1 rounded-md text-xs hover:bg-gray-800/80 border border-transparent hover:border-gray-700/60 cursor-grab active:cursor-grabbing transition-all duration-150"
+                       :draggable="true" @dragstart="onDragStart($event, a)"
+                       :title="a.file_name + ' · ' + (a.duration_seconds ? a.duration_seconds.toFixed(2) + 's' : '') + ' · ' + a.width + '×' + a.height">
+                    <!-- 缩略图/图标 + 文件名 -->
+                    <div class="flex items-center gap-2 min-w-0 flex-1 pointer-events-none">
+                      <div class="w-5 h-5 rounded overflow-hidden flex-shrink-0 bg-gray-900 border border-gray-800 flex items-center justify-center">
+                        <template x-if="a.thumbnail_url && a.file_type !== 'audio'">
+                          <img :src="a.thumbnail_url" class="w-full h-full object-cover">
+                        </template>
+                        <template x-if="a.file_type === 'audio' || !a.thumbnail_url">
+                          <svg class="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z"/></svg>
+                        </template>
+                      </div>
+                      <span class="truncate text-[11px] font-medium text-gray-200" x-text="a.file_name"></span>
+                    </div>
+                    <!-- 元数据 + 操作 -->
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                      <span x-show="a.duration_seconds > 0" class="text-[10px] font-mono text-gray-500"
+                            x-text="Math.floor(a.duration_seconds / 60) + ':' + String(Math.floor(a.duration_seconds % 60)).padStart(2, '0')"></span>
+                      <div class="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                        <button type="button" @click="openProbeModal(a)" class="p-0.5 rounded text-gray-400 hover:text-indigo-400 transition" title="素材详情">
+                          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 12v4" stroke-linecap="round"/></svg>
+                        </button>
+                        <button type="button" @click="removeAsset(a)" class="p-0.5 rounded text-gray-400 hover:text-red-400 transition" title="删除素材">
+                          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 14H7z" stroke-linejoin="round"/><path d="M9 4h6l1 3H8z" stroke-linejoin="round"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- 网格视图(对齐 vidonex grid/card:2 列卡片) -->
+        <div x-show="assets.length > 0 && filtered.length > 0 && viewMode === 'grid'" class="grid grid-cols-2 gap-2">
+          <template x-for="a in filtered" :key="a.id">
+            <div class="group bg-gray-950/60 hover:bg-gray-800/60 border border-gray-800/80 hover:border-indigo-500/60 rounded-lg p-1.5 transition-all duration-150 flex flex-col gap-1.5 cursor-grab active:cursor-grabbing relative"
+                 :draggable="true" @dragstart="onDragStart($event, a)"
+                 :title="a.file_name">
+              <div class="w-full aspect-video rounded bg-gray-900 overflow-hidden relative border border-gray-800 flex items-center justify-center">
+                <template x-if="a.thumbnail_url && a.file_type !== 'audio'">
+                  <img :src="a.thumbnail_url" class="w-full h-full object-cover pointer-events-none">
+                </template>
+                <template x-if="a.file_type === 'audio' || !a.thumbnail_url">
+                  <svg class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z"/></svg>
+                </template>
+                <span x-show="a.duration_seconds > 0" class="absolute bottom-1 right-1 bg-black/80 text-[9px] font-mono text-gray-300 px-1 rounded pointer-events-none"
+                      x-text="Math.floor(a.duration_seconds / 60) + ':' + String(Math.floor(a.duration_seconds % 60)).padStart(2, '0')"></span>
+              </div>
+              <div class="flex items-center justify-between gap-1 min-w-0">
+                <p class="text-[11px] font-medium text-gray-200 truncate flex-1" x-text="a.file_name"></p>
+                <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button type="button" @click="openProbeModal(a)" class="p-0.5 rounded text-gray-400 hover:text-indigo-400 transition" title="素材详情">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 12v4" stroke-linecap="round"/></svg>
+                  </button>
+                  <button type="button" @click="removeAsset(a)" class="p-0.5 rounded text-gray-400 hover:text-red-400 transition" title="删除素材">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 14H7z" stroke-linejoin="round"/><path d="M9 4h6l1 3H8z" stroke-linejoin="round"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
       </div>
       <!-- 拖拽提示 -->
       <div class="p-2 border-t border-gray-800 text-[9px] text-gray-600 text-center flex-shrink-0">

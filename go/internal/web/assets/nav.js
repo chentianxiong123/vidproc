@@ -1467,6 +1467,11 @@
       query: '',
       uploading: false,
       error: '',
+      // 视图/分类(对齐 vidonex MediaLibrary:tree 默认,grid 切换,分类可折叠)
+      viewMode: 'tree', // 'tree' | 'grid'
+      expanded: { video: true, audio: true, image: true, subtitle: true, other: true },
+      isDraggingOver: false,
+      dragGhostAsset: null,
       // ProbeDetailsModal(对齐 vidonex media store:activeProbeAsset/isProbeModalOpen)
       activeProbeAsset: null,
       isProbeModalOpen: false,
@@ -1493,6 +1498,61 @@
         const q = this.query.toLowerCase();
         return this.assets.filter((a) => (a.file_name || '').toLowerCase().includes(q));
       },
+      // 素材分类(对齐 vidonex getAssetCategory:扩展名判定 video/audio/image/subtitle/other)
+      assetCategory(a) {
+        if (!a) return 'other';
+        const ext = ((a.file_name || a.file_path || '').toLowerCase().split('.').pop() || '').replace(/[^a-z0-9]/g, '');
+        if (['srt', 'vtt', 'ass', 'sub'].includes(ext)) return 'subtitle';
+        if (a.file_type === 'video' || ['mp4', 'mov', 'mkv', 'webm', 'avi', 'flv'].includes(ext)) return 'video';
+        if (a.file_type === 'audio' || ['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a'].includes(ext)) return 'audio';
+        if (a.file_type === 'image' || ['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif', 'bmp'].includes(ext)) return 'image';
+        return 'other';
+      },
+      ASSET_CATEGORIES: [
+        { id: 'video', label: '视频', color: 'text-indigo-400', badge: 'bg-indigo-500/15 text-indigo-300' },
+        { id: 'audio', label: '音频', color: 'text-emerald-400', badge: 'bg-emerald-500/15 text-emerald-300' },
+        { id: 'image', label: '图片', color: 'text-amber-400', badge: 'bg-amber-500/15 text-amber-300' },
+        { id: 'subtitle', label: '字幕', color: 'text-violet-400', badge: 'bg-violet-500/15 text-violet-300' },
+        { id: 'other', label: '其他', color: 'text-gray-400', badge: 'bg-gray-700/30 text-gray-400' },
+      ],
+      // 分类分组(仅显示非空分类)
+      categorized() {
+        const groups = { video: [], audio: [], image: [], subtitle: [], other: [] };
+        for (const a of this.filtered) {
+          const c = this.assetCategory(a);
+          if (groups[c]) groups[c].push(a); else groups.other.push(a);
+        }
+        return groups;
+      },
+      activeCategories() {
+        const g = this.categorized();
+        return this.ASSET_CATEGORIES.filter((c) => (g[c.id] || []).length > 0);
+      },
+      toggleCategory(id) {
+        this.expanded[id] = !this.expanded[id];
+      },
+      // OS 文件拖入面板 → 上传(对齐 vidonex handleUploadDrop)
+      uploadDrop(e) {
+        this.isDraggingOver = false;
+        const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+        if (!files.length || !this.pid || !files.some((f) => f.size > 0 || f.name)) return;
+        this.uploadFilesFromList(files).then((n) => { if (n) this.load(); });
+      },
+      // 文件列表上传(拖入/选择共用)
+      async uploadFilesFromList(files) {
+        if (!files.length || !this.pid) return 0;
+        this.uploading = true;
+        let n = 0;
+        try {
+          for (const f of files) {
+            const fd = new FormData();
+            fd.append('file', f);
+            const r = await fetch(`/api/projects/${this.pid}/assets`, { method: 'POST', body: fd });
+            if (r.ok) { n++; }
+          }
+        } finally { this.uploading = false; }
+        return n;
+      },
       async load() {
         if (!this.pid) return;
         try {
@@ -1501,23 +1561,13 @@
           this.assets = await r.json();
         } catch (e) { this.error = e.message; }
       },
-      // 上传(多文件)
+      // 上传(多文件,文件选择框)
       async uploadFiles(e) {
         const files = Array.from(e.target.files || []);
         e.target.value = '';
         if (!files.length || !this.pid) return;
-        this.uploading = true;
-        try {
-          for (const f of files) {
-            const fd = new FormData();
-            fd.append('file', f);
-            const r = await fetch(`/api/projects/${this.pid}/assets`, { method: 'POST', body: fd });
-            if (r.ok) {
-              const a = await r.json();
-              this.assets.unshift(a);
-            }
-          }
-        } finally { this.uploading = false; }
+        const n = await this.uploadFilesFromList(files);
+        if (n) this.load();
       },
       async removeAsset(a) {
         const ok = await window.vp.confirm({
@@ -1531,15 +1581,22 @@
         const r = await fetch(`/api/assets/${a.id}`, { method: 'DELETE' });
         if (r.ok) this.assets = this.assets.filter((x) => x.id !== a.id);
       },
-      // 拖拽开始:素材信息挂在 dataTransfer(时间轴轨道 drop 读取)
+      // 拖拽开始:素材信息挂在 dataTransfer + 自定义拖拽徽章(对齐 vidonex sleek drag ghost)
       onDragStart(ev, a) {
         ev.dataTransfer.setData('application/x-vidproc-asset', JSON.stringify(a));
         ev.dataTransfer.setData('text/plain', a.file_name);
         ev.dataTransfer.effectAllowed = 'copy';
         // 全局 dragSrc:时间轴轨道 dragover 幻影计算读取(对齐 vidonex mediaStore.draggedAsset)
         if (window.vp) window.vp.dragSrc = { asset: a };
-        ev.target.addEventListener('dragend', () => { if (window.vp) window.vp.dragSrc = null; }, { once: true });
-        if (ev.dataTransfer.setDragImage && ev.target) { try { ev.dataTransfer.setDragImage(ev.target.closest('[draggable]') || ev.target, 20, 20); } catch (_) {} }
+        this.dragGhostAsset = a;
+        const badge = this.$refs.dragGhost;
+        if (ev.dataTransfer.setDragImage && badge) {
+          try { ev.dataTransfer.setDragImage(badge, 24, 12); } catch (_) {}
+        }
+        ev.target.addEventListener('dragend', () => {
+          if (window.vp) window.vp.dragSrc = null;
+          setTimeout(() => { this.dragGhostAsset = null; }, 150);
+        }, { once: true });
       },
     };
   };
