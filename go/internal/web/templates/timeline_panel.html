@@ -182,9 +182,9 @@
       <!-- 轨道区 -->
       <div class="flex">
         <!-- 轨道头列（对齐 TrackHeader；点击选中轨道 → Ducking/Waveform 检查器） -->
-        <div class="w-16 flex-shrink-0 border-r border-gray-800 bg-gray-950/60 z-10 relative">
+        <div class="w-56 flex-shrink-0 border-r border-gray-800 bg-gray-950/60 z-10 relative">
           <template x-for="tr in videoTracks()" :key="'h' + tr.id">
-            <div class="h-12 border-b border-gray-800/80 flex items-center gap-1 px-1 cursor-pointer transition"
+            <div class="h-14 border-b border-gray-800/80 flex items-center gap-1 px-1 cursor-pointer transition"
                  :class="selectedTrackId === tr.id ? 'text-indigo-400 bg-indigo-500/10 border-l-2 border-l-indigo-500' : 'text-gray-500 hover:text-gray-300'"
                  @click.stop="selectTrack(tr)">
               <div class="w-6 h-6 rounded flex items-center justify-center flex-shrink-0 bg-indigo-500/20 text-indigo-400">
@@ -204,7 +204,7 @@
             </div>
           </template>
           <template x-for="tr in audioTracks()" :key="'h' + tr.id">
-            <div class="h-12 border-b border-gray-800/80 flex items-center gap-1 px-1 cursor-pointer transition"
+            <div class="h-14 border-b border-gray-800/80 flex items-center gap-1 px-1 cursor-pointer transition"
                  :class="selectedTrackId === tr.id ? 'text-indigo-400 bg-indigo-500/10 border-l-2 border-l-indigo-500' : 'text-gray-500 hover:text-gray-300'"
                  @click.stop="selectTrack(tr)">
               <div class="w-6 h-6 rounded flex items-center justify-center flex-shrink-0 bg-emerald-500/20 text-emerald-400">
@@ -224,7 +224,7 @@
             </div>
           </template>
           <template x-for="tr in otherTracks()" :key="'h' + tr.id">
-            <div class="h-12 border-b border-gray-800/80 flex items-center gap-1 px-1 cursor-pointer transition"
+            <div class="h-14 border-b border-gray-800/80 flex items-center gap-1 px-1 cursor-pointer transition"
                  :class="selectedTrackId === tr.id ? 'text-indigo-400 bg-indigo-500/10 border-l-2 border-l-indigo-500' : 'text-gray-500 hover:text-gray-300'"
                  @click.stop="selectTrack(tr)">
               <div class="w-6 h-6 rounded flex items-center justify-center flex-shrink-0 bg-amber-500/20 text-amber-400">
@@ -249,7 +249,7 @@
         <div class="flex-1 relative">
           <!-- 每条视频/overlay 轨道一行 -->
           <template x-for="(tr, ti) in videoTracks()" :key="tr.id">
-            <div class="h-12 border-b border-gray-800/80 bg-gray-950/40 relative"
+            <div class="h-14 border-b border-gray-800/80 bg-gray-950/40 relative"
                  @dragover.prevent="onTrackDragOver($event, 'video')"
                  @drop.prevent="onTrackDrop($event, 'video')"
                  @dragleave.self="dragGhost.show = false">
@@ -336,7 +336,7 @@
           </template>
           <!-- 音频/波形轨道 -->
           <template x-for="(tr, ti) in audioTracks()" :key="tr.id">
-            <div class="h-12 border-b border-gray-800/80 bg-gray-950/40 relative"
+            <div class="h-14 border-b border-gray-800/80 bg-gray-950/40 relative"
                  @dragover.prevent="onTrackDragOver($event, 'audio')"
                  @drop.prevent="onTrackDrop($event, 'audio')"
                  @dragleave.self="dragGhost.show = false">

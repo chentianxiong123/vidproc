@@ -326,8 +326,8 @@
     // 可拖拽分栏布局（对齐 vidonex USplitter 行为；状态存 localStorage）
     function studioLayout() {
       return {
-        mediaW: 280,
-        inspectorW: 300,
+        mediaW: 286,
+        inspectorW: 357,
         timelineH: 240,
         mediaFolded: false,
         inspectorFolded: false,
@@ -376,8 +376,8 @@
           }
         },
         resetPane(side) { // 双击把手复位默认宽度/高度
-          if (side === 'media') { this.mediaW = 280; this.mediaFolded = false; }
-          else if (side === 'inspector') { this.inspectorW = 300; this.inspectorFolded = false; }
+          if (side === 'media') { this.mediaW = 286; this.mediaFolded = false; }
+          else if (side === 'inspector') { this.inspectorW = 357; this.inspectorFolded = false; }
           else if (side === 'timeline') { this.timelineH = 240; this.timelineFolded = false; }
           this.clampAll();
           this.save();
