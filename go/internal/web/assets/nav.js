@@ -3528,6 +3528,47 @@
     };
   };
 
+  // ============ Spec 编辑器弹窗(specModal)============
+  // 独立于主操作区(对齐参考:主区纯画布)。顶栏 spec 按钮 → spec-open 事件打开。
+  // PUT /api/projects/{id} {spec_yaml, output_path} 保存 → 整页刷新(时间轴重渲染)。
+  window.specModalComponent = function (pid) {
+    const prev = window.vp.specModalOf;
+    if (prev && prev._hOpen) window.removeEventListener('spec-open', prev._hOpen);
+    const inst = {
+      pid: pid || null,
+      open: false,
+      spec: '',
+      output: '',
+      saving: false,
+      saved: false,
+      init() {
+        this._hOpen = () => { this.open = true; };
+        window.addEventListener('spec-open', this._hOpen);
+        // 首次打开时从当前页面 spec 预填(Go 模板渲染的 textarea 已被移除,改由 API 拉取)
+        const self = this;
+        fetch(`/api/projects/${this.pid}`)
+          .then((r) => r.json())
+          .then((p) => { self.spec = p.spec_yaml || ''; self.output = p.output_path || ''; })
+          .catch(() => {});
+      },
+      save() {
+        const self = this;
+        this.saving = true;
+        fetch(`/api/projects/${this.pid}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spec_yaml: this.spec, output_path: this.output }),
+        })
+          .then((r) => { if (!r.ok) throw new Error('保存失败 ' + r.status); self.saved = true; setTimeout(() => { location.reload(); }, 600); })
+          .catch((e) => { alert('保存失败: ' + e.message); })
+          .finally(() => { self.saving = false; });
+      },
+    };
+    window.vp.specModalOf = inst;
+    return inst;
+  };
+  window.specModal = function () { return window.vp.specModalOf || window.specModalComponent(window.vp.currentProjectId); };
+
   // ============ 图可视化(graphModal)============
   // 对齐 vidonex GraphVisualizerModal:GET spec/graph → mermaid 文本 →
   // 简易 DAG SVG 渲染(轻量:mermaid 只做源码展示,不引库)。
