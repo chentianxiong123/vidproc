@@ -1,5 +1,5 @@
 {{/* 媒体库面板(对齐 vidonex PanelsMediaLibrary):
-    双模式 —— 未打开项目 = 项目列表;已打开 = 项目素材库(上传/搜索/拖拽入时间轴)。 */}}
+    双模式 —— 未打开项目 = 项目列表;已打开 = 项目媒体库(上传/搜索/拖拽入时间轴)。 */}}
 <div class="h-full w-full flex flex-col bg-gray-950 border-r border-gray-800 select-none relative transition-colors"
      :class="isDraggingOver ? 'bg-indigo-950/20 ring-2 ring-inset ring-indigo-500/40' : ''"
      x-data="mediaLibrary({{if .Project}}{{.Project.ID}}{{else}}null{{end}})"
@@ -22,12 +22,12 @@
       <span class="text-xs font-semibold text-gray-300">媒体库</span>
     </template>
     <template x-if="pid">
-      <span class="text-[11px] font-semibold text-gray-200 truncate">素材库 <span class="text-gray-500 font-normal" x-text="'(' + pid + ')'"></span></span>
+      <span class="text-[11px] font-semibold text-gray-200 truncate">媒体库 <span class="text-gray-500 font-normal" x-text="'(' + pid + ')'"></span></span>
     </template>
     <span class="text-[10px] text-gray-500" x-text="pid ? assets.length + ' 素材' : {{len .Projects}} + ' 项目'"></span>
   </div>
 
-  <!-- 打开项目 → 素材库模式 -->
+  <!-- 打开项目 → 媒体库模式 -->
   <template x-if="pid">
     <div class="flex flex-col min-h-0 flex-1">
       <!-- 搜索过滤栏(对齐 vidonex fast search filter) -->
