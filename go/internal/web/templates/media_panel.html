@@ -16,15 +16,41 @@
     <span class="text-[10px] bg-indigo-500/30 text-indigo-200 px-1.5 py-0.5 rounded-full font-mono uppercase tracking-wider"
           x-text="dragGhostAsset ? dragGhostAsset.file_type : ''"></span>
   </div>
-  <!-- Header:打开项目时 = 项目名 + 素材数;否则 = 标题 -->
-  <div class="h-10 border-b border-gray-800 px-3 flex items-center justify-between bg-gray-950/80 flex-shrink-0">
-    <template x-if="!pid">
-      <span class="text-xs font-semibold text-gray-300">媒体库</span>
-    </template>
-    <template x-if="pid">
-      <span class="text-[11px] font-semibold text-gray-200 truncate">媒体库 <span class="text-gray-500 font-normal" x-text="'(' + pid + ')'"></span></span>
-    </template>
-    <span class="text-[10px] text-gray-500" x-text="pid ? assets.length + ' 素材' : {{len .Projects}} + ' 项目'"></span>
+  <!-- Header:folder 图标 + 标题 + 计数徽章;右上 = 视图切换 + 上传(对齐 vidonex MediaLibrary header) -->
+  <div class="p-2.5 border-b border-gray-800 flex items-center justify-between gap-2 bg-gray-950/40 flex-shrink-0">
+    <div class="flex items-center gap-1.5 min-w-0">
+      <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <template x-if="!pid">
+        <span class="text-xs font-semibold tracking-wider text-gray-300 truncate">媒体库</span>
+      </template>
+      <template x-if="pid">
+        <span class="text-xs font-semibold tracking-wider text-gray-300 truncate">媒体库</span>
+      </template>
+      <span class="text-[10px] font-mono px-1.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700/60 flex-shrink-0"
+            x-text="pid ? assets.length : {{len .Projects}}"></span>
+    </div>
+    <div class="flex items-center gap-1.5 flex-shrink-0" x-show="pid">
+      <!-- 视图切换:树/网格(对齐 vidonex viewMode switcher) -->
+      <div class="flex items-center bg-gray-900 border border-gray-800 rounded p-0.5">
+        <button type="button" @click="viewMode = 'tree'"
+                class="p-1 rounded text-xs transition-colors" :class="viewMode === 'tree' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
+                title="分类树视图">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h6M4 12h6M4 18h6M14 6h6M14 12h6M14 18h6" stroke-linecap="round"/></svg>
+        </button>
+        <button type="button" @click="viewMode = 'grid'"
+                class="p-1 rounded text-xs transition-colors" :class="viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
+                title="网格视图">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </button>
+      </div>
+      <!-- 上传按钮(对齐 vidonex UButton xs primary soft) -->
+      <label class="flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 text-[11px] cursor-pointer transition flex-shrink-0"
+             :class="uploading ? 'opacity-50 pointer-events-none' : ''">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        <span x-text="uploading ? '上传中…' : '上传素材'"></span>
+        <input type="file" class="hidden" multiple @change="uploadFiles($event)">
+      </label>
+    </div>
   </div>
 
   <!-- 打开项目 → 媒体库模式 -->
@@ -43,28 +69,7 @@
             <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg>
           </button>
         </div>
-        <!-- 视图切换:树/网格(对齐 vidonex viewMode switcher) -->
-        <div class="flex items-center rounded-md border border-gray-800 overflow-hidden flex-shrink-0">
-          <button type="button" @click="viewMode = 'tree'"
-                  class="p-1 transition" :class="viewMode === 'tree' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
-                  title="分类树视图">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h6M4 12h6M4 18h6M14 6h6M14 12h6M14 18h6" stroke-linecap="round"/></svg>
-          </button>
-          <button type="button" @click="viewMode = 'grid'"
-                  class="p-1 transition border-l border-gray-800" :class="viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
-                  title="网格视图">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-          </button>
-        </div>
-      </div>
-      <!-- 上传按钮 -->
-      <div class="p-2 border-b border-gray-800/60 flex-shrink-0">
-        <label class="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-dashed border-gray-700 hover:border-indigo-500 text-xs text-gray-300 cursor-pointer transition"
-               :class="uploading ? 'opacity-50 pointer-events-none' : ''">
-          <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-          <span x-text="uploading ? '上传中…' : '上传素材'"></span>
-          <input type="file" class="hidden" multiple @change="uploadFiles($event)">
-        </label>
+
       </div>
       <!-- 素材区:空态 / 分类树 / 网格(对齐 vidonex MediaLibrary 三态) -->
       <div class="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-0">

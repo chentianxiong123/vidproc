@@ -889,7 +889,7 @@
 
       // 选中 clip 的视觉类(对齐 vidonex ClipItem 选中态)
       clipClass(clip) {
-        const base = 'absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden select-none cursor-grab active:cursor-grabbing transition-[border-color,box-shadow] duration-150 z-10 ';
+        const base = 'absolute top-1.5 bottom-1.5 rounded-lg overflow-hidden select-none cursor-grab active:cursor-grabbing transition-[border-color,box-shadow] duration-150 z-10 group ';
         if (this.selectedId === clip.id) {
           return base + 'border-2 border-indigo-400 shadow-lg shadow-indigo-500/30 z-20 bg-indigo-500/15';
         }
