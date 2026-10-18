@@ -3,24 +3,70 @@
 <div class="h-full flex flex-col"
      x-data="projectView({
        pid: {{.Project.ID}},
-       output: {{if .Project.OutputPath}}{{printf "%q" .Project.OutputPath}}{{else}}''{{end}}
+       output: {{if .Project.OutputPath}}{{printf "%q" .Project.OutputPath}}{{else}}''{{end}},
+       name: {{printf "%q" .Project.Name}}
      })">
-  <!-- 视口顶栏 -->
-  <div class="h-10 border-b border-gray-800 px-3 bg-gray-950/80 flex items-center justify-between flex-shrink-0">
+  <!-- 视口顶栏(对齐 vidonex AppHeader:项目名内联编辑 + 保存指示 + 宽高比预设 + 设置) -->
+  <div class="h-14 border-b border-gray-800 px-4 bg-gray-950/80 backdrop-blur flex items-center justify-between flex-shrink-0 z-30 select-none">
+    <!-- 左:返回 + 项目名内联编辑 -->
     <div class="flex items-center gap-2 min-w-0">
-      <a href="/" class="p-1 text-gray-400 hover:text-white transition" title="返回列表"
+      <a href="/" class="p-1 text-gray-400 hover:text-white transition flex-shrink-0" title="返回列表"
          hx-get="/" hx-select="#main" hx-target="#main" hx-swap="innerHTML" hx-push-url="true">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       </a>
-      <h2 class="text-sm font-semibold text-gray-200 truncate">{{.Project.Name}}</h2>
+      <input type="text" x-model="renameDraft" @focus="startRename()" @blur="commitRename()"
+             @keydown.enter="$event.target.blur()" @keydown.escape="$event.target.blur()"
+             class="bg-transparent hover:bg-gray-900 focus:bg-gray-900 border border-transparent hover:border-gray-700 focus:border-indigo-500 rounded px-2 py-1 text-sm font-medium text-gray-200 focus:outline-none transition max-w-[180px] truncate"
+             title="点击重命名(回车/失焦保存)">
+      <!-- 保存指示(对齐上游 saving/saved) -->
+      <span x-show="saving" class="text-xs text-indigo-400 animate-pulse flex items-center gap-1">
+        <svg class="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+        保存中…
+      </span>
+      <span x-show="!saving && saved" class="text-xs text-gray-500 flex items-center gap-1">
+        <svg class="w-3 h-3 text-emerald-500" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13l4 4L19 7"/></svg>
+        已保存
+      </span>
       <span class="text-[10px] font-mono text-gray-500 flex-shrink-0">#{{.Project.ID}}</span>
     </div>
+
+    <!-- 中:宽高比预设下拉(对齐 vidonex AppHeader presetMenu) -->
     <div class="flex items-center gap-2">
+      <div class="relative" x-data="{ open: false }" @click.away="open = false">
+        <button type="button" @click="open = !open"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs font-mono text-gray-200 hover:border-indigo-500 transition">
+          <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>
+          <span x-text="currentAspectId() ? (aspectPresets.find(p => p.id === currentAspectId()) || {}).name : ((tl ? (tl.width + '×' + tl.height) : '1920×1080'))"></span>
+          <svg class="w-2.5 h-2.5 text-gray-500" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 6 6-6z"/></svg>
+        </button>
+        <div x-show="open" x-cloak class="absolute top-9 left-0 z-40 w-56 rounded-lg bg-gray-900 border border-gray-800 shadow-2xl py-1">
+          <template x-for="p in aspectPresets" :key="p.id">
+            <button type="button" @click="applyAspectPreset(p.id)"
+                    class="w-full px-3 py-1.5 text-left text-[11px] transition flex items-center gap-2"
+                    :class="currentAspectId() === p.id ? 'text-indigo-300 bg-indigo-500/10' : 'text-gray-300 hover:bg-gray-800'" >
+              <svg class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path :d="p.icon"/></svg>
+              <span class="truncate" x-text="p.name"></span>
+              <span x-show="currentAspectId() === p.id" class="ml-auto text-indigo-400 flex-shrink-0">
+                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13l4 4L19 7"/></svg>
+              </span>
+            </button>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右:设置 + 图 + 创建时间 -->
+    <div class="flex items-center gap-2">
+      <button type="button" @click="window.dispatchEvent(new CustomEvent('project-settings-open', { detail: { tl: (window.vp && window.vp.timelineEditorOf && window.vp.timelineEditorOf.tl) || null } }))"
+              class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs"
+              title="项目设置 (P)">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .33 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.33 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .33-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.33-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.33h.01a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.33 1.87v.01a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        设置
+      </button>
       <button type="button" @click="window.dispatchEvent(new CustomEvent('graph-open'))"
-              class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300 hover:border-indigo-500 transition"
-              title="查看 filtergraph DAG (图可视化)">
+              class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs"
+              title="查看 filtergraph DAG (图)">
         <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M4 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM20 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM12 3v4M12 11v4M6 7v8m12-8v2a2 2 0 0 1-2 2h-8"/></svg>
-        图
       </button>
       <span class="text-[10px] text-gray-500 hidden sm:inline">创建 {{.Project.CreatedAt.Format "01-02 15:04"}}</span>
     </div>
@@ -190,13 +236,32 @@
                     :class="gizmoMode === 'crop' ? 'bg-amber-500/20 text-amber-300' : 'text-gray-500 hover:text-gray-300'"
                     title="裁剪">裁剪</button>
           </div>
-          <!-- 音频电平表(对齐 vidonex AudioPeakMeter:播放时 L/R 实时柱) -->
-          <div class="flex items-end gap-[3px] h-4 px-1.5 rounded bg-gray-950/60 border border-gray-800/80"
-               x-data="audioMeter()" title="音频电平">
-            <div class="w-[3px] rounded-full bg-gradient-to-t from-emerald-600 to-emerald-300 transition-[height] duration-75"
-                 :style="'height:' + (l * 100).toFixed(0) + '%'"></div>
-            <div class="w-[3px] rounded-full bg-gradient-to-t from-emerald-600 to-emerald-300 transition-[height] duration-75"
-                 :style="'height:' + (r * 100).toFixed(0) + '%'"></div>
+          <!-- 音频峰值表(对齐 vidonex AudioPeakMeter:播放时 L/R 水平表 + dB 数值 + 峰值保持 tick) -->
+          <div x-data="audioMeter()" title="音频电平"
+               class="flex items-center gap-1.5 px-2 py-0.5 bg-gray-900/90 rounded border border-gray-800 text-[10px] font-mono select-none">
+            <!-- L/R 双水平表 -->
+            <div class="flex flex-col gap-0.5 justify-center">
+              <div class="flex items-center gap-1">
+                <span class="text-[8px] text-gray-500 font-bold w-2">L</span>
+                <div class="relative w-16 h-1.5 bg-gray-950 rounded-sm overflow-hidden">
+                  <div class="h-full transition-all duration-75 ease-out rounded-sm"
+                       :style="'width:' + Math.round(l * 100) + '%;background:' + meterGradient(leftDb)"></div>
+                  <div class="absolute top-0 bottom-0 w-0.5 bg-white shadow-sm transition-all duration-300"
+                       :style="'left:' + Math.round(peakPos(leftPeakDb) * 100) + '%'"></div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="text-[8px] text-gray-500 font-bold w-2">R</span>
+                <div class="relative w-16 h-1.5 bg-gray-950 rounded-sm overflow-hidden">
+                  <div class="h-full transition-all duration-75 ease-out rounded-sm"
+                       :style="'width:' + Math.round(r * 100) + '%;background:' + meterGradient(rightDb)"></div>
+                  <div class="absolute top-0 bottom-0 w-0.5 bg-white shadow-sm transition-all duration-300"
+                       :style="'left:' + Math.round(peakPos(rightPeakDb) * 100) + '%'"></div>
+                </div>
+              </div>
+            </div>
+            <!-- dBFS 数值 -->
+            <span class="w-11 text-right text-[9px] font-semibold tabular-nums" :class="dbColorClass()" x-text="displayDbText()"></span>
           </div>
           <button type="button" class="p-1 rounded transition" @click="pb().isLooping = !pb().isLooping"
                   :class="pb().isLooping ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-500 hover:text-gray-300'" title="循环">

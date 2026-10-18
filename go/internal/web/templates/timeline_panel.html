@@ -215,22 +215,32 @@
                   <!-- 选中描边 -->
                   <div x-show="selectedId === clip.id"
                        class="absolute inset-0 border-2 border-indigo-400 rounded-md pointer-events-none"></div>
-                  <!-- 转场句柄(对齐 vidonex TransitionHandle:右侧缘,与下个 clip 交界)
-                       已有转场 = 显示类型标记(click 轮换 / dblclick 移除);
-                       无 = 淡色 + 号(AppendTransition)。 -->
-                  <div class="absolute top-1/2 -right-[9px] -translate-y-1/2 w-[18px] h-[18px] rounded-full z-20 flex items-center justify-center cursor-pointer border transition shadow"
-                       :title="'转场: ' + (transitionOf(tr, clip) ? transitionOf(tr, clip).type : '点击添加 (dissolve)')"
-                       @click.stop="$event.shiftKey ? addTransition('fadeblack', clip.id, nextClipId(tr, clip)) : cycleTransition(tr, clip)"
-                       @dblclick.stop="transitionOf(tr, clip) && removeTransition(transitionOf(tr, clip).from, transitionOf(tr, clip).to)">
-                    <template x-if="transitionOf(tr, clip)">
-                      <span class="text-[8px] font-bold" :class="transitionColor(tr, clip)"
-                            x-text="transitionOf(tr, clip).type.slice(0,3).toUpperCase()"></span>
-                    </template>
-                    <template x-if="!transitionOf(tr, clip)">
-                      <svg class="w-2.5 h-2.5 text-gray-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
-                    </template>
-                  </div>
                 </div>
+              </template>
+              <!-- 转场层(对齐 vidonex TransitionHandle:轨道容器级,横跨交界 amber 条带;
+                   已有转场 = ribbon(点击开设置弹窗 / 双击移除);无 = 交界 + 号) -->
+              <template x-for="t in (tr.transitions || [])" :key="t.from + '>' + t.to">
+                <div class="absolute top-0.5 bottom-0.5 z-20 rounded-md border border-amber-500/80 bg-gradient-to-r from-amber-500/25 via-amber-500/40 to-amber-500/25 shadow-[0_0_12px_rgba(245,158,11,0.25)] flex items-center justify-between px-1.5 cursor-pointer overflow-hidden select-none"
+                     :style="transitionRibbonStyle2(tr, t)"
+                     :title="'转场: ' + transitionTypeLabel(t.type) + ' (' + t.duration + 's)'"
+                     @click.stop="openTransitionModal(tr, fromClipOf(tr, t))"
+                     @dblclick.stop="removeTransition(t.from, t.to)">
+                  <!-- 斜纹装饰 -->
+                  <div class="absolute inset-0 opacity-15 pointer-events-none" style="background:linear-gradient(45deg,rgba(255,255,255,0.4) 25%,transparent 25%,transparent 50%,rgba(255,255,255,0.4) 50%,rgba(255,255,255,0.4) 75%,transparent 75%,transparent);background-size:12px 12px"></div>
+                  <span class="text-[9px] font-semibold font-mono text-amber-200 truncate relative z-10" x-text="transitionTypeLabel(t.type)"></span>
+                  <span class="text-[9px] font-mono font-bold text-amber-950 bg-amber-400/90 px-1 py-0.5 rounded shadow-sm relative z-10 flex-shrink-0" x-text="Number(t.duration).toFixed(1) + 's'"></span>
+                </div>
+              </template>
+              <template x-for="clip in tr.clips" :key="'plus-' + clip.id">
+                <template x-if="nextClipId(tr, clip) && !transitionOf(tr, clip)">
+                  <button type="button"
+                          class="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full z-20 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700 hover:scale-110 transition shadow-md cursor-pointer"
+                          :style="'left:' + ((clip.start + clip.duration) * pps) + 'px'"
+                          title="添加转场"
+                          @click.stop="openTransitionModal(tr, clip)">
+                    <svg class="w-2.5 h-2.5 pointer-events-none" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+                  </button>
+                </template>
               </template>
             </div>
           </template>
@@ -263,6 +273,29 @@
                   <div x-show="selectedId === clip.id"
                        class="absolute inset-0 border-2 border-emerald-400 rounded-md pointer-events-none"></div>
                 </div>
+              </template>
+              <!-- 转场层(音频轨同视频轨:交界 amber 条带 + 添加 + 号) -->
+              <template x-for="t in (tr.transitions || [])" :key="t.from + '>' + t.to">
+                <div class="absolute top-0.5 bottom-0.5 z-20 rounded-md border border-amber-500/80 bg-gradient-to-r from-amber-500/25 via-amber-500/40 to-amber-500/25 shadow-[0_0_12px_rgba(245,158,11,0.25)] flex items-center justify-between px-1.5 cursor-pointer overflow-hidden select-none"
+                     :style="transitionRibbonStyle2(tr, t)"
+                     :title="'转场: ' + transitionTypeLabel(t.type) + ' (' + t.duration + 's)'"
+                     @click.stop="openTransitionModal(tr, fromClipOf(tr, t))"
+                     @dblclick.stop="removeTransition(t.from, t.to)">
+                  <div class="absolute inset-0 opacity-15 pointer-events-none" style="background:linear-gradient(45deg,rgba(255,255,255,0.4) 25%,transparent 25%,transparent 50%,rgba(255,255,255,0.4) 50%,rgba(255,255,255,0.4) 75%,transparent 75%,transparent);background-size:12px 12px"></div>
+                  <span class="text-[9px] font-semibold font-mono text-amber-200 truncate relative z-10" x-text="transitionTypeLabel(t.type)"></span>
+                  <span class="text-[9px] font-mono font-bold text-amber-950 bg-amber-400/90 px-1 py-0.5 rounded shadow-sm relative z-10 flex-shrink-0" x-text="Number(t.duration).toFixed(1) + 's'"></span>
+                </div>
+              </template>
+              <template x-for="clip in tr.clips" :key="'plus-' + clip.id">
+                <template x-if="nextClipId(tr, clip) && !transitionOf(tr, clip)">
+                  <button type="button"
+                          class="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full z-20 flex items-center justify-center bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700 hover:scale-110 transition shadow-md cursor-pointer"
+                          :style="'left:' + ((clip.start + clip.duration) * pps) + 'px'"
+                          title="添加转场"
+                          @click.stop="openTransitionModal(tr, clip)">
+                    <svg class="w-2.5 h-2.5 pointer-events-none" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+                  </button>
+                </template>
               </template>
             </div>
           </template>
@@ -298,4 +331,79 @@
       <span>从左侧打开项目查看时间轴</span>
     </div>
   </div>
+
+  <!-- 转场设置弹窗(对齐 vidonex TransitionHandle 弹窗:类型选择 + 时长滑块 + 移除) -->
+  <template x-if="transitionModal.open">
+  <div x-cloak
+       class="fixed inset-0 z-[85] flex items-center justify-center p-4"
+       style="background:rgba(0,0,0,.6);backdrop-filter:blur(2px)"
+       @click.self="closeTransitionModal()">
+      <div class="w-full max-w-md rounded-xl bg-gray-950 border border-gray-800 shadow-2xl p-5 text-gray-200">
+        <h3 class="text-sm font-semibold flex items-center gap-2 mb-4">
+          <svg class="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          转场设置
+        </h3>
+
+        <!-- Clip 交界说明 -->
+        <div class="flex items-center justify-between p-2 rounded bg-gray-900/60 border border-gray-800 text-[11px] text-gray-400 mb-4">
+          <span class="truncate font-mono text-gray-200 max-w-[42%]" x-text="transitionModal.fromClip.id"></span>
+          <svg class="w-3.5 h-3.5 text-amber-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="truncate font-mono text-gray-200 max-w-[42%]" x-text="transitionModal.toId"></span>
+        </div>
+
+        <!-- 类型选择(分类分组) -->
+        <div class="mb-3.5">
+          <label class="block text-[11px] text-gray-500 mb-1.5">类型</label>
+          <div class="grid grid-cols-2 gap-1.5">
+            <template x-for="t in transitionTypes()" :key="t.value">
+              <button type="button" @click="transitionModal.type = t.value"
+                      class="px-2 py-1.5 rounded-lg border text-[11px] transition text-left"
+                      :class="transitionModal.type === t.value ? 'border-amber-500 bg-amber-500/15 text-amber-300' : 'border-gray-800 text-gray-400 hover:border-gray-600'">
+                <span x-text="t.label"></span>
+                <span class="block text-[9px] text-gray-600" x-text="t.value"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <!-- 时长 -->
+        <template x-if="transitionModal.type !== 'none'">
+          <div class="mb-4">
+            <label class="block text-[11px] text-gray-500 mb-1.5">时长(秒)</label>
+            <div class="flex items-center gap-3">
+              <input type="number" step="0.1" min="0.1" :max="transitionMaxDuration()" x-model="transitionModal.duration"
+                     class="w-24 bg-gray-900 border border-gray-800 rounded px-2.5 py-1.5 font-mono text-gray-200 focus:outline-none focus:border-amber-500 text-xs">
+              <input type="range" step="0.05" min="0.1" :max="transitionMaxDuration()" x-model="transitionModal.duration"
+                     class="flex-1 accent-amber-500 h-1.5 bg-gray-800 rounded cursor-pointer">
+            </div>
+            <div class="flex items-center gap-1.5 pt-1.5">
+              <span class="text-[10px] text-gray-500 mr-1">预设:</span>
+              <template x-for="p in [0.5, 1.0, 1.5, 2.0]" :key="p">
+                <template x-if="p <= transitionMaxDuration()">
+                  <button type="button" @click="transitionModal.duration = p"
+                          class="px-2 py-0.5 rounded text-[10px] font-mono border transition"
+                          :class="Math.abs(Number(transitionModal.duration) - p) < 0.01 ? 'bg-amber-500 text-black border-amber-400 font-semibold' : 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-700'"
+                          x-text="p.toFixed(1) + 's'"></button>
+                </template>
+              </template>
+            </div>
+          </div>
+        </template>
+
+        <div class="flex items-center justify-between pt-4 border-t border-gray-800">
+          <button type="button" x-show="transitionModal.existed"
+                  class="px-2.5 py-1.5 rounded-lg text-xs text-red-400 hover:bg-red-950/30 transition flex items-center gap-1"
+                  @click="removeTransitionModal()">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 14H7zM9 4h6l1 3H8z"/></svg>
+            移除
+          </button>
+          <div class="flex items-center gap-2">
+            <button type="button" @click="closeTransitionModal()" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-gray-900 transition">取消</button>
+            <button type="button" @click="applyTransitionModal()"
+                    class="px-4 py-1.5 rounded-lg text-xs font-medium bg-amber-500 hover:bg-amber-400 text-black transition">应用</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
 </div>

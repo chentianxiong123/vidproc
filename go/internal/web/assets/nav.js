@@ -183,6 +183,9 @@
       pps: 80, // 像素/秒(zoom 驱动)
       drag: null, // 进行中的拖拽 {clip, trackIdx, startX, origStart}
       scrubbing: false, // 播放头拖拽中(scrub)
+      // 转场设置弹窗(常驻对象,永不 null → 模板引用天然空安全)
+      // {open, track, fromClip, toId, type, duration, existed}
+      transitionModal: { open: false, track: null, fromClip: null, toId: null, type: 'dissolve', duration: 0.5, existed: false },
       trackWidth: 800, // 滚动区实测宽,做成 clip 区域 min-width
       loading: true,
       error: '',
@@ -484,6 +487,20 @@
         const x = (from.start + from.duration) * this.pps;
         return `left:${x - 10}px;width:20px`;
       },
+      // 转场 ribbon 样式(track.transitions 项):横跨 from 结尾 → to 开头,宽 = duration×pps
+      transitionRibbonStyle2(track, t) {
+        const from = track.clips.find((c) => c.id === t.from);
+        const to = track.clips.find((c) => c.id === t.to);
+        if (!from || !to) return 'display:none';
+        const dur = Number(t.duration) || 0.5;
+        const x = (from.start + from.duration - dur / 2) * this.pps;
+        const w = Math.max(14, dur * this.pps);
+        return `left:${x}px;width:${w}px`;
+      },
+      // 由转场项取 from clip 对象
+      fromClipOf(track, t) {
+        return (track.clips || []).find((c) => c.id === t.from) || null;
+      },
       // 轨道上 from=clip 的转场(无 = null)
       transitionOf(track, clip) {
         if (!track || !track.transitions) return null;
@@ -514,6 +531,71 @@
                   t.type.startsWith('fade') ? 'text-purple-400' : 'text-cyan-400';
         return c;
       },
+      // ============ 转场设置弹窗(对齐 vidonex TransitionHandle openModal)============
+      // 点击转场 ribbon 打开:类型选择 + 时长滑块 + 删除/应用。
+      // 单选跨 clip 交界,数据落在 track.transitions。
+      openTransitionModal(track, clip) {
+        const nextId = this.nextClipId(track, clip);
+        if (!nextId) return;
+        const cur = this.transitionOf(track, clip);
+        this.transitionModal = {
+          open: true,
+          track,
+          fromClip: clip,
+          toId: nextId,
+          type: cur ? cur.type : 'dissolve',
+          duration: cur ? Number(cur.duration) || 0.5 : 0.5,
+          existed: !!cur,
+        };
+      },
+      closeTransitionModal() { if (this.transitionModal) this.transitionModal.open = false; },
+      // 转场类型库(精简 8 类,对齐上游目录子集)
+      transitionTypes() {
+        return [
+          { value: 'dissolve', label: '交叉溶解', cat: 'fades' },
+          { value: 'fade', label: '淡入淡出', cat: 'fades' },
+          { value: 'fadeblack', label: '黑场淡入', cat: 'fades' },
+          { value: 'wipeleft', label: '左擦除', cat: 'wipes' },
+          { value: 'wiperight', label: '右擦除', cat: 'wipes' },
+          { value: 'slideleft', label: '左滑入', cat: 'slides' },
+          { value: 'slideright', label: '右滑入', cat: 'slides' },
+          { value: 'smoothleft', label: '平滑左移', cat: 'slides' },
+          { value: 'smoothright', label: '平滑右移', cat: 'slides' },
+          { value: 'zoomin', label: '缩放进入', cat: 'zooms' },
+          { value: 'circleopen', label: '圆形展开', cat: 'shapes' },
+        ];
+      },
+      transitionTypeLabel(type) {
+        const f = this.transitionTypes().find((t) => t.value === type);
+        return f ? f.label : type;
+      },
+      // 转场最长时长 = 两 clip 较短者 ×2(居中覆盖 D/2 各边)
+      transitionMaxDuration() {
+        const m = this.transitionModal;
+        if (!m) return 2;
+        const d1 = Number(m.fromClip.duration) || 2;
+        const d2 = (m.track.clips.find((c) => c.id === m.toId) || {}).duration || 2;
+        return Math.max(0.2, Math.min(10, Math.min(d1, d2) * 2));
+      },
+      applyTransitionModal() {
+        const m = this.transitionModal;
+        if (!m) return;
+        const dur = Math.min(this.transitionMaxDuration(), Math.max(0.1, Number(m.duration) || 0.5));
+        const from = m.fromClip.id, to = m.toId;
+        this.addTransition(m.type, from, to);
+        // addTransition 默认 0.5s,这里写回设置值
+        const tr = this.trackById && this.trackById(m.track.id);
+        const t = tr && tr.transitions ? tr.transitions.find((x) => x.from === from && x.to === to) : null;
+        if (t) { t.duration = Number(dur.toFixed(2)); this.persistTimeline(); }
+        this.closeTransitionModal();
+      },
+      removeTransitionModal() {
+        const m = this.transitionModal;
+        if (!m) return;
+        this.removeTransition(m.fromClip.id, m.toId);
+        this.closeTransitionModal();
+      },
+      trackById(id) { return this.tracks().find((t) => t.id === id); },
       // ============ trim 手柄(对齐 vidonex 拖 clip 左右缘改时长)============
       // Left = 改 start+duration(右缘不动);Right = 改 duration(左缘不动)。
       beginTrim(e, clip, edge) {
@@ -1804,7 +1886,9 @@
   // 用噪声包络驱动柱形;暂停归零)。挂在播放工具条右侧。
   window.audioMeter = function () {
     return {
-      l: 0, r: 0, // 0..1 电平,响应式驱动柱高
+      l: 0, r: 0, // 0..1 电平,响应式驱动柱高(兼容旧引用)
+      leftDb: -60, rightDb: -60, // dBFS 值(-60..0)
+      leftPeakDb: -60, rightPeakDb: -60, // 峰值保持
       playing: false,
       _raf: null,
       _t0: 0,
@@ -1817,16 +1901,58 @@
           if (playing) {
             // 播放期间:随机包络(峰值 .15-.95,快速起伏像音乐)
             const e = 0.5 + 0.45 * Math.sin(t * 0.011 + 1.7) * Math.sin(t * 0.0043);
-            this.l = Math.max(0.04, Math.min(1, e + (Math.random() - 0.5) * 0.35));
-            this.r = Math.max(0.04, Math.min(1, e * 0.92 + (Math.random() - 0.5) * 0.3));
+            const rawL = 0.5 + 0.45 * Math.sin(t * 0.011 + 1.7) * Math.sin(t * 0.0043) + (Math.random() - 0.5) * 0.35;
+            const rawR = 0.46 + 0.42 * Math.cos(t * 0.012 + 0.8) * Math.sin(t * 0.0051) + (Math.random() - 0.5) * 0.3;
+            // dBFS 映射(-36..-2 为主区间,音量越大越响)
+            const vol = (pb && pb.volume) || 1;
+            this.leftDb = Math.max(-60, Math.min(0, -36 + rawL * 32 + (vol - 1) * 20));
+            this.rightDb = Math.max(-60, Math.min(0, -36 + rawR * 32 + (vol - 1) * 20));
+            this.l = this.dbToPercent(this.leftDb);
+            this.r = this.dbToPercent(this.rightDb);
+            // 峰值保持
+            if (this.leftDb > this.leftPeakDb) this.leftPeakDb = this.leftDb;
+            if (this.rightDb > this.rightPeakDb) this.rightPeakDb = this.rightDb;
           } else {
-            this.l *= 0.86; this.r *= 0.86; // 衰减归零
+            // 平滑衰减(对齐上游 decay)
+            this.leftDb = Math.max(-60, this.leftDb - 2.5);
+            this.rightDb = Math.max(-60, this.rightDb - 2.5);
+            this.leftPeakDb = Math.max(-60, this.leftPeakDb - 1.2);
+            this.rightPeakDb = Math.max(-60, this.rightPeakDb - 1.2);
+            this.l = this.dbToPercent(this.leftDb);
+            this.r = this.dbToPercent(this.rightDb);
           }
           this._raf = requestAnimationFrame(this._loop);
         };
         this._raf = requestAnimationFrame(this._loop);
       },
       destroy() { cancelAnimationFrame(this._raf); },
+      // dBFS(-60..0) → 0..1(上游 dbToPercent /100)
+      dbToPercent(db) {
+        if (db <= -60) return 0;
+        if (db >= 0) return 1;
+        return Math.min(1, Math.max(0, (db + 60) / 60));
+      },
+      // 峰值刻度位置(0..1)
+      peakPos(db) { return this.dbToPercent(db); },
+      // 三色渐变(上游 getMeterGradient)
+      meterGradient(db) {
+        if (db > -3) return 'linear-gradient(90deg, #10b981 0%, #f59e0b 70%, #ef4444 100%)';
+        if (db > -12) return 'linear-gradient(90deg, #10b981 0%, #f59e0b 100%)';
+        return 'linear-gradient(90deg, #059669 0%, #10b981 100%)';
+      },
+      // dB 数值文案
+      displayDbText() {
+        const peak = Math.max(this.leftDb, this.rightDb);
+        if (peak <= -59) return '-∞ dB';
+        return peak.toFixed(1) + ' dB';
+      },
+      // 数值颜色类(上游:>-3 红,>-12 黄,否则绿)
+      dbColorClass() {
+        const peak = Math.max(this.leftDb, this.rightDb);
+        if (peak > -3) return 'text-red-400';
+        if (peak > -12) return 'text-amber-400';
+        return 'text-emerald-400';
+      },
     };
   };
   // ============ 项目设置弹窗(projectSettingsModal)============
@@ -2115,6 +2241,13 @@
       fps: 30,
       tc: '00:00:00:00',
       tcDur: '00:00:00:00',
+      // —— AppHeader 对齐(上游:项目名内联编辑 + 保存指示 + 宽高比预设)——
+      projectName: opts.name || '',
+      renameDraft: opts.name || '',
+      saving: false, // 保存中指示(saving spinner)
+      saved: false,  // 最近保存成功(✓ 2s 后消失)
+      aspectPresets: ASPECT_PRESETS,
+      aspectMenuOpen: false,
       tl: null, // 响应式时间轴数据(wfLayers/stageDims 依赖;timeline load 后赋值)
       // —— 视口 gizmo(对齐 vidonex TransformGizmo/CropGizmo)——
       // 完全体初始化:clip-selected 广播选中 clip → 读引用直接渲染 + 编辑
@@ -2432,6 +2565,46 @@
         if (ed && ed.editClip) {
           ed.editClip(() => { ed.selectedId = this.selClip ? this.selClip.id : null; });
         }
+      },
+
+      // ============ AppHeader(对齐 vidonex AppHeader)============
+      // 项目名内联编辑(blur 保存 → PUT name)+ 保存指示 + 宽高比预设下拉。
+      // 宽高比预设改 tl 画布 → timelineEditor.saveSettings 落库。
+      startRename() { this.renameDraft = this.projectName; },
+      commitRename() {
+        const name = (this.renameDraft || '').trim();
+        if (!name || name === this.projectName) { this.renameDraft = this.projectName; return; }
+        const self = this;
+        this.saving = true;
+        this.saved = false;
+        fetch(`/api/projects/${this.pid}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        })
+          .then((r) => {
+            if (!r.ok) throw new Error('保存失败 ' + r.status);
+            self.projectName = name;
+            self.renameDraft = name;
+            self.saved = true;
+            setTimeout(() => { self.saved = false; }, 2000);
+          })
+          .catch((e) => { console.error('rename failed', e); })
+          .finally(() => { self.saving = false; });
+      },
+      // 当前宽高比预设 id(按画布尺寸匹配,无匹配 → null 显示 WxH)
+      currentAspectId() {
+        const tl = this.tl;
+        if (!tl || !tl.width || !tl.height) return null;
+        const hit = (this.aspectPresets || []).find((p) => p.width === tl.width && p.height === tl.height);
+        return hit ? hit.id : null;
+      },
+      applyAspectPreset(presetId) {
+        const p = (this.aspectPresets || []).find((x) => x.id === presetId);
+        if (!p) return;
+        const ed = window.vp.timelineEditorOf;
+        if (ed && ed.saveSettings) ed.saveSettings({ width: p.width, height: p.height });
+        this.aspectMenuOpen = false;
       },
 
       // ============ ViewportWaveformVisualizer(对齐上游:waveform 轨 clip 的
