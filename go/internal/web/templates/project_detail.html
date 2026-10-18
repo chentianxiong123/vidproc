@@ -430,21 +430,28 @@
         <span x-show="status === 'failed'" class="ml-auto text-[10px] font-mono text-red-400">失败</span>
       </h3>
 
-      <!-- 渲染中:进度条(对齐上游 store.isRendering) -->
-      <div x-show="status === 'rendering'" class="mb-4 space-y-2">
-        <div class="h-1.5 rounded-full bg-gray-900 overflow-hidden">
-          <div class="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-300"
+      <!-- 渲染中:环形百分比 + FPS/速度 + 进度条 + 取消(对齐 vidonex Live Rendering Progress) -->
+      <div x-show="status === 'rendering'" class="mb-4 space-y-5 text-center">
+        <div class="relative w-24 h-24 mx-auto flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full border-4 border-gray-800 animate-pulse"></div>
+          <div class="text-2xl font-bold font-mono text-indigo-400" x-text="Math.round(percent) + '%'"></div>
+        </div>
+        <div class="space-y-1">
+          <p class="text-xs text-gray-400 font-mono" x-text="'帧 ' + frame + (speed ? ' · ' + speed.toFixed(2) + 'x 速度' : '')"></p>
+        </div>
+        <div class="w-full bg-gray-900 rounded-full h-2 overflow-hidden border border-gray-800">
+          <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-full transition-all duration-300"
                :style="'width:' + percent + '%'"></div>
         </div>
-        <div class="flex justify-between text-[10px] font-mono text-gray-500">
-          <span x-text="'帧 ' + frame"></span>
-          <span x-text="speed ? speed.toFixed(2) + 'x' : ''"></span>
-          <span>渲染中…</span>
-        </div>
+        <button type="button" @click="cancelRender()"
+                class="px-3 py-1.5 rounded-lg text-xs text-red-300 bg-red-500/15 border border-red-500/30 hover:bg-red-500/25 transition flex items-center gap-1 mx-auto">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 8l8 8M16 8l-8 8" stroke-linecap="round"/></svg>
+          取消渲染
+        </button>
       </div>
 
       <!-- 失败:折叠错误 + Copy(对齐上游 collapsible error alert) -->
-      <div x-show="status === 'failed'" class="mb-4 rounded-lg border border-red-800/50 bg-red-950/30 overflow-hidden">
+      <div x-show="status === 'failed'" class="mb-4 rounded-lg border border-red-800/80 bg-red-950/50 shadow-sm overflow-hidden">
         <div class="flex items-center gap-2 px-3 py-2.5">
           <svg class="w-4 h-4 text-red-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4m0 4h.01" stroke-linecap="round"/></svg>
           <div class="min-w-0 flex-1">
@@ -561,11 +568,15 @@
         </div>
       </div>
 
+      <div class="mb-2">
+        <button type="button" x-show="status !== 'failed' && status !== 'done'" @click="start()"
+                class="w-full px-4 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg shadow-indigo-500/20 text-white transition">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>
+          <span x-text="status === 'rendering' ? '渲染中…' : '开始渲染'"></span>
+        </button>
+      </div>
       <div class="flex justify-end gap-2">
         <button type="button" @click="open = false" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-gray-900 transition">取消</button>
-        <button type="button" x-show="status !== 'failed' && status !== 'done'" @click="start()"
-                class="px-4 py-1.5 rounded-lg text-xs font-medium bg-emerald-500 hover:bg-emerald-400 text-gray-950 transition"
-                x-text="status === 'rendering' ? '渲染中…' : '开始渲染'"></button>
         <button type="button" x-show="status === 'failed'" @click="newRender()"
                 class="px-4 py-1.5 rounded-lg text-xs font-medium bg-amber-500 hover:bg-amber-400 text-gray-950 transition">重试</button>
         <button type="button" x-show="status === 'done'" @click="newRender()"

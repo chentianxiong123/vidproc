@@ -169,6 +169,7 @@ func Router(db *sql.DB) http.Handler {
 	// 异步渲染:POST 启动,GET 轮询进度
 	mux.HandleFunc("POST /api/projects/{id}/render", RenderStartHandler(db))
 	mux.HandleFunc("GET /api/render/{jobID}", RenderStatusHandler)
+	mux.HandleFunc("DELETE /api/render/{jobID}", RenderCancelHandler)
 	mux.HandleFunc("GET /api/render/{jobID}/file", RenderFileHandler)
 	// 媒体素材:列表/上传/删除/缩略图
 	mux.HandleFunc("GET /api/projects/{id}/assets", AssetsListHandler(db))

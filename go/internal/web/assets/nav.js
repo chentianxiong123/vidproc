@@ -2554,6 +2554,8 @@
           };
         };
         window.addEventListener('render-done', this._h['render-done']);
+        this._h['render-cancel'] = () => { if (this.open) { this.status = ''; this.error = ''; this.percent = 0; } };
+        window.addEventListener('render-cancel', this._h['render-cancel']);
         this._hEsc = (e) => { if (e.key === 'Escape' && this.open) this.open = false; };
         window.addEventListener('keydown', this._hEsc);
       },
@@ -2605,6 +2607,16 @@
         this.percent = 0;
         this.error = '';
         host.startRender(this.collect());
+      },
+      // 取消渲染:DELETE 后端 job;poll 收到 cancelled → render-cancel 事件回表单。
+      // 对齐 vidonex cancelRender(soft error 按钮)。
+      cancelRender() {
+        const pv = window.vp && window.vp.projectViewOf;
+        const jobId = pv && pv._renderJobId;
+        if (!jobId) { this.status = ''; return; }
+        fetch(`/api/render/${jobId}`, { method: 'DELETE' })
+          .catch(() => {})
+          .finally(() => { this.status = ''; });
       },
       // 重开新渲染(完成/失败后;对齐上游 newRender)
       newRender() {
@@ -3491,6 +3503,14 @@
                 this.failed = true;
                 this.result = { error: j.error };
                 window.dispatchEvent(new CustomEvent('render-fail', { detail: { error: j.error } }));
+              } else if (j.status === 'cancelled') {
+                clearInterval(pollTimer);
+                this.busy = false;
+                this.done = false;
+                this.failed = false;
+                this.percent = 0;
+                this._renderJobId = null;
+                window.dispatchEvent(new CustomEvent('render-cancel'));
               } else if (j.status === 'done') {
                 clearInterval(pollTimer);
                 this.busy = false;

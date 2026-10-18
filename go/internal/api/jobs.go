@@ -32,6 +32,7 @@ const (
 	jobRunning jobStatus = "running"
 	jobDone    jobStatus = "done"
 	jobFailed  jobStatus = "failed"
+	jobCancelled jobStatus = "cancelled"
 )
 
 // RenderJob 一次异步渲染任务的对外状态(进度报告 + 结果)。
@@ -54,12 +55,13 @@ type RenderJob struct {
 // jobStore 并发安全的任务表。任务在本进程内生命周期短(渲染几分钟),
 // 不做持久化——进程重启后前端轮询 404,提示重新渲染。
 type jobStore struct {
-	mu   sync.Mutex
-	next atomic.Int64
-	jobs map[int64]*RenderJob
+	mu      sync.Mutex
+	next    atomic.Int64
+	jobs    map[int64]*RenderJob
+	cancels map[int64]context.CancelFunc
 }
 
-var renderJobs = &jobStore{jobs: make(map[int64]*RenderJob)}
+var renderJobs = &jobStore{jobs: make(map[int64]*RenderJob), cancels: make(map[int64]context.CancelFunc)}
 
 // start 登记任务并返回 ID。
 func (s *jobStore) start(projectID int64) int64 {
@@ -94,6 +96,41 @@ func (s *jobStore) update(id int64, fn func(*RenderJob)) {
 	if j, ok := s.jobs[id]; ok {
 		fn(j)
 	}
+}
+
+// registerCancel 关联 job 的取消函数(launch 时登记,结束时清理)。
+func (s *jobStore) registerCancel(id int64, cancel context.CancelFunc) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.cancels[id] = cancel
+}
+
+// unregisterCancel 移除取消函数(job 自然结束/失败后)。
+func (s *jobStore) unregisterCancel(id int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.cancels, id)
+}
+
+// cancelJob 取消一个 job:触发其 context 取消并置状态为 cancelled。
+// 返回 false 表示 job 不存在或无取消函数(已结束)。
+func (s *jobStore) cancelJob(id int64) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	cancel, ok := s.cancels[id]
+	if !ok {
+		return false
+	}
+	delete(s.cancels, id)
+	finished := time.Now()
+	if j, ok := s.jobs[id]; ok {
+		j.Status = jobCancelled
+		j.Error = "渲染已取消"
+		j.FinishedAt = &finished
+		j.Elapsed = finished.Sub(j.StartedAt).Round(10 * time.Millisecond).String()
+	}
+	cancel()
+	return true
 }
 
 // fail 置任务为失败并记结束时间。
@@ -185,7 +222,11 @@ func launch(db *sql.DB, projectID, jobID int64, params RenderParams) {
 	renderJobs.update(jobID, func(j *RenderJob) { j.Status = jobRunning })
 
 	ctx, cancel := jobCtx()
-	defer cancel()
+	renderJobs.registerCancel(jobID, cancel)
+	defer func() {
+		renderJobs.unregisterCancel(jobID)
+		cancel()
+	}()
 	start := time.Now()
 	out, renderErr := cmdrender.Render(ctx, tmpSpec, cmdrender.Options{
 		Output: params.Output,
@@ -202,6 +243,9 @@ func launch(db *sql.DB, projectID, jobID int64, params RenderParams) {
 
 	finishedAt := finished
 	if renderErr != nil {
+		if j := renderJobs.get(jobID); j != nil && j.Status == jobCancelled {
+			return // 已由 cancelJob 置 cancelled;不要覆盖为失败
+		}
 		fail(jobID, renderErr.Error(), finishedAt)
 		return
 	}
@@ -214,6 +258,21 @@ func launch(db *sql.DB, projectID, jobID int64, params RenderParams) {
 		j.Percent = 100
 		j.FinishedAt = &finishedAt
 	})
+}
+
+// RenderCancelHandler DELETE /api/render/{jobID} → 取消进行中的渲染 job。
+// 未开始/已结束的 job 返回 404(无取消函数)。对齐 vidonex cancelRender。
+func RenderCancelHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("jobID"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid job id", http.StatusBadRequest)
+		return
+	}
+	if !renderJobs.cancelJob(id) {
+		http.Error(w, "job not active", http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // RenderStartHandler POST /api/projects/{id}/render → 启动异步任务,返回 job。
