@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>vidproc studio</title>
+  <title>vidproc 工作室</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
   <link rel="icon" href="/assets/favicon.svg">
@@ -33,7 +33,7 @@
         <span id="project-name" class="text-sm font-medium text-gray-200 truncate max-w-[110px] md:max-w-[180px]"></span>
         <span class="text-xs text-gray-500 items-center gap-1 hidden sm:flex">
           <svg class="w-3 h-3 text-emerald-500" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13l4 4L19 7"/></svg>
-          saved
+          已保存
         </span>
       </div>
     </div>
@@ -53,7 +53,7 @@
 
     <!-- Right: Studio 状态 -->
     <div class="flex items-center gap-1">
-      <span class="text-xs text-gray-500 hidden md:inline">lossless concat · filtergraph · UDTA</span>
+      <span class="text-xs text-gray-500 hidden md:inline" title="无损拼接 · 滤镜图 · UDTA 容器元数据">无损拼接</span>
       <div class="h-4 w-px bg-gray-800 mx-1 hidden md:block"></div>
       <button type="button" onclick="window.vp.openShortcuts()" title="快捷键 (Ctrl+/)"
               class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition">
@@ -133,7 +133,7 @@
               class="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs transition"
               :class="snapOn ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'text-gray-500 hover:text-gray-300'">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg>
-        <span x-text="snapOn ? '磁吸 ON' : '磁吸 OFF'" class="hidden sm:inline"></span>
+        <span x-text="snapOn ? '磁吸开' : '磁吸关'" class="hidden sm:inline"></span>
       </button>
 
       <div class="h-3.5 w-px bg-gray-800"></div>
@@ -257,7 +257,7 @@
         <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
           <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         </div>
-        <h3 class="text-base font-bold text-gray-100">vidproc studio</h3>
+        <h3 class="text-base font-bold text-gray-100">vidproc 工作室</h3>
         <p class="text-[11px] text-gray-500 mt-0.5" x-text="'v' + version"></p>
         <p class="text-xs text-gray-400 mt-3" x-text="architecture"></p>
         <p class="text-[10px] text-gray-600 mt-2">vidonex 兼容 project.yaml · htmx + Alpine 事件总线</p>
@@ -276,11 +276,11 @@
             <span class="font-mono text-gray-300" x-text="sys.cores + (sys.cores !== '—' ? ' 逻辑核' : '')"></span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-gray-500">GPU</span>
+            <span class="text-gray-500" title="显卡(WebGL 渲染器)">显卡</span>
             <span class="font-mono text-gray-300 truncate ml-3 max-w-[180px]" x-text="sys.gpu || '未知'"></span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-gray-500">FFmpeg</span>
+            <span class="text-gray-500" title="视频编码工具版本">FFmpeg</span>
             <span class="font-mono text-gray-300" x-text="sys.ffmpeg"></span>
           </div>
         </div>

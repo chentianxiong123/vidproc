@@ -114,7 +114,7 @@
     panX: 0,
     panY: 0,
     ZOOM_PRESETS: [
-      { label: 'Fit', value: 1.0, isFit: true },
+      { label: '适配', value: 1.0, isFit: true },
       { label: '25%', value: 0.25 },
       { label: '50%', value: 0.5 },
       { label: '75%', value: 0.75 },
@@ -123,7 +123,7 @@
       { label: '200%', value: 2.0 },
     ],
     get isFit() { return this.zoom === 1.0 && this.panX === 0 && this.panY === 0; },
-    get display() { return this.isFit ? 'Fit' : `${Math.round(this.zoom * 100)}%`; },
+    get display() { return this.isFit ? '适配' : `${Math.round(this.zoom * 100)}%`; },
     setZoom(v, resetPan = false) {
       this.zoom = Math.min(5, Math.max(0.1, Number(v)));
       if (resetPan) { this.panX = 0; this.panY = 0; }
@@ -989,7 +989,7 @@
         const self = this;
         this.select(m.clip);
         window.vp.confirm({
-          title: '删除 clip',
+          title: '删除片段',
           message: `删除 ${m.clip.id}?`,
           confirmText: '删除',
           cancelText: '取消',
@@ -2120,19 +2120,19 @@
   ];
   const APP_COMMANDS = [
     // —— 时间轴编辑 ——
-    { id: 'split', group: 'editing', name: '分割选中 Clip', desc: '在播放头处切开', keys: 'S', icon: 'M6 4v16l8-8zM14 12l4-8v16z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.split(); } },
-    { id: 'duplicate', group: 'editing', name: '复制选中 Clip', desc: '复制到当前轨道末尾', keys: 'Ctrl+D', icon: 'M4 4h12v12H4zM16 8h4v12H8v-4', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.duplicateClip(); } },
-    { id: 'delete', group: 'editing', name: '删除选中 Clip', desc: '从时间轴移除', keys: 'Del', icon: 'M6 7h12l-1 14H7zM9 4h6l1 3H8z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.deleteSelected(); } },
+    { id: 'split', group: 'editing', name: '分割选中片段', desc: '在播放头处切开', keys: 'S', icon: 'M6 4v16l8-8zM14 12l4-8v16z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.split(); } },
+    { id: 'duplicate', group: 'editing', name: '复制选中片段', desc: '复制到当前轨道末尾', keys: 'Ctrl+D', icon: 'M4 4h12v12H4zM16 8h4v12H8v-4', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.duplicateClip(); } },
+    { id: 'delete', group: 'editing', name: '删除选中片段', desc: '从时间轴移除', keys: 'Del', icon: 'M6 7h12l-1 14H7zM9 4h6l1 3H8z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.deleteSelected(); } },
     { id: 'undo', group: 'editing', name: '撤销', desc: '回退上一步编辑', keys: 'Ctrl+Z', icon: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.undo(); } },
     { id: 'redo', group: 'editing', name: '重做', desc: '恢复撤销的编辑', keys: 'Ctrl+Shift+Z', icon: 'M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.redo(); } },
-    { id: 'toggle-snap', group: 'editing', name: '磁吸开关', desc: 'Snap 吸附对齐(Snap ON/OFF)', keys: 'N', icon: 'M13 2L3 14h7l-1 8 10-12h-7z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.toggleSnap(); } },
+    { id: 'toggle-snap', group: 'editing', name: '磁吸开关', desc: '吸附对齐(开/关)', keys: 'N', icon: 'M13 2L3 14h7l-1 8 10-12h-7z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.toggleSnap(); } },
     // —— 轨道管理(对齐上游 addTrack video/audio/waveform)——
     { id: 'add-video-track', group: 'tracks', name: '添加视频轨道', desc: '顶部新建覆盖视频轨', keys: '', icon: 'M8 5v14l11-7z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.addTrack('video'); } },
     { id: 'add-audio-track', group: 'tracks', name: '添加音频轨道', desc: '新建背景音乐 / 配音轨', keys: '', icon: 'M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.addTrack('audio'); } },
     { id: 'add-waveform-track', group: 'tracks', name: '添加波形轨道', desc: '动画波形可视化轨', keys: '', icon: 'M4 18v-6M9 18V6m5 12v-9m5 9V9', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.addTrack('waveform'); } },
     // —— 画布比例(对齐上游 setAspectRatio 4 预设)——
-    { id: 'aspect-16-9', group: 'aspect', name: '16:9 横屏', desc: '1920×1080 · YouTube / Web', keys: '', icon: 'M3 6h18v12H3z', run: () => applyAspect(1920, 1080) },
-    { id: 'aspect-9-16', group: 'aspect', name: '9:16 竖屏', desc: '1080×1920 · TikTok / Reels', keys: '', icon: 'M8 3h8v18H8z', run: () => applyAspect(1080, 1920) },
+    { id: 'aspect-16-9', group: 'aspect', name: '16:9 横屏', desc: '1920×1080 · YouTube/网页', keys: '', icon: 'M3 6h18v12H3z', run: () => applyAspect(1920, 1080) },
+    { id: 'aspect-9-16', group: 'aspect', name: '9:16 竖屏', desc: '1080×1920 · 抖音/短视频', keys: '', icon: 'M8 3h8v18H8z', run: () => applyAspect(1080, 1920) },
     { id: 'aspect-1-1', group: 'aspect', name: '1:1 方形', desc: '1080×1080 · 社交卡片', keys: '', icon: 'M4 4h16v16H4z', run: () => applyAspect(1080, 1080) },
     { id: 'aspect-21-9', group: 'aspect', name: '21:9 超宽', desc: '2560×1080 · 影院宽银幕', keys: '', icon: 'M2 6h20v12H2z', run: () => applyAspect(2560, 1080) },
     // —— 播放与视口 ——
@@ -2144,7 +2144,7 @@
     { id: 'render', group: 'project', name: '渲染导出…', desc: 'FFmpeg 编码 / GPU / 质量', keys: 'Ctrl+E', icon: 'M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2', run: () => { const m = window.renderModal(); m.openFor(window.vp.currentProjectId, (window.vp.projectViewOf || {}).output || ''); } },
     { id: 'new-project', group: 'project', name: '新建项目…', desc: '创建新的视频项目', keys: '', icon: 'M12 5v14M5 12h14', run: () => window.dispatchEvent(new CustomEvent('new-project-open')) },
     { id: 'settings', group: 'project', name: '项目设置…', desc: '画布尺寸 / 背景色 / 帧率', keys: 'P', icon: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8 4a8 8 0 0 1-.1 1.4l2 1.5-2 3.5-2.4-.9a8 8 0 0 1-2.4 1.4L14.8 22h-4l-.3-2.6a8 8 0 0 1-2.4-1.4l-2.4.9-2-3.5 2-1.5A8 8 0 0 1 5.6 12a8 8 0 0 1 .1-1.4l-2-1.5 2-3.5 2.4.9a8 8 0 0 1 2.4-1.4L10.8 2h4l.3 2.6a8 8 0 0 1 2.4 1.4l2.4-.9 2 3.5-2 1.5a8 8 0 0 1 .1 1.4z', run: () => window.dispatchEvent(new CustomEvent('project-settings-open', { detail: { tl: (window.vp.timelineEditorOf || {}).tl } })) },
-    { id: 'graph', group: 'project', name: '图可视化…', desc: 'FFmpeg filtergraph 流程图', keys: '', icon: 'M4 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm16 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-8-7a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0 10a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM7 10l3-3m4 0l3 3M7 11v6m10-4v4', run: () => window.dispatchEvent(new CustomEvent('graph-open')) },
+    { id: 'graph', group: 'project', name: '图可视化…', desc: 'FFmpeg 滤镜流程图', keys: '', icon: 'M4 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm16 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-8-7a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0 10a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM7 10l3-3m4 0l3 3M7 11v6m10-4v4', run: () => window.dispatchEvent(new CustomEvent('graph-open')) },
     { id: 'shortcuts', group: 'project', name: '键盘快捷键…', desc: '查看完整快捷键表', keys: 'Ctrl+/', icon: 'M12 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM7 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm10 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z', run: () => {} },
     // —— 关于与更新 ——
     { id: 'about', group: 'about', name: '关于 vidproc…', desc: '版本 / 系统诊断 / 更新', keys: '', icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z', run: () => {} },
@@ -2159,12 +2159,12 @@
     { keys: 'Space', desc: '播放 / 暂停' },
     { keys: '← / →', desc: '上一帧 / 下一帧' },
     { keys: 'Home / End', desc: '跳到开头 / 结尾' },
-    { keys: 'S', desc: '在播放头分割选中 clip' },
-    { keys: 'Delete / Backspace', desc: '删除选中 clip' },
-    { keys: 'Ctrl+D', desc: '复制选中 clip' },
+    { keys: 'S', desc: '在播放头分割选中片段' },
+    { keys: 'Delete / Backspace', desc: '删除选中片段' },
+    { keys: 'Ctrl+D', desc: '复制选中片段' },
     { keys: 'Ctrl+Z / Ctrl+Shift+Z', desc: '撤销 / 重做' },
-    { keys: 'N', desc: '磁吸开关 (Snap)' },
-    { keys: 'P', desc: '项目设置 (画布/背景/fps)' },
+    { keys: 'N', desc: '磁吸开关' },
+    { keys: 'P', desc: '项目设置 (画布/背景/帧率)' },
     { keys: 'Ctrl+K', desc: '命令面板' },
     { keys: 'Ctrl+/', desc: '快捷键列表' },
     { keys: 'Esc', desc: '关闭弹窗 / 返回' },
@@ -2435,18 +2435,18 @@
     { id: 'webm', name: 'WebM (VP9/Opus)', ext: 'webm' },
   ];
   const RENDER_GPUS = [
-    { id: 'auto', name: 'Auto (按 spec)' },
-    { id: 'none', name: 'CPU (libx264)' },
-    { id: 'nvenc', name: 'NVIDIA NVENC' },
+    { id: 'auto', name: '自动 (按项目规格)' },
+    { id: 'none', name: 'CPU 编码 (libx264)' },
+    { id: 'nvenc', name: 'NVIDIA NVENC 硬件加速' },
   ];
   const RENDER_PRESETS = [
     { id: '', name: '项目默认' },
-    { id: 'tiktok', name: 'TikTok 9:16' },
-    { id: 'instagram_reels', name: 'Instagram Reels' },
-    { id: 'instagram_square', name: 'Instagram Square' },
+    { id: 'tiktok', name: '抖音 9:16' },
+    { id: 'instagram_reels', name: 'Instagram 短片' },
+    { id: 'instagram_square', name: 'Instagram 方形' },
     { id: 'youtube_1080', name: 'YouTube 1080p' },
     { id: 'youtube_4k', name: 'YouTube 4K' },
-    { id: 'web_fast', name: 'Web Fast 720p' },
+    { id: 'web_fast', name: '网络快速 720p' },
   ];
   let _renderModal = null;
   window.renderModal = function () {
@@ -2472,7 +2472,7 @@
       error: '',
       errorOpen: false,
       copied: false,
-      doneInfo: { url: '', sizeText: '', duration: '' },
+      doneInfo: { url: '', sizeText: '', duration: '', elapsed: '' },
       init() {
         // Alpine 对 x-data 返回值做响应式代理,外部直接改单例字段不触发 x-show;
         // 统一走事件总线:openFor() 广播 render-modal-open,这里收。
@@ -2510,6 +2510,7 @@
             url: d.url || '',
             sizeText: mb > 0 ? (mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : mb.toFixed(1) + ' MB') : '',
             duration: d.duration || '',
+            elapsed: d.elapsed !== undefined && d.elapsed !== null ? String(d.elapsed) : '',
           };
         });
         window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.open) this.open = false; });
@@ -2577,17 +2578,17 @@
   // 对齐 vidonex NewProjectModal:名称 + 5 画布预设(16:9/4K/9:16/1:1/21:9)
   // + fps 选择。创建 = 前端生成 spec(带画布) → POST /api/projects。
   const ASPECT_PRESETS = [
-    { id: 'youtube_16_9', name: '16:9 Landscape (1080p)', width: 1920, height: 1080, icon: 'M21 7H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1zM7 10h2v4H7z' },
-    { id: 'youtube_4k', name: '16:9 4K UHD (3840x2160)', width: 3840, height: 2160, icon: 'M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z' },
-    { id: 'tiktok_9_16', name: '9:16 Vertical (Reels/TikTok)', width: 1080, height: 1920, icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.5 11.6l-5 3a1 1 0 0 1-1.5-.9V8.3a1 1 0 0 1 1.5-.9l5 3a1 1 0 0 1 0 1.7z' },
-    { id: 'instagram_square', name: '1:1 Square (Instagram)', width: 1080, height: 1080, icon: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm14 7a5 5 0 1 1-10 0 5 5 0 0 1 10 0zM17 6h2v2h-2z' },
-    { id: 'cinema_wide', name: '21:9 Ultra-Wide Cinema', width: 2560, height: 1080, icon: 'M4 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm3 4h10v4H7z' },
+    { id: 'youtube_16_9', name: '16:9 横屏 (1080p)', width: 1920, height: 1080, icon: 'M21 7H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1zM7 10h2v4H7z' },
+    { id: 'youtube_4k', name: '16:9 4K 超高清 (3840×2160)', width: 3840, height: 2160, icon: 'M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z' },
+    { id: 'tiktok_9_16', name: '9:16 竖屏 (抖音/短视频)', width: 1080, height: 1920, icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.5 11.6l-5 3a1 1 0 0 1-1.5-.9V8.3a1 1 0 0 1 1.5-.9l5 3a1 1 0 0 1 0 1.7z' },
+    { id: 'instagram_square', name: '1:1 方形 (Instagram)', width: 1080, height: 1080, icon: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm14 7a5 5 0 1 1-10 0 5 5 0 0 1 10 0zM17 6h2v2h-2z' },
+    { id: 'cinema_wide', name: '21:9 超宽影院', width: 2560, height: 1080, icon: 'M4 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm3 4h10v4H7z' },
   ];
   const FPS_OPTIONS = [
-    { label: '24 FPS (Film)', value: 24 },
-    { label: '25 FPS (PAL)', value: 25 },
-    { label: '30 FPS (Web)', value: 30 },
-    { label: '60 FPS (Gaming)', value: 60 },
+    { label: '24 FPS (电影)', value: 24 },
+    { label: '25 FPS (PAL 制式)', value: 25 },
+    { label: '30 FPS (网络)', value: 30 },
+    { label: '60 FPS (游戏)', value: 60 },
   ];
   // 单例:弹窗触发按钮(无 x-data 作用域)也需控制 open
   let _newProjectModal = null;
@@ -2595,7 +2596,7 @@
     if (_newProjectModal) return _newProjectModal;
     _newProjectModal = {
       open: false,
-      name: 'New Composition',
+      name: '未命名项目',
       presetId: 'youtube_16_9',
       width: 1920,
       height: 1080,
@@ -3444,7 +3445,7 @@
                 this.percent = 100;
                 this.result = j;
                 window.dispatchEvent(new CustomEvent('render-done', {
-                  detail: { output: j.output, sizeMB: j.size_mb, duration: j.duration, url: `/api/render/${id}/file` },
+                  detail: { output: j.output, sizeMB: j.size_mb, duration: j.duration, elapsed: j.elapsed || '', url: `/api/render/${id}/file` },
                 }));
               }
             })
