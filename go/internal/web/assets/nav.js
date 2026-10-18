@@ -2309,6 +2309,7 @@
   // 供 shell 顶栏按钮打开快捷键表/命令面板(经事件总线保证 Alpine 响应式)
   window.vp.openShortcuts = function () { window.dispatchEvent(new CustomEvent('app-modals-open', { detail: { view: 'shortcuts' } })); };
   window.vp.openPalette = function () { window.dispatchEvent(new CustomEvent('app-modals-open', { detail: { view: 'palette' } })); };
+  window.vp.openAbout = function () { window.dispatchEvent(new CustomEvent('app-modals-open', { detail: { view: 'about' } })); };
 
   // ============ 音频电平表(audioMeter)============
   // 对齐 vidonex AudioPeakMeter:播放时模拟左右声道实时电平(无真实音频解码,
