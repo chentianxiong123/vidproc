@@ -2395,10 +2395,17 @@
     { id: 'blue', name: '蓝幕' },
     { id: 'transparent', name: '透明' },
   ];
-  let _projectSettingsModal = null;
-  window.projectSettingsModal = function () {
-    if (_projectSettingsModal) return _projectSettingsModal;
-    _projectSettingsModal = {
+  // 站内 htmx 导航(#main swap)会重复渲染 x-data 元素;Alpine 向每个 data 对象注入
+  // $nextTick 等 magic——共享单例被二次初始化会 Cannot redefine property:$nextTick。
+  // projectSettingsModalComponent 供 x-data(每次 new + 同步 vp.projectSettingsModalOf + 清理旧监听);
+  // window.projectSettingsModal 是外部 API:返回当前实例或创建。
+  window.projectSettingsModalComponent = function () {
+    const prev = window.vp.projectSettingsModalOf;
+    if (prev) {
+      if (prev._hOpen) window.removeEventListener('project-settings-open', prev._hOpen);
+      if (prev._hEsc) window.removeEventListener('keydown', prev._hEsc);
+    }
+    const inst = {
       open: false,
       width: 1920,
       height: 1080,
@@ -2408,7 +2415,7 @@
       bgColors: BG_COLORS,
       fpsOptions: FPS_OPTIONS,
       init() {
-        window.addEventListener('project-settings-open', (e) => {
+        this._hOpen = (e) => {
           const d = e.detail || {};
           const tl = d.tl;
           if (tl) {
@@ -2418,8 +2425,10 @@
             this.background_color = tl.background_color || 'black';
           }
           this.open = true;
-        });
-        window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.open) this.open = false; });
+        };
+        window.addEventListener('project-settings-open', this._hOpen);
+        this._hEsc = (e) => { if (e.key === 'Escape' && this.open) this.open = false; };
+        window.addEventListener('keydown', this._hEsc);
       },
       applySize(p) {
         this.width = p.width;
@@ -2437,8 +2446,10 @@
         this.open = false;
       },
     };
-    return _projectSettingsModal;
+    window.vp.projectSettingsModalOf = inst;
+    return inst;
   };
+  window.projectSettingsModal = function () { return window.vp.projectSettingsModalOf || window.projectSettingsModalComponent(); };
 
 // ============ 渲染导出弹窗(renderModal)============
   // 对齐 vidonex RenderExportModal:格式/输出路径/GPU 加速/平台预设/
@@ -2463,10 +2474,20 @@
     { id: 'youtube_4k', name: 'YouTube 4K' },
     { id: 'web_fast', name: '网络快速 720p' },
   ];
-  let _renderModal = null;
-  window.renderModal = function () {
-    if (_renderModal) return _renderModal;
-    _renderModal = {
+  // 站内 htmx 导航(#main swap)会重复渲染 x-data 元素;共享单例被二次初始化会
+  // Cannot redefine property:$nextTick(Alpine 向 data 对象注入 magic,见上游 #2107)。
+  // renderModalComponent 供 x-data 使用:每次创建新实例(Alpine 注入需全新对象),
+  // 同步 window.vp.renderModalOf 并清理旧实例的 window 监听。
+  // window.renderModal 是外部 API:返回当前活跃实例(若存在),否则创建。
+  window.renderModalComponent = function () {
+    const prev = window.vp.renderModalOf;
+    if (prev) {
+      ['render-modal-open', 'render-progress', 'render-fail', 'render-done'].forEach((t) => {
+        if (prev._h && prev._h[t]) window.removeEventListener(t, prev._h[t]);
+      });
+      if (prev._hEsc) window.removeEventListener('keydown', prev._hEsc);
+    }
+    const inst = {
       open: false,
       pid: null,
       format: 'mp4',
@@ -2489,33 +2510,37 @@
       copied: false,
       doneInfo: { url: '', sizeText: '', duration: '', elapsed: '' },
       init() {
-        // Alpine 对 x-data 返回值做响应式代理,外部直接改单例字段不触发 x-show;
+        // Alpine 对 x-data 返回值做响应式代理,外部直接改字段不触发 x-show;
         // 统一走事件总线:openFor() 广播 render-modal-open,这里收。
-        window.addEventListener('render-modal-open', (e) => {
+        this._h = this._h || {};
+        this._h['render-modal-open'] = (e) => {
           const d = e.detail || {};
           this.pid = d.pid || this.pid;
           if (d.output !== undefined) this.output = d.output;
           this.status = '';
           this.error = '';
           this.open = true;
-        });
+        };
+        window.addEventListener('render-modal-open', this._h['render-modal-open']);
         // 渲染状态事件(projectView.poll 广播;对齐上游 store 三态)
-        window.addEventListener('render-progress', (e) => {
+        this._h['render-progress'] = (e) => {
           if (!this.open) return;
           const d = e.detail || {};
           this.status = 'rendering';
           this.percent = d.percent || 0;
           this.frame = d.frame || 0;
           this.speed = d.speed || 0;
-        });
-        window.addEventListener('render-fail', (e) => {
+        };
+        window.addEventListener('render-progress', this._h['render-progress']);
+        this._h['render-fail'] = (e) => {
           if (!this.open) return;
           const d = e.detail || {};
           this.status = 'failed';
           this.error = d.error || '渲染失败';
           this.errorOpen = false;
-        });
-        window.addEventListener('render-done', (e) => {
+        };
+        window.addEventListener('render-fail', this._h['render-fail']);
+        this._h['render-done'] = (e) => {
           if (!this.open) return;
           const d = e.detail || {};
           this.status = 'done';
@@ -2527,8 +2552,10 @@
             duration: d.duration || '',
             elapsed: d.elapsed !== undefined && d.elapsed !== null ? String(d.elapsed) : '',
           };
-        });
-        window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.open) this.open = false; });
+        };
+        window.addEventListener('render-done', this._h['render-done']);
+        this._hEsc = (e) => { if (e.key === 'Escape' && this.open) this.open = false; };
+        window.addEventListener('keydown', this._hEsc);
       },
       // 打开弹窗(检查器侧按钮调用;经事件总线保证 Alpine 响应式)
       openFor(pid, defaultOutput) {
@@ -2586,8 +2613,10 @@
         this.doneInfo = { url: '', sizeText: '', duration: '' };
       },
     };
-    return _renderModal;
+    window.vp.renderModalOf = inst;
+    return inst;
   };
+  window.renderModal = function () { return window.vp.renderModalOf || window.renderModalComponent(); };
 
   // ============ 新建项目弹窗(newProjectModal)============
   // 对齐 vidonex NewProjectModal:名称 + 5 画布预设(16:9/4K/9:16/1:1/21:9)
@@ -2605,11 +2634,16 @@
     { label: '30 FPS (网络)', value: 30 },
     { label: '60 FPS (游戏)', value: 60 },
   ];
-  // 单例:弹窗触发按钮(无 x-data 作用域)也需控制 open
-  let _newProjectModal = null;
-  window.newProjectModal = function () {
-    if (_newProjectModal) return _newProjectModal;
-    _newProjectModal = {
+  // 站内 htmx 导航(#main swap)会重复渲染 x-data 元素;共享单例被二次初始化会
+  // Cannot redefine property:$nextTick。newProjectModalComponent 供 x-data(每次 new +
+  // 同步 vp.newProjectModalOf + 清理旧监听);window.newProjectModal 是外部 API。
+  window.newProjectModalComponent = function () {
+    const prev = window.vp.newProjectModalOf;
+    if (prev) {
+      if (prev._hOpen) window.removeEventListener('new-project-open', prev._hOpen);
+      if (prev._hEsc) window.removeEventListener('keydown', prev._hEsc);
+    }
+    const inst = {
       open: false,
       name: '未命名项目',
       presetId: 'youtube_16_9',
@@ -2621,12 +2655,14 @@
       presets: ASPECT_PRESETS,
       fpsOptions: FPS_OPTIONS,
       init() {
-        // Alpine 响应式代理问题:外部直接改单例字段不触发 x-show;
+        // Alpine 响应式代理问题:外部直接改字段不触发 x-show;
         // 触发按钮广播 new-project-open,这里收。
-        window.addEventListener('new-project-open', () => { this.open = true; });
+        this._hOpen = () => { this.open = true; };
+        window.addEventListener('new-project-open', this._hOpen);
         // 列表页点"新建"(search:?new=1)自动打开
         if (location.hash === '#new') { this.open = true; }
-        window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.open) this.open = false; });
+        this._hEsc = (e) => { if (e.key === 'Escape' && this.open) this.open = false; };
+        window.addEventListener('keydown', this._hEsc);
       },
       applyPreset(p) {
         this.presetId = p.id;
@@ -2655,8 +2691,10 @@
         finally { this.creating = false; }
       },
     };
-    return _newProjectModal;
+    window.vp.newProjectModalOf = inst;
+    return inst;
   };
+  window.newProjectModal = function () { return window.vp.newProjectModalOf || window.newProjectModalComponent(); };
 
   // ============ 渲染任务(renderJob):异步渲染 + 进度轮询 ============
   // POST /api/projects/{id}/render 起 job,setInterval 轮询 /api/render/{id},

@@ -414,7 +414,7 @@
   <!-- 渲染导出弹窗(对齐 vidonex RenderExportModal)。挂在外层 x-data(projectView)内,
        x-data="renderModal()" 子作用域;调 window.vp.projectViewOf.startRender。
        三态:配置(默认)/ 渲染中进度 / 失败折叠+Copy / 完成预览+大小。 -->
-  <div x-data="renderModal()" x-show="open" x-cloak
+  <div x-data="renderModalComponent()" x-show="open" x-cloak
        class="fixed inset-0 z-[90] flex items-center justify-center p-4"
        style="background:rgba(0,0,0,.6);backdrop-filter:blur(2px)"
        @click.self="open = false">

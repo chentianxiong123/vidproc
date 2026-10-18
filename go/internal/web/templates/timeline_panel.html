@@ -98,7 +98,7 @@
   </div>
 
   <!-- 项目设置弹窗(画布尺寸/背景色/fps;x-data 子作用域,事件总线驱动) -->
-  <div x-data="projectSettingsModal()" x-show="open" x-cloak
+  <div x-data="projectSettingsModalComponent()" x-show="open" x-cloak
        class="fixed inset-0 z-[95] flex items-center justify-center p-4"
        style="background:rgba(0,0,0,.6);backdrop-filter:blur(2px)"
        @click.self="open = false">
