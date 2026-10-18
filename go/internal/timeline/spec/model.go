@@ -68,7 +68,18 @@ type ClipSpec struct {
 	ColorGrading *ColorGradingSpec `json:"color_grading,omitempty" yaml:"color_grading,omitempty"`
 	ChromaKey    *ChromaKeySpec    `json:"chroma_key,omitempty" yaml:"chroma_key,omitempty"`
 	Keyframes    *KeyframesSpec    `json:"keyframes,omitempty" yaml:"keyframes,omitempty"`
+	KenBurns     *KenBurnsSpec     `json:"ken_burns,omitempty" yaml:"ken_burns,omitempty"`
+	Subtitles    *SubtitlesSpec    `json:"subtitles,omitempty" yaml:"subtitles,omitempty"`
+	Waveform     *WaveformSpec     `json:"waveform,omitempty" yaml:"waveform,omitempty"`
 	HasAudio     *bool             `json:"has_audio,omitempty" yaml:"has_audio,omitempty"`
+}
+
+// KenBurnsSpec configures a slow zoom/pan animation (对齐上游 KeyframeInspector
+// 的 ken_burns 数据模型:start_scale/end_scale + easing)。
+type KenBurnsSpec struct {
+	StartScale float64 `json:"start_scale,omitempty" yaml:"start_scale,omitempty"`
+	EndScale   float64 `json:"end_scale,omitempty" yaml:"end_scale,omitempty"`
+	Easing     string  `json:"easing,omitempty" yaml:"easing,omitempty"` // "linear","ease_in","ease_out","ease_in_out","bounce"
 }
 
 // CropSpec defines visual cropping insets.
@@ -118,6 +129,20 @@ type SubtitlesSpec struct {
 	SRTContent string             `json:"srt_content,omitempty" yaml:"srt_content,omitempty"`
 	VTTContent string             `json:"vtt_content,omitempty" yaml:"vtt_content,omitempty"`
 	Style      *SubtitleStyleSpec `json:"style,omitempty" yaml:"style,omitempty"`
+	// —— 上游 SubtitleInspector 扁平字段(组件实际写入;检查器读这些)——
+	FontSize     int              `json:"font_size,omitempty" yaml:"font_size,omitempty"`
+	FontColor    string           `json:"font_color,omitempty" yaml:"font_color,omitempty"`
+	OutlineWidth int              `json:"outline_width,omitempty" yaml:"outline_width,omitempty"`
+	OutlineColor string           `json:"outline_color,omitempty" yaml:"outline_color,omitempty"`
+	Box          bool             `json:"box,omitempty" yaml:"box,omitempty"`
+	Cues         []SubtitleCueSpec `json:"cues,omitempty" yaml:"cues,omitempty"`
+}
+
+// SubtitleCueSpec 一条字幕 cue(上游 SubtitleInspector cues[] 元素)。
+type SubtitleCueSpec struct {
+	Start any    `json:"start" yaml:"start"`
+	End   any    `json:"end" yaml:"end"`
+	Text  string `json:"text" yaml:"text"`
 }
 
 // SubtitleStyleSpec configures font size, colors, bounding boxes, and alignment.
@@ -135,7 +160,8 @@ type SubtitleStyleSpec struct {
 
 // DuckingSpec configures sidechain compression parameters.
 type DuckingSpec struct {
-	Threshold           float64 `json:"threshold,omitempty" yaml:"threshold,omitempty"`
+	Threshold           float64 `json:"threshold,omitempty" yaml:"threshold,omitempty"` // dB
+	DuckDB              float64 `json:"duck_db,omitempty" yaml:"duck_db,omitempty"`     // 闪避衰减量 dB(上游 duckAmount)
 	Ratio               float64 `json:"ratio,omitempty" yaml:"ratio,omitempty"`
 	AttackMilliseconds  int     `json:"attack_ms,omitempty" yaml:"attack_ms,omitempty"`
 	ReleaseMilliseconds int     `json:"release_ms,omitempty" yaml:"release_ms,omitempty"`
@@ -148,19 +174,26 @@ type WaveformSpec struct {
 	Color          string        `json:"color,omitempty" yaml:"color,omitempty"`
 	SecondaryColor string        `json:"secondary_color,omitempty" yaml:"secondary_color,omitempty"`
 	Scale          string        `json:"scale,omitempty" yaml:"scale,omitempty"` // "sqrt", "log", "lin"
+	Preset         string        `json:"preset,omitempty" yaml:"preset,omitempty"`
 	Width          int           `json:"width,omitempty" yaml:"width,omitempty"`
 	Height         int           `json:"height,omitempty" yaml:"height,omitempty"`
 	Position       *PositionSpec `json:"position,omitempty" yaml:"position,omitempty"`
 	Opacity        float64       `json:"opacity,omitempty" yaml:"opacity,omitempty"`
 	Density        int           `json:"density,omitempty" yaml:"density,omitempty"`
+	BarDensity     int           `json:"bar_density,omitempty" yaml:"bar_density,omitempty"`     // 上游 UI 名
 	Roundness      int           `json:"roundness,omitempty" yaml:"roundness,omitempty"`
+	BarRoundness   int           `json:"bar_roundness,omitempty" yaml:"bar_roundness,omitempty"` // 上游 UI 名
 	Glow           bool          `json:"glow,omitempty" yaml:"glow,omitempty"`
+	GlowRadius     int           `json:"glow_radius,omitempty" yaml:"glow_radius,omitempty"`
 	LineWidth      int           `json:"line_width,omitempty" yaml:"line_width,omitempty"`
+	FillArea       bool          `json:"fill_area,omitempty" yaml:"fill_area,omitempty"`
+	InnerRadius    float64       `json:"inner_radius,omitempty" yaml:"inner_radius,omitempty"`
 }
 
 // ChromaKeySpec configures green/blue screen removal.
 type ChromaKeySpec struct {
-	KeyColor      string  `json:"key_color,omitempty" yaml:"key_color,omitempty"`
+	Color         string  `json:"color,omitempty" yaml:"color,omitempty"`                 // 上游权威字段名(Hex 如 "#00FF00")
+	KeyColor      string  `json:"key_color,omitempty" yaml:"key_color,omitempty"`         // 兼容旧字段
 	Similarity    float64 `json:"similarity,omitempty" yaml:"similarity,omitempty"`
 	Blend         float64 `json:"blend,omitempty" yaml:"blend,omitempty"`
 	Despill       bool    `json:"despill,omitempty" yaml:"despill,omitempty"`

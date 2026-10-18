@@ -105,19 +105,55 @@
     </div>
   </div>
 
-  <!-- Bottom Footer Status Bar（对齐 LayoutAppFooter） -->
-  <footer class="h-7 border-t border-gray-800 bg-gray-950 px-3 flex items-center justify-between text-[11px] text-gray-500 flex-shrink-0">
-    <div class="flex items-center gap-3">
-      <span class="flex items-center gap-1">
-        <svg class="w-3 h-3 text-emerald-500" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>
-        Ready
-      </span>
-      <span>dev · sqlite · htmx</span>
+  <!-- 底部状态栏(对齐上游 LayoutAppFooter / AppFooter.vue):
+       h-9,左=时间码(indigo)+ / + 内容时长 + FPS,右=吸附开关 + 缩放滑条(min15 max200 step5) + px/s 读数。
+       数据来自 window.vp(appFooter 组件监听 playhead-changed / timeline-loaded 刷新)。 -->
+  <footer class="h-9 border-t border-gray-800 bg-gray-950 px-4 flex items-center justify-between text-xs text-gray-400 select-none z-30 flex-shrink-0"
+          x-data="appFooter()">
+    <!-- 左:时间码与时长 -->
+    <div class="flex items-center gap-4 font-mono">
+      <div class="flex items-center gap-1.5 text-gray-200">
+        <span class="text-indigo-400 font-semibold" x-text="timecode"></span>
+        <span class="text-gray-600">/</span>
+        <span class="text-gray-400" x-text="duration"></span>
+      </div>
+
+      <div class="h-3.5 w-px bg-gray-800"></div>
+
+      <div class="flex items-center gap-1 text-gray-400">
+        <span class="text-gray-500">FPS:</span>
+        <span class="text-gray-300" x-text="fps"></span>
+      </div>
     </div>
-    <div class="flex items-center gap-3">
-      <span id="status-time">00:00:00</span>
-      <span class="font-mono">30 fps</span>
-      <span>1920×1080</span>
+
+    <!-- 右:吸附开关与缩放 -->
+    <div class="flex items-center gap-4">
+      <!-- 磁吸开关 -->
+      <button type="button" @click="toggleSnap()"
+              class="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs transition"
+              :class="snapOn ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'text-gray-500 hover:text-gray-300'">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg>
+        <span x-text="snapOn ? '磁吸 ON' : '磁吸 OFF'"></span>
+      </button>
+
+      <div class="h-3.5 w-px bg-gray-800"></div>
+
+      <!-- 缩放滑条 -->
+      <div class="flex items-center gap-2">
+        <button type="button" class="hover:text-gray-200 transition" title="缩小" @click="zoomOut()">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" stroke-linecap="round"/></svg>
+        </button>
+
+        <input type="range" min="15" max="200" step="5" :value="pps"
+               class="w-24 h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+               @input="setZoom($event.target.value)">
+
+        <button type="button" class="hover:text-gray-200 transition" title="放大" @click="zoomIn()">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+        </button>
+
+        <span class="font-mono text-gray-500 w-10 text-right" x-text="pps + 'px/s'"></span>
+      </div>
     </div>
   </footer>
 

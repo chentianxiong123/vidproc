@@ -124,3 +124,46 @@ func TestProjectsValidation(t *testing.T) {
 		t.Fatalf("missing id = %d, want 404", rr.Code)
 	}
 }
+// TestSpecGraphMermaid:合法 spec → graph API 输出 mermaid 文本(对齐 GraphVisualizerModal 数据源)。
+func TestSpecGraphMermaid(t *testing.T) {
+	h := newTestRouter(t)
+	// 用 JSON 编码 spec,避免手写转义
+	spec := `version: "1.0"
+canvas: {width: 1280, height: 720, background_color: "black"}
+fps: "30"
+tracks:
+  - id: "v1"
+    kind: "video"
+    clips:
+      - {id: "c1", source: "in.mp4", duration: "2s"}
+`
+	body, _ := json.Marshal(map[string]string{"name": "graph_test", "spec_yaml": spec})
+	rr := doJSON(t, h, "POST", "/api/projects", string(body))
+	if rr.Code != 201 && rr.Code != 200 {
+		t.Fatalf("create = %d, want 2xx", rr.Code)
+	}
+	var created struct{ ID int64 `json:"id"` }
+	if err := json.Unmarshal(rr.Body.Bytes(), &created); err != nil || created.ID == 0 {
+		t.Fatalf("no id in create response: %v", rr.Body.String())
+	}
+	rr = doJSON(t, h, "GET", "/api/projects/1/spec/graph", "")
+	if rr.Code != 200 {
+		t.Fatalf("graph = %d, want 200 (body: %s)", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "graph LR") {
+		t.Fatalf("mermaid missing graph LR: %.200s", rr.Body.String())
+	}
+	// dot 格式
+	rr = doJSON(t, h, "GET", "/api/projects/1/spec/graph?format=dot", "")
+	if rr.Code != 200 {
+		t.Fatalf("graph dot = %d, want 200", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "digraph") {
+		t.Fatalf("dot missing digraph: %.200s", rr.Body.String())
+	}
+	// 不存在项目
+	rr = doJSON(t, h, "GET", "/api/projects/999/spec/graph", "")
+	if rr.Code != 404 {
+		t.Fatalf("missing project graph = %d, want 404", rr.Code)
+	}
+}

@@ -14,6 +14,9 @@ import (
 )
 
 // ClipJSON 数值化的时间轴 clip(前端渲染用)。
+// 编辑字段(scale/position/color_grading/chroma_key/crop/keyframes/ken_burns/
+// subtitles/waveform/fade)直接透传 spec.ClipSpec —— 检查器改这些字段,
+// buildSpecYAML 原样序列化回 spec,reload 不丢配置。
 type ClipJSON struct {
 	ID       string  `json:"id"`
 	Source   string  `json:"source"`
@@ -24,6 +27,23 @@ type ClipJSON struct {
 	Speed    float64 `json:"speed"`
 	HasAudio bool    `json:"has_audio"`
 	Kind     string  `json:"kind"` // 所属轨道类型,前端配色用
+
+	// —— 检查器编辑字段(透传,omitempty)——
+	Volume       float64             `json:"volume,omitempty"`
+	Opacity      float64             `json:"opacity,omitempty"`
+	Scale        float64             `json:"scale,omitempty"`
+	Rotation     float64             `json:"rotation,omitempty"`
+	BlendMode    string              `json:"blend_mode,omitempty"`
+	FadeIn       float64             `json:"fade_in,omitempty"`
+	FadeOut      float64             `json:"fade_out,omitempty"`
+	Position     *spec.PositionSpec  `json:"position,omitempty"`
+	Crop         *spec.CropSpec      `json:"crop,omitempty"`
+	ColorGrading *spec.ColorGradingSpec `json:"color_grading,omitempty"`
+	ChromaKey    *spec.ChromaKeySpec `json:"chroma_key,omitempty"`
+	Keyframes    *spec.KeyframesSpec `json:"keyframes,omitempty"`
+	KenBurns     *spec.KenBurnsSpec  `json:"ken_burns,omitempty"`
+	Subtitles    *spec.SubtitlesSpec `json:"subtitles,omitempty"`
+	Waveform     *spec.WaveformSpec  `json:"waveform,omitempty"`
 }
 
 // TransitionJSON 转场(前端展示 TransitionHandle + 序列化回 spec)。
@@ -62,6 +82,25 @@ func parseSeconds(raw any) float64 {
 	return d.Seconds()
 }
 
+// fadeSeconds 把 fade_in/fade_out 的 any 值转秒(数值即秒,"0.5s" 亦兼容)。
+func fadeSeconds(raw any) float64 {
+	return parseSeconds(raw)
+}
+
+// clipVolume/clipOpacity 解引用可选指针,缺省 1.0(ffmpeg 中性值)。
+func clipVolume(v *float64) float64 {
+	if v == nil {
+		return 1.0
+	}
+	return *v
+}
+func clipOpacity(o *float64) float64 {
+	if o == nil {
+		return 1.0
+	}
+	return *o
+}
+
 // specToTimelineJSON 纯函数:VideoSpec → TimelineJSON。api 层唯一业务解析点,
 // 不触碰 DB/渲染;可单测。
 func specToTimelineJSON(vs *spec.VideoSpec) TimelineJSON {
@@ -97,17 +136,33 @@ func specToTimelineJSON(vs *spec.VideoSpec) TimelineJSON {
 			if c.HasAudio != nil {
 				hasAudio = *c.HasAudio
 			}
-			tj.Clips = append(tj.Clips, ClipJSON{
-				ID:       c.ID,
-				Source:   c.Source,
-				Name:     filepath.Base(strings.ReplaceAll(c.Source, "\\", "/")),
-				Start:    start,
-				Duration: dur,
-				Trim:     trim,
-				Speed:    speed,
-				HasAudio: hasAudio,
-				Kind:     tr.Kind,
-			})
+tj.Clips = append(tj.Clips, ClipJSON{
+			ID:       c.ID,
+			Source:   c.Source,
+			Name:     filepath.Base(strings.ReplaceAll(c.Source, "\\", "/")),
+			Start:    start,
+			Duration: dur,
+			Trim:     trim,
+			Speed:    speed,
+			HasAudio: hasAudio,
+			Kind:     tr.Kind,
+			// 检查器编辑字段透传(前端原样序列化回 spec)
+			Volume:       clipVolume(c.Volume),
+			Opacity:      clipOpacity(c.Opacity),
+			Scale:        c.Scale,
+			Rotation:     c.Rotation,
+			BlendMode:    c.BlendMode,
+			FadeIn:       fadeSeconds(c.FadeIn),
+			FadeOut:      fadeSeconds(c.FadeOut),
+			Position:     c.Position,
+			Crop:         c.Crop,
+			ColorGrading: c.ColorGrading,
+			ChromaKey:    c.ChromaKey,
+			Keyframes:    c.Keyframes,
+			KenBurns:     c.KenBurns,
+			Subtitles:    c.Subtitles,
+			Waveform:     c.Waveform,
+		})
 			if end := start + dur; end > maxEnd {
 				maxEnd = end
 			}

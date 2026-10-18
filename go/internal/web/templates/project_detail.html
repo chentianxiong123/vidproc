@@ -16,6 +16,12 @@
       <span class="text-[10px] font-mono text-gray-500 flex-shrink-0">#{{.Project.ID}}</span>
     </div>
     <div class="flex items-center gap-2">
+      <button type="button" @click="window.dispatchEvent(new CustomEvent('graph-open'))"
+              class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300 hover:border-indigo-500 transition"
+              title="查看 filtergraph DAG (图可视化)">
+        <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M4 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM20 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM12 3v4M12 11v4M6 7v8m12-8v2a2 2 0 0 1-2 2h-8"/></svg>
+        图
+      </button>
       <span class="text-[10px] text-gray-500 hidden sm:inline">创建 {{.Project.CreatedAt.Format "01-02 15:04"}}</span>
     </div>
   </div>
@@ -36,13 +42,93 @@
         <div class="absolute inset-0 flex items-center justify-center p-3 transition-transform duration-75"
              :style="stageStyle">
           <!-- 画布框(播放头帧 + 中心对齐线) -->
-          <div class="relative shadow-2xl rounded-sm overflow-hidden bg-black" :style="screenStyle">
+          <div class="canvas-stage relative shadow-2xl rounded-sm overflow-hidden bg-black" :style="screenStyle">
             <img :src="previewSrc" x-show="previewSrc && !previewErr" alt="预览帧"
                  class="w-full h-full object-contain">
-            <!-- 中心对齐线(对齐 vidonex Smart Alignment Guidelines) -->
+            <!-- waveform 轨波形层(对齐上游 ViewportWaveformVisualizer:canvas 5 模式) -->
+            <template x-for="l in wfLayers()" :key="l.clip.id">
+              <div class="absolute pointer-events-auto cursor-move select-none"
+                   :style="wfStyle(l.clip, l.track)"
+                   @mousedown.stop="startDragWaveform($event, l.clip)">
+                <canvas class="w-full h-full block" data-wf-canvas
+                        x-init="wfInit($el, l.clip, l.track)"></canvas>
+                <div x-show="selClip === l.clip && gizmoMode === 'transform'"
+                     class="absolute inset-0 border-2 border-indigo-500/80 rounded-sm pointer-events-none"></div>
+              </div>
+            </template>
+            <!-- DOM 合成层:选中 clip 预览(对齐 vidonex activeVisualClips → TransformGizmo) -->
+            <template x-if="selClip && isVisualClip(selClipTrackKind)">
+              <div class="absolute inset-0">
+                <!-- clip 画面:按 clipBounds 定位 + 旋转 + 不透明度(裁剪用 clip-path) -->
+                <div class="absolute pointer-events-auto cursor-move select-none flex items-center justify-center"
+                     :style="clipRenderStyle"
+                     @mousedown.stop="startClipDrag($event)">
+                  <img :src="selClipThumb" class="w-full h-full object-cover pointer-events-none select-none rounded-sm" alt="">
+                </div>
+                <!-- TransformGizmo(非裁剪模式) -->
+                <template x-if="gizmoMode === 'transform'">
+                  <div class="absolute border-2 border-indigo-500 bg-indigo-500/5 hover:bg-indigo-500/10 cursor-move transition-shadow shadow-lg shadow-indigo-500/30 select-none z-[9999]"
+                       :style="gizmoFrameStyle"
+                       @mousedown.stop="startClipDrag($event)">
+                    <!-- 中心枢轴点(纯装饰) -->
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-indigo-400 pointer-events-none"></div>
+                    <!-- 旋转杆 + 圆钮 -->
+                    <div class="absolute -top-6 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-indigo-500 pointer-events-none"></div>
+                    <div class="absolute -top-8 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white border-2 border-indigo-500 cursor-grab active:cursor-grabbing hover:scale-125 transition-transform"
+                         @mousedown.stop="startRotate($event)"></div>
+                    <!-- 8 缩放手柄(正方形 12×12) -->
+                    <div class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-indigo-500 hover:scale-125 transition-transform cursor-nwse-resize" @mousedown.stop="startResize($event,'tl')"></div>
+                    <div class="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-indigo-500 hover:scale-125 transition-transform cursor-ns-resize" @mousedown.stop="startResize($event,'tc')"></div>
+                    <div class="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-indigo-500 hover:scale-125 transition-transform cursor-nesw-resize" @mousedown.stop="startResize($event,'tr')"></div>
+                    <div class="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-white border-2 border-indigo-500 hover:scale-125 transition-transform cursor-ew-resize" @mousedown.stop="startResize($event,'mr')"></div>
+                    <div class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-indigo-500 hover:scale-125 transition-transform cursor-nwse-resize" @mousedown.stop="startResize($event,'br')"></div>
+                    <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-indigo-500 hover:scale-125 transition-transform cursor-ns-resize" @mousedown.stop="startResize($event,'bc')"></div>
+                    <div class="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-indigo-500 hover:scale-125 transition-transform cursor-nesw-resize" @mousedown.stop="startResize($event,'bl')"></div>
+                    <div class="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-3 bg-white border-2 border-indigo-500 hover:scale-125 transition-transform cursor-ew-resize" @mousedown.stop="startResize($event,'ml')"></div>
+                  </div>
+                </template>
+                <!-- CropGizmo(裁剪模式:amber 虚线框 + 4 角括号 + 4 边中点) -->
+                <template x-if="gizmoMode === 'crop'">
+                  <div class="absolute pointer-events-none" :style="gizmoFrameStyle">
+                    <div class="absolute inset-0 border-2 border-dashed border-amber-400"></div>
+                    <!-- 九宫格 -->
+                    <div class="absolute inset-y-0 left-1/3 border-l border-amber-400/40 -ml-px"></div>
+                    <div class="absolute inset-y-0 left-2/3 border-l border-amber-400/40 -ml-px"></div>
+                    <div class="absolute inset-x-0 top-1/3 border-t border-amber-400/40 -mt-px"></div>
+                    <div class="absolute inset-x-0 top-2/3 border-t border-amber-400/40 -mt-px"></div>
+                    <!-- 4 角括号 -->
+                    <div class="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-amber-400 pointer-events-auto cursor-nwse-resize" @mousedown.stop="startCrop($event,'tl')"></div>
+                    <div class="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-amber-400 pointer-events-auto cursor-nesw-resize" @mousedown.stop="startCrop($event,'tr')"></div>
+                    <div class="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-amber-400 pointer-events-auto cursor-nwse-resize" @mousedown.stop="startCrop($event,'br')"></div>
+                    <div class="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-amber-400 pointer-events-auto cursor-nesw-resize" @mousedown.stop="startCrop($event,'bl')"></div>
+                    <!-- 4 边中点条 -->
+                    <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-6 h-2 bg-amber-400 rounded-sm pointer-events-auto cursor-ns-resize" @mousedown.stop="startCrop($event,'t')"></div>
+                    <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-6 h-2 bg-amber-400 rounded-sm pointer-events-auto cursor-ns-resize" @mousedown.stop="startCrop($event,'b')"></div>
+                    <div class="absolute top-1/2 -left-1 -translate-y-1/2 w-2 h-6 bg-amber-400 rounded-sm pointer-events-auto cursor-ew-resize" @mousedown.stop="startCrop($event,'l')"></div>
+                    <div class="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-6 bg-amber-400 rounded-sm pointer-events-auto cursor-ew-resize" @mousedown.stop="startCrop($event,'r')"></div>
+                  </div>
+                </template>
+                <!-- 浮动裁剪操作胶囊(T/B/L/R 百分比) -->
+                <div x-show="gizmoMode === 'crop' && selClip"
+                     class="absolute -bottom-9 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-2 px-3 py-1 rounded-full bg-gray-900/90 border border-amber-400/50 shadow-lg text-[10px] font-mono text-amber-300 whitespace-nowrap">
+                  <span>T:<span x-text="Math.round(((selClip.crop||{}).top||0)) + '%'"></span></span>
+                  <span>B:<span x-text="Math.round(((selClip.crop||{}).bottom||0)) + '%'"></span></span>
+                  <span>L:<span x-text="Math.round(((selClip.crop||{}).left||0)) + '%'"></span></span>
+                  <span>R:<span x-text="Math.round(((selClip.crop||{}).right||0)) + '%'"></span></span>
+                </div>
+              </div>
+            </template>
+            <!-- 智能中心对齐线(对齐 vidonex Smart Alignment Guidelines) -->
             <div class="absolute inset-y-0 left-1/2 border-l border-dashed border-indigo-400/30 -ml-px pointer-events-none"></div>
             <div class="absolute inset-x-0 top-1/2 border-t border-dashed border-indigo-400/30 -mt-px pointer-events-none"></div>
             <div class="absolute left-1/2 top-1/2 w-1.5 h-1.5 -ml-[3px] -mt-[3px] rounded-full bg-indigo-400/60 pointer-events-none"></div>
+            <!-- 拖动吸附辅助线(对齐上游 showGuide*) -->
+            <div x-show="showGuide['cx']" class="absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-cyan-400 z-[9990] pointer-events-none shadow-[0_0_10px_rgba(34,211,238,0.9)] animate-pulse"></div>
+            <div x-show="showGuide['cy']" class="absolute left-0 right-0 top-1/2 -mt-px h-0.5 bg-cyan-400 z-[9990] pointer-events-none shadow-[0_0_10px_rgba(34,211,238,0.9)] animate-pulse"></div>
+            <div x-show="showGuide['l']" class="absolute top-0 bottom-0 left-0 w-1 bg-indigo-400 z-[9990] pointer-events-none shadow-[0_0_10px_rgba(129,140,248,0.9)]"></div>
+            <div x-show="showGuide['r']" class="absolute top-0 bottom-0 right-0 w-1 bg-indigo-400 z-[9990] pointer-events-none shadow-[0_0_10px_rgba(129,140,248,0.9)]"></div>
+            <div x-show="showGuide['t']" class="absolute left-0 right-0 top-0 h-1 bg-indigo-400 z-[9990] pointer-events-none shadow-[0_0_10px_rgba(129,140,248,0.9)]"></div>
+            <div x-show="showGuide['b']" class="absolute left-0 right-0 bottom-0 h-1 bg-indigo-400 z-[9990] pointer-events-none shadow-[0_0_10px_rgba(129,140,248,0.9)]"></div>
           </div>
         </div>
         <!-- 空态提示 -->
@@ -93,6 +179,17 @@
         </div>
         <!-- 右:循环/音量/缩放 -->
         <div class="flex items-center gap-2.5">
+          <!-- 视口工具:变换/裁剪切换(选中 visual clip 时可用,对齐 vidonex Transform/Crop Gizmo) -->
+          <div x-show="selClip && isVisualClip(selClipTrackKind)" class="flex items-center rounded-md border border-gray-800 overflow-hidden">
+            <button type="button" @click="gizmoMode = 'transform'"
+                    class="px-2 py-1 text-[10px] font-medium transition"
+                    :class="gizmoMode === 'transform' ? 'bg-indigo-500/20 text-indigo-300' : 'text-gray-500 hover:text-gray-300'"
+                    title="变换(移动/缩放/旋转)">变换</button>
+            <button type="button" @click="gizmoMode = 'crop'"
+                    class="px-2 py-1 text-[10px] font-medium transition border-l border-gray-800"
+                    :class="gizmoMode === 'crop' ? 'bg-amber-500/20 text-amber-300' : 'text-gray-500 hover:text-gray-300'"
+                    title="裁剪">裁剪</button>
+          </div>
           <!-- 音频电平表(对齐 vidonex AudioPeakMeter:播放时 L/R 实时柱) -->
           <div class="flex items-end gap-[3px] h-4 px-1.5 rounded bg-gray-950/60 border border-gray-800/80"
                x-data="audioMeter()" title="音频电平">
@@ -292,6 +389,60 @@
         <button type="button" @click="start()"
                 class="px-4 py-1.5 rounded-lg text-xs font-medium bg-emerald-500 hover:bg-emerald-400 text-gray-950 transition"
                 x-text="window.vp && window.vp.projectViewOf && window.vp.projectViewOf.busy ? '渲染中…' : '开始渲染'"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 图可视化弹窗(对齐 vidonex GraphVisualizerModal:filtergraph DAG)。
+       GET /api/projects/{id}/spec/graph → mermaid 文本 → 简易 SVG 渲染 + 源码。 -->
+  <div x-data="graphModal({{.Project.ID}})" x-show="open" x-cloak
+       class="fixed inset-0 z-[89] flex items-center justify-center p-4"
+       style="background:rgba(0,0,0,.6);backdrop-filter:blur(2px)"
+       @click.self="close()">
+    <div class="w-full max-w-4xl rounded-xl bg-gray-950 border border-gray-800 shadow-2xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gray-200 flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M4 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM20 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM12 3v4M12 11v4M6 7v8m12-8v2a2 2 0 0 1-2 2h-8"/></svg>
+          Filtergraph DAG
+        </h3>
+        <div class="flex items-center gap-2">
+          <button type="button" @click="reload()" class="px-2 py-1 rounded text-[10px] text-gray-400 hover:text-white bg-gray-900 border border-gray-800 hover:border-indigo-500 transition flex items-center gap-1">
+            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11v-1a4 4 0 0 1 4-4h14" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 22l-4-4 4-4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 13v1a4 4 0 0 1-4 4H3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            刷新
+          </button>
+          <button type="button" @click="copyCode()" class="px-2 py-1 rounded text-[10px] text-gray-400 hover:text-white bg-gray-900 border border-gray-800 hover:border-indigo-500 transition"
+                  x-text="isCopied ? '已复制' : '复制 Mermaid'"></button>
+          <button type="button" class="p-1 text-gray-500 hover:text-gray-300 transition" @click="close()">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="p-4 space-y-4">
+        <!-- 加载态 -->
+        <div x-show="loading" class="flex flex-col items-center justify-center py-16 gap-3">
+          <svg class="w-8 h-8 text-indigo-500 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+          <span class="text-xs text-gray-400">编译 filtergraph DAG…</span>
+        </div>
+        <!-- 错误态 -->
+        <div x-show="error && !loading" class="p-4 bg-red-950/40 border border-red-800/80 rounded-lg text-xs text-red-300 font-mono">
+          <div class="font-semibold mb-1">无法渲染图:</div>
+          <div x-text="error"></div>
+        </div>
+        <!-- DAG SVG -->
+        <div x-show="!error && !loading">
+          <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-4 overflow-x-auto min-h-[260px] flex items-center justify-center"
+               dir="ltr">
+            <div x-show="svgHtml" x-html="svgHtml" class="mx-auto"></div>
+            <div x-show="!svgHtml" class="text-xs text-gray-500">无 filtergraph(空时间轴?)</div>
+          </div>
+          <!-- mermaid 源码 -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-xs text-gray-400">
+              <span>Mermaid 定义</span>
+            </div>
+            <pre class="bg-gray-950 p-3 rounded-lg border border-gray-800 text-[11px] font-mono text-gray-300 overflow-x-auto max-h-40 leading-relaxed" x-text="code"></pre>
+          </div>
+        </div>
       </div>
     </div>
   </div>

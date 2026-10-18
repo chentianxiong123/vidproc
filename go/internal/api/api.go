@@ -159,6 +159,8 @@ func Router(db *sql.DB) http.Handler {
 	mux.HandleFunc("POST /api/projects/{id}/assets", AssetsUploadHandler(db))
 	mux.HandleFunc("DELETE /api/assets/{id}", AssetsDeleteHandler(db))
 	mux.HandleFunc("GET /api/assets/{id}/frame", ThumbFrameHandler(db))
+	// filtergraph DAG 可视化(GraphVisualizerModal:spec → mermaid)format=dot 可换 DOT
+	mux.HandleFunc("GET /api/projects/{id}/spec/graph", SpecGraphHandler(db))
 
 	return mux
 }

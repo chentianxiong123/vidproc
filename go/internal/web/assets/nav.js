@@ -179,8 +179,10 @@
       zoom: 1, // 缩放系数(x1 基准 80px/s)
       playhead: 0, // 当前播放头秒
       selectedId: null, // 选中 clip id
+      selectedTrackId: null, // 选中轨道 id(轨道头点击;Ducking/Waveform 检查器用)
       pps: 80, // 像素/秒(zoom 驱动)
       drag: null, // 进行中的拖拽 {clip, trackIdx, startX, origStart}
+      scrubbing: false, // 播放头拖拽中(scrub)
       trackWidth: 800, // 滚动区实测宽,做成 clip 区域 min-width
       loading: true,
       error: '',
@@ -219,6 +221,8 @@
           this.updateTrackWidth();
           // 历史栈底 = 加载态(undo 恢复到操作前态)
           this.pushHistory();
+          // 视口 DOM 合成层(gizmo/波形)绑定同一 tl 引用 —— 编辑一致落库
+          window.dispatchEvent(new CustomEvent('timeline-loaded', { detail: { tl: this.tl, pid: this.pid } }));
         } catch (e) {
           this.error = '时间轴加载失败: ' + e.message;
         } finally {
@@ -236,6 +240,47 @@
             detail: { t: this.playhead, pid: this.pid, source: o.source || 'timeline' },
           }));
         }
+      },
+
+      // ============ 播放头拖拽 scrub(对齐 vidonex TimelineRuler playhead 拖动)============
+      // pointerdown 在播放头/标尺上按下 → 捕获指针 → move 持续 seek,up 释放。
+      // 坐标:48 = 轨道头列宽度(左-48 相对时间轴工作区),x/pps 反算秒。
+      beginScrub(e) {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.scrubbing = true;
+        // 拖动即暂停自动播放(播放头已由 pointer 接管)
+        const pb = window.vp && window.vp.playback;
+        if (pb && pb.isPlaying) pb.pause();
+        this._scrubMove = (ev) => this.onScrubMove(ev);
+        this._scrubEnd = () => this.onScrubEnd();
+        window.addEventListener('pointermove', this._scrubMove);
+        window.addEventListener('pointerup', this._scrubEnd, { once: true });
+        try { e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId); } catch (_) {}
+        this.onScrubMove(e);
+      },
+      onScrubMove(e) {
+        if (!this.scrubbing) return;
+        // 基准:时间轴滚动容器(与 seek($event) 同坐标)。播放头挂在轨道区,
+        // 其 offsetParent 链上第一个 overflow-auto 容器即基准。48 = 轨道头列宽。
+        let el = e.target;
+        const root = this.$el;
+        while (el && el !== root && !(el.classList && (el.classList.contains('overflow-auto') || el.classList.contains('overflow-x-auto') || el.classList.contains('overflow-y-auto')))) {
+          el = el.parentElement;
+        }
+        if (!el || el === root) el = root;
+        const rect = el.getBoundingClientRect();
+        const x = e.clientX - rect.left - 48; // 减轨道头列宽
+        const t = Math.max(0, x / this.pps);
+        this.setPlayhead(t, { source: 'timeline' });
+      },
+      onScrubEnd() {
+        window.removeEventListener('pointermove', this._scrubMove);
+        window.removeEventListener('pointerup', this._scrubEnd);
+        this.scrubbing = false;
+        this._scrubMove = null;
+        this._scrubEnd = null;
       },
 
       init() {
@@ -647,6 +692,7 @@
       // ============ 选中 clip → 检查器 ============
       select(clip) {
         this.selectedId = this.selectedId === clip.id ? null : clip.id;
+        this.selectedTrackId = null;
         // 广播选中的 clip 数据(检查器面板监听渲染属性;未选中 → null 重置)
         // 附带 timelineEditor 引用(editor.editClip 供检查器 autosave 落库)
         const track = this.tracks().find((tr) => tr.clips.some((c) => c.id === clip.id));
@@ -655,6 +701,21 @@
             clip: this.selectedId ? clip : null,
             trackKind: this.selectedId && track ? track.kind : null,
             tl: this.selectedId ? this.tl : null,
+            editor: this,
+          },
+        }));
+      },
+
+      // 选中轨道(轨道头点击)→ Ducking/Waveform 检查器。toggle 式。
+      selectTrack(track) {
+        this.selectedTrackId = this.selectedTrackId === track.id ? null : track.id;
+        this.selectedId = null;
+        const tr = this.selectedTrackId ? track : null;
+        window.dispatchEvent(new CustomEvent('track-selected', {
+          detail: {
+            track: tr,
+            tracks: this.tracks(),
+            tl: this.tl,
             editor: this,
           },
         }));
@@ -905,6 +966,44 @@
       yamlSafe(s) {
         return s ? String(s).replace(/\\/g, '/') : s;
       },
+
+      // yamlBlock:检查器对象 → YAML 缩进行(标量/嵌套对象/对象数组,
+      // 前端序列化专用,避免手拼大段)。返回行数组,indent 由调用方给。
+      yamlBlock(obj, indent) {
+        if (!obj || typeof obj !== 'object') return [];
+        const pad = ' '.repeat(indent);
+        const out = [];
+        for (const [k, v] of Object.entries(obj)) {
+          if (v === undefined || v === null || v === '') continue;
+          if (Array.isArray(v)) {
+            if (!v.length) continue;
+            out.push(`${pad}${k}:`);
+            for (const item of v) {
+              if (typeof item === 'object') {
+                out.push(`${pad}  - {${Object.entries(item)
+                  .filter(([, iv]) => iv !== undefined && iv !== null && iv !== '')
+                  .map(([ik, iv]) => `${ik}: ${this.yamlScalar(iv)}`).join(', ')}}`);
+              } else {
+                out.push(`${pad}  - ${this.yamlScalar(item)}`);
+              }
+            }
+          } else if (typeof v === 'object') {
+            out.push(`${pad}${k}:`);
+            for (const [ik, iv] of Object.entries(v)) {
+              if (iv === undefined || iv === null || iv === '') continue;
+              out.push(`${pad}  ${ik}: ${this.yamlScalar(iv)}`);
+            }
+          } else {
+            out.push(`${pad}${k}: ${this.yamlScalar(v)}`);
+          }
+        }
+        return out;
+      },
+      // yamlScalar:字符串加引号,数字/布尔原样。
+      yamlScalar(v) {
+        if (typeof v === 'string') return `"${this.yamlSafe(v)}"`;
+        return String(v);
+      },
       buildSpecYAML() {
         const tl = this.tl;
         const lines = [];
@@ -937,7 +1036,41 @@
                   if (c.position.y) lines.push(`          y: ${c.position.y}`);
                   if (c.position.alignment && c.position.alignment !== 'center') lines.push(`          alignment: "${c.position.alignment}"`);
                 }
+                if (c.fade_in) lines.push(`        fade_in: "${c.fade_in}s"`);
+                if (c.fade_out) lines.push(`        fade_out: "${c.fade_out}s"`);
                 if (c.has_audio === false) lines.push(`        has_audio: false`);
+                // —— 检查器子面板字段(对齐 vidonex chroma/color/ken_burns/subtitles/waveform/crop)——
+                if (c.crop && (c.crop.top || c.crop.bottom || c.crop.left || c.crop.right)) {
+                  lines.push(`        crop: {top: ${c.crop.top || 0}, bottom: ${c.crop.bottom || 0}, left: ${c.crop.left || 0}, right: ${c.crop.right || 0}}`);
+                }
+                if (c.chroma_key && c.chroma_key.color) {
+                  lines.push('        chroma_key:');
+                  for (const ln of this.yamlBlock(c.chroma_key, 10)) lines.push(ln);
+                }
+                if (c.color_grading && Object.keys(c.color_grading).length) {
+                  lines.push('        color_grading:');
+                  for (const ln of this.yamlBlock(c.color_grading, 10)) lines.push(ln);
+                }
+                if (c.ken_burns && c.ken_burns.start_scale !== undefined) {
+                  lines.push('        ken_burns:');
+                  for (const ln of this.yamlBlock(c.ken_burns, 10)) lines.push(ln);
+                }
+                if (c.subtitles && (c.subtitles.font_size || c.subtitles.font_color || c.subtitles.cues && c.subtitles.cues.length)) {
+                  lines.push('        subtitles:');
+                  for (const ln of this.yamlBlock(c.subtitles, 10)) lines.push(ln);
+                }
+                if (c.waveform && c.waveform.mode) {
+                  lines.push('        waveform:');
+                  for (const ln of this.yamlBlock(c.waveform, 10)) lines.push(ln);
+                }
+              }
+            }
+            // —— 轨道级:ducking(对齐 vidonex track ducking)——
+            if (tr.duck_under || tr.ducking) {
+              if (tr.duck_under) lines.push(`    duck_under: "${tr.duck_under}"`);
+              if (tr.ducking) {
+                lines.push('    ducking:');
+                for (const ln of this.yamlBlock(tr.ducking, 6)) lines.push(ln);
               }
             }
             if (tr.transitions && tr.transitions.length) {
@@ -1007,6 +1140,16 @@
       query: '',
       uploading: false,
       error: '',
+      // ProbeDetailsModal(对齐 vidonex media store:activeProbeAsset/isProbeModalOpen)
+      activeProbeAsset: null,
+      isProbeModalOpen: false,
+
+      // 打开素材详情(点卡片 i 信息钮);7 字段与上游一致
+      openProbeModal(a) {
+        this.activeProbeAsset = a;
+        this.isProbeModalOpen = true;
+      },
+      closeProbeModal() { this.isProbeModalOpen = false; },
 
       async init() {
         if (!this.pid) return;
@@ -1066,34 +1209,175 @@
   };
 
   // ============ 检查器(clipInspector)============
-  // 挂在 inspector_panel.监听时间轴 clip-selected 事件,持有选中 clip 引用
-  // (就是 tl 里的对象),编辑字段 → editor.editClip() 300ms debounce autosave。
-  // 对齐 vidonex InspectorPanel:时序/变换/音频分组 + commitChange 历史。
+  // 挂在 inspector_panel.监听时间轴 clip-selected / track-selected 事件,
+  // 持有选中 clip 引用(就是 tl 里的对象),编辑字段 → editor.editClip()
+  // 300ms debounce autosave。
+  // 对齐 vidonex InspectorPanel 子面板族:
+  //   clip 选中 → 时序/变换/音频 + ColorAdjustments + ChromaKey + KenBurns
+  //               (+ waveform 轨:WaveformInspector / subtitle 轨:SubtitleInspector)
+  //   track 选中 → DuckingInspector(waveform 轨 → WaveformInspector)
+  // 子面板字段先镜像进 cfg(默认值),commit 时写回 clip 对象再落库。
   window.clipInspector = function () {
     return {
       clip: null,      // 选中 clip 引用(直接改字段,时间轴同步反映)
       trackKind: null, // video/overlay/audio/waveform/subtitle
+      track: null,     // 选中轨道(轨道头点击;track 级检查器用)
+      tracks: [],      // 全部轨道(ducking target_track 下拉用)
       _editor: null,   // timelineEditor 引用(提供 editClip/persistTimeline)
+      // —— 子面板镜像配置(编辑对象;commit 时写回 clip/track)——
+      cfg: {
+        chroma_key: { enabled: false, color: '#00FF00', similarity: 0.3, blend: 0.1, despill: true },
+        color_grading: { brightness: 0, contrast: 100, saturation: 100, gamma: 100, highlights: 0, shadows: 0, whites: 0, blacks: 0, temperature: 0, tint: 0, blur: 0, sharpen: 0 },
+        ken_burns: { enabled: false, start_scale: 1.0, end_scale: 1.25, easing: 'easeInOutQuad' },
+        subtitles: { font_size: 32, font_color: '#FFFFFF', outline_width: 2, outline_color: '#000000', box: false, cues: [] },
+        waveform: { mode: 'peak_to_peak', color: '#00E6B4', secondary_color: '#6366F1', width: 1200, height: 180, position_x: 0, position_y: 0, opacity: 1.0, glow: true, glow_radius: 8, bar_density: 48, bar_roundness: 6, line_width: 3, fill_area: false, inner_radius: 0.45 },
+        ducking: { enabled: false, target_track: '', threshold: -25, duck_amount: -14, attack_ms: 50, release_ms: 500 },
+      },
 
       init() {
         window.addEventListener('clip-selected', (e) => {
           const d = e.detail || {};
           this.clip = d.clip || null;
           this.trackKind = d.trackKind || null;
+          this.track = null; // clip 选中掩盖 track 选中
+          this.tracks = (d.tl && d.tl.tracks) || this.tracks;
           this._editor = d.editor || null;
-          // 规范化可选字段(x-model.number 需要数值存在)
           if (this.clip) {
-            this.clip.speed = this.clip.speed || 1;
-            this.clip.trim = this.clip.trim || 0;
-            this.clip.scale = this.clip.scale || 1;
-            this.clip.rotation = this.clip.rotation || 0;
-            this.clip.opacity = this.clip.opacity !== undefined ? this.clip.opacity : 1;
-            this.clip.volume = this.clip.volume !== undefined ? this.clip.volume : 1;
-            this.clip.blend_mode = this.clip.blend_mode || 'normal';
-            if (!this.clip.position) this.clip.position = { x: 0, y: 0, alignment: 'center' };
-            if (!this.clip.position.alignment) this.clip.position.alignment = 'center';
+            this.normalizeClip();
+            this.syncFromClip();
+          } else {
+            this.resetCfg();
           }
         });
+        window.addEventListener('track-selected', (e) => {
+          const d = e.detail || {};
+          this.track = d.track || null;
+          this.clip = null;
+          this.tracks = d.tracks || this.tracks;
+          this._editor = d.editor || null;
+          this.trackKind = this.track ? this.track.kind : null;
+          if (this.track) this.syncFromTrack();
+        });
+      },
+
+      // 规范化可选字段(x-model.number 需要数值存在)
+      normalizeClip() {
+        const c = this.clip;
+        c.speed = c.speed || 1;
+        c.trim = c.trim || 0;
+        c.scale = c.scale || 1;
+        c.rotation = c.rotation || 0;
+        c.opacity = c.opacity !== undefined ? c.opacity : 1;
+        c.volume = c.volume !== undefined ? c.volume : 1;
+        c.blend_mode = c.blend_mode || 'normal';
+        if (!c.position) c.position = { x: 0, y: 0, alignment: 'center' };
+        if (!c.position.alignment) c.position.alignment = 'center';
+      },
+
+      // —— 子面板镜像同步 ——
+      syncFromClip() {
+        const c = this.clip;
+        // ChromaKey
+        const ck = c.chroma_key || null;
+        this.cfg.chroma_key = {
+          enabled: !!ck,
+          color: (ck && (ck.color || ck.key_color)) || '#00FF00',
+          similarity: ck ? (ck.similarity ?? 0.3) : 0.3,
+          blend: ck ? (ck.blend ?? 0.1) : 0.1,
+          despill: ck ? (ck.despill ?? true) : true,
+        };
+        // ColorGrading(UI 双极值 ↔ spec 值映射,与上游一致)
+        const cg = c.color_grading || null;
+        this.cfg.color_grading = {
+          brightness: Math.round(((cg && cg.brightness !== undefined ? cg.brightness : 0) / 0.5) * 100),
+          contrast: Math.round((((cg && cg.contrast !== undefined ? cg.contrast : 1.0) - 1.0) * 125)),
+          saturation: Math.round((((cg && cg.saturation !== undefined ? cg.saturation : 1.0) - 1.0) * 100)),
+          gamma: Math.round((((cg && cg.gamma !== undefined ? cg.gamma : 1.0) - 1.0) * 133.3)),
+          highlights: Math.round((cg && cg.highlights !== undefined ? cg.highlights : 0) * 100),
+          shadows: Math.round((cg && cg.shadows !== undefined ? cg.shadows : 0) * 100),
+          whites: Math.round((cg && cg.whites !== undefined ? cg.whites : 0) * 100),
+          blacks: Math.round((cg && cg.blacks !== undefined ? cg.blacks : 0) * 100),
+          temperature: Math.round(((cg && cg.temperature !== undefined ? cg.temperature : 0) / 0.8) * 100),
+          tint: Math.round(((cg && cg.tint !== undefined ? cg.tint : 0) / 0.8) * 100),
+          blur: cg ? Math.round(cg.blur || 0) : 0,
+          sharpen: cg ? Math.round(cg.sharpen || 0) : 0,
+        };
+        // KenBurns
+        const kb = c.ken_burns || null;
+        this.cfg.ken_burns = {
+          enabled: !!kb,
+          start_scale: (kb && kb.start_scale) || 1.0,
+          end_scale: (kb && kb.end_scale) || 1.25,
+          easing: (kb && kb.easing) || 'easeInOutQuad',
+        };
+        // Subtitles
+        const st = c.subtitles || null;
+        this.cfg.subtitles = {
+          font_size: (st && st.font_size) || 32,
+          font_color: (st && st.font_color) || '#FFFFFF',
+          outline_width: st ? (st.outline_width ?? 2) : 2,
+          outline_color: (st && st.outline_color) || '#000000',
+          box: st ? (st.box ?? false) : false,
+          cues: (st && st.cues) || [],
+        };
+        // Waveform
+        const wf = c.waveform || null;
+        this.cfg.waveform = {
+          mode: (wf && wf.mode) || 'peak_to_peak',
+          color: (wf && wf.color) || '#00E6B4',
+          secondary_color: (wf && wf.secondary_color) || '#6366F1',
+          width: (wf && wf.width) || 1200,
+          height: (wf && wf.height) || 180,
+          position_x: c.position.x || 0,
+          position_y: c.position.y || 0,
+          opacity: c.opacity !== undefined ? c.opacity : 1.0,
+          glow: wf ? (wf.glow ?? true) : true,
+          glow_radius: (wf && wf.glow_radius) || 8,
+          bar_density: (wf && wf.bar_density) || 48,
+          bar_roundness: (wf && wf.bar_roundness) || 6,
+          line_width: (wf && wf.line_width) || 3,
+          fill_area: wf ? (wf.fill_area ?? false) : false,
+          inner_radius: (wf && wf.inner_radius) || 0.45,
+        };
+      },
+      // track 级同步(ducking / waveform)
+      syncFromTrack() {
+        const tr = this.track;
+        this.cfg.ducking = {
+          enabled: !!(tr.ducking || tr.duck_under),
+          target_track: tr.duck_under || (this.voiceTracks()[0] ? this.voiceTracks()[0].id : ''),
+          threshold: (tr.ducking && tr.ducking.threshold !== undefined) ? tr.ducking.threshold : -25,
+          duck_amount: (tr.ducking && tr.ducking.duck_db !== undefined) ? tr.ducking.duck_db : -14,
+          attack_ms: (tr.ducking && tr.ducking.attack_ms !== undefined) ? tr.ducking.attack_ms : 50,
+          release_ms: (tr.ducking && tr.ducking.release_ms !== undefined) ? tr.ducking.release_ms : 500,
+        };
+        const wf = tr.waveform || null;
+        this.cfg.waveform = {
+          mode: (wf && wf.mode) || 'peak_to_peak',
+          color: (wf && wf.color) || '#00E6B4',
+          secondary_color: (wf && wf.secondary_color) || '#6366F1',
+          width: (wf && wf.width) || 1200,
+          height: (wf && wf.height) || 180,
+          position_x: 0, position_y: 0,
+          opacity: (wf && wf.opacity !== undefined) ? wf.opacity : 1.0,
+          glow: wf ? (wf.glow ?? true) : true,
+          glow_radius: (wf && wf.glow_radius) || 8,
+          bar_density: (wf && wf.bar_density) || 48,
+          bar_roundness: (wf && wf.bar_roundness) || 6,
+          line_width: (wf && wf.line_width) || 3,
+          fill_area: wf ? (wf.fill_area ?? false) : false,
+          inner_radius: (wf && wf.inner_radius) || 0.45,
+        };
+      },
+      resetCfg() {
+        this.cfg.chroma_key = { enabled: false, color: '#00FF00', similarity: 0.3, blend: 0.1, despill: true };
+        this.cfg.ken_burns = { enabled: false, start_scale: 1.0, end_scale: 1.25, easing: 'easeInOutQuad' };
+      },
+
+      // 可用闪避目标轨道(其它 audio/video 轨)
+      voiceTracks() {
+        const tid = this.track ? this.track.id : (this.trackKind ? null : null);
+        return this.tracks.filter((t) => t.id !== tid && (t.kind === 'audio' || t.kind === 'video'));
       },
 
       // 位置 X/Y 代理(clip.position 可能未初始化)
@@ -1112,6 +1396,206 @@
         }
       },
 
+      // —— 子面板 commit:写回 clip/track → editClip autosave ——
+      // ChromaKey:enable 切换删除/重建 chroma_key
+      toggleChromaKey() {
+        const c = this.clip;
+        if (!c) return;
+        if (this.cfg.chroma_key.enabled) {
+          c.chroma_key = {
+            color: this.cfg.chroma_key.color,
+            similarity: this.cfg.chroma_key.similarity,
+            blend: this.cfg.chroma_key.blend,
+            despill: this.cfg.chroma_key.despill,
+          };
+        } else {
+          delete c.chroma_key;
+        }
+        this.commit('Toggle Chroma Key');
+      },
+      commitChromaKey() {
+        const c = this.clip;
+        if (!c || !this.cfg.chroma_key.enabled) return;
+        c.chroma_key = {
+          color: this.cfg.chroma_key.color,
+          similarity: this.cfg.chroma_key.similarity,
+          blend: this.cfg.chroma_key.blend,
+          despill: this.cfg.chroma_key.despill,
+        };
+        this.commit('Update Chroma Key');
+      },
+
+      // ColorGrading:UI 双极值 → spec 值(与上游映射一致)
+      commitColorGrading() {
+        const c = this.clip;
+        if (!c) return;
+        const g = this.cfg.color_grading;
+        c.color_grading = {
+          brightness: +(g.brightness * 0.005).toFixed(3),
+          contrast: +(1.0 + g.contrast * 0.008).toFixed(3),
+          saturation: +(1.0 + g.saturation * 0.01).toFixed(3),
+          gamma: +(1.0 + g.gamma * 0.0075).toFixed(3),
+          temperature: +(g.temperature * 0.008).toFixed(3),
+          tint: +(g.tint * 0.008).toFixed(3),
+          highlights: +(g.highlights * 0.01).toFixed(3),
+          shadows: +(g.shadows * 0.01).toFixed(3),
+          whites: +(g.whites * 0.01).toFixed(3),
+          blacks: +(g.blacks * 0.01).toFixed(3),
+          blur: g.blur,
+          sharpen: g.sharpen,
+        };
+        this.commit('Update Color Adjustments');
+      },
+      resetColorGrading() {
+        const g = this.cfg.color_grading;
+        g.brightness = 0; g.contrast = 100; g.saturation = 100; g.gamma = 100;
+        g.highlights = 0; g.shadows = 0; g.whites = 0; g.blacks = 0;
+        g.temperature = 0; g.tint = 0; g.blur = 0; g.sharpen = 0;
+        this.commitColorGrading();
+      },
+
+      // KenBurns
+      toggleKenBurns() {
+        const c = this.clip;
+        if (!c) return;
+        if (this.cfg.ken_burns.enabled) {
+          c.ken_burns = {
+            start_scale: this.cfg.ken_burns.start_scale,
+            end_scale: this.cfg.ken_burns.end_scale,
+            easing: this.cfg.ken_burns.easing,
+          };
+        } else {
+          delete c.ken_burns;
+        }
+        this.commit('Toggle Ken Burns Animation');
+      },
+      commitKenBurns() {
+        const c = this.clip;
+        if (!c || !this.cfg.ken_burns.enabled) return;
+        c.ken_burns = {
+          start_scale: this.cfg.ken_burns.start_scale,
+          end_scale: this.cfg.ken_burns.end_scale,
+          easing: this.cfg.ken_burns.easing,
+        };
+        this.commit('Update Ken Burns');
+      },
+
+      // Subtitles(cues 增删改)
+      addCue() {
+        this.cfg.subtitles.cues.push({ start: 0, end: 3.0, text: 'New Subtitle Caption' });
+        this.commitSubtitles();
+      },
+      removeCue(idx) {
+        this.cfg.subtitles.cues.splice(idx, 1);
+        this.commitSubtitles();
+      },
+      commitSubtitles() {
+        const c = this.clip;
+        if (!c) return;
+        const s = this.cfg.subtitles;
+        c.subtitles = {
+          font_size: s.font_size,
+          font_color: s.font_color,
+          outline_width: s.outline_width,
+          outline_color: s.outline_color,
+          box: s.box,
+          cues: s.cues,
+        };
+        this.commit('Update Subtitles');
+      },
+
+      // Waveform(clip/waveform 轨 track 写入;position/opacity 同步 clip)
+      commitWaveform() {
+        const target = this.clip || (this.track && this.track.kind === 'waveform' ? this.track : null);
+        if (!target) return;
+        const w = this.cfg.waveform;
+        const wf = {
+          mode: w.mode,
+          color: w.color,
+          secondary_color: w.secondary_color,
+          width: w.width,
+          height: w.height,
+          opacity: w.opacity,
+          glow: w.glow,
+          glow_radius: w.glow_radius,
+          bar_density: w.bar_density,
+          bar_roundness: w.bar_roundness,
+          line_width: w.line_width,
+          fill_area: w.fill_area,
+          inner_radius: w.inner_radius,
+          position: (this.clip || this.track) ? { x: w.position_x, y: w.position_y, alignment: 'center' } : undefined,
+        };
+        if (this.clip) {
+          target.waveform = wf;
+          target.position = target.position || {};
+          target.position.x = w.position_x;
+          target.position.y = w.position_y;
+          target.opacity = w.opacity;
+        } else {
+          target.waveform = wf;
+        }
+        this.commit(this.clip ? 'Update Waveform' : 'Update Track Waveform');
+      },
+      resetWaveform() {
+        const w = this.cfg.waveform;
+        w.mode = 'peak_to_peak'; w.color = '#00E6B4'; w.secondary_color = '#6366F1';
+        w.width = 1200; w.height = 180; w.position_x = 0; w.position_y = 0; w.opacity = 1.0;
+        w.glow = true; w.glow_radius = 8; w.bar_density = 48; w.bar_roundness = 6;
+        w.line_width = 3; w.fill_area = false; w.inner_radius = 0.45;
+        this.commitWaveform();
+      },
+      // 预设样式卡
+      applyWaveformPreset(id) {
+        const w = this.cfg.waveform;
+        const presets = {
+          cyberpunk: { mode: 'peak_to_peak', color: '#00E6B4', secondary_color: '#6366F1', glow: true, glow_radius: 10, bar_density: 48, bar_roundness: 6 },
+          minimal: { mode: 'spectrum', color: '#F43F5E', secondary_color: '#FB923C', glow: false, glow_radius: 4, bar_density: 40, bar_roundness: 4 },
+          retro: { mode: 'wave', color: '#10B981', secondary_color: '#06B6D4', glow: true, glow_radius: 12, bar_density: 48, line_width: 3, fill_area: true },
+          glow: { mode: 'circular', color: '#A855F7', secondary_color: '#EC4899', glow: true, glow_radius: 10, bar_density: 64, inner_radius: 0.45 },
+        };
+        if (presets[id]) Object.assign(w, presets[id]);
+        this.commitWaveform();
+      },
+      // 对齐快捷钮
+      alignWaveform(pos) {
+        const tl = this._editor && this._editor.tl;
+        const ch = tl ? tl.height : 1080;
+        if (pos === 'center') { this.cfg.waveform.position_x = 0; this.cfg.waveform.position_y = 0; }
+        if (pos === 'lower') { this.cfg.waveform.position_x = 0; this.cfg.waveform.position_y = Math.round(ch * 0.28); }
+        this.commitWaveform();
+      },
+
+      // Ducking(track 级)
+      toggleDucking() {
+        const tr = this.track;
+        if (!tr) return;
+        if (this.cfg.ducking.enabled) {
+          tr.duck_under = this.cfg.ducking.target_track;
+          tr.ducking = {
+            threshold: this.cfg.ducking.threshold,
+            duck_db: this.cfg.ducking.duck_amount,
+            attack_ms: this.cfg.ducking.attack_ms,
+            release_ms: this.cfg.ducking.release_ms,
+          };
+        } else {
+          delete tr.duck_under;
+          delete tr.ducking;
+        }
+        this.commit('Toggle Sidechain Ducking');
+      },
+      commitDucking() {
+        const tr = this.track;
+        if (!tr || !this.cfg.ducking.enabled) return;
+        tr.duck_under = this.cfg.ducking.target_track;
+        tr.ducking = {
+          threshold: this.cfg.ducking.threshold,
+          duck_db: this.cfg.ducking.duck_amount,
+          attack_ms: this.cfg.ducking.attack_ms,
+          release_ms: this.cfg.ducking.release_ms,
+        };
+        this.commit('Update Ducking');
+      },
+
       // 编辑提交:不重载页面,直接 autosave(300ms debounce)。
       // 时间轴引用与检查器同一对象 → Alpine 响应式自动同步 UI。
       commit(label) {
@@ -1122,6 +1606,105 @@
             self._editor.selectedId = self.clip ? self.clip.id : null;
           });
         }
+      },
+
+      // Waveform 预设首色/次色(预设卡圆点预览用)
+      presetColor(id, idx) {
+        const p = { cyberpunk: ['#00E6B4', '#6366F1'], minimal: ['#F43F5E', '#FB923C'], retro: ['#10B981', '#06B6D4'], glow: ['#A855F7', '#EC4899'] };
+        return (p[id] || ['#00E6B4', '#6366F1'])[idx];
+      },
+
+      // —— CurveEditor:canvas 画缓动曲线 + 播放扫点(对齐上游 CurveEditor.vue)——
+      evaluateEasing(t, easing) {
+        const c = Math.max(0, Math.min(1, t));
+        switch (easing) {
+          case 'linear': return c;
+          case 'easeInQuad': return c * c;
+          case 'easeOutQuad': return 1 - (1 - c) * (1 - c);
+          case 'easeInOutQuad': return c < 0.5 ? 2 * c * c : 1 - Math.pow(-2 * c + 2, 2) / 2;
+          case 'easeInOutCubic': return c < 0.5 ? 4 * c * c * c : 1 - Math.pow(-2 * c + 2, 3) / 2;
+          default: return c < 0.5 ? 2 * c * c : 1 - Math.pow(-2 * c + 2, 2) / 2;
+        }
+      },
+      drawCurve() {
+        const canvas = this.$refs.curveCanvas;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const rect = canvas.getBoundingClientRect();
+        const width = Math.max(10, Math.floor(rect.width || 200));
+        const height = Math.max(10, Math.floor(rect.height || 96));
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, width, height);
+        const padL = 14, padR = 14, padT = 12, padB = 12;
+        const gw = width - padL - padR, gh = height - padT - padB;
+        const easing = this.cfg.ken_burns.easing;
+        // 网格
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+          const gx = padL + (gw / 4) * i, gy = padT + (gh / 4) * i;
+          ctx.beginPath(); ctx.moveTo(gx, padT); ctx.lineTo(gx, padT + gh); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(padL + gw, gy); ctx.stroke();
+        }
+        if (!this._curvePreviewing || this._curveProgress === undefined) this._curvePreviewing = false;
+        const samples = 60;
+        // 渐变面积
+        const grad = ctx.createLinearGradient(0, padT, 0, padT + gh);
+        grad.addColorStop(0, 'rgba(99,102,241,0.25)');
+        grad.addColorStop(1, 'rgba(99,102,241,0.0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(padL, padT + gh);
+        for (let i = 0; i <= samples; i++) {
+          const t = i / samples, v = this.evaluateEasing(t, easing);
+          ctx.lineTo(padL + t * gw, padT + gh - v * gh);
+        }
+        ctx.lineTo(padL + gw, padT + gh);
+        ctx.closePath();
+        ctx.fill();
+        // 曲线
+        ctx.strokeStyle = '#818cf8';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        for (let i = 0; i <= samples; i++) {
+          const t = i / samples, v = this.evaluateEasing(t, easing);
+          const x = padL + t * gw, y = padT + gh - v * gh;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        // 端点
+        ctx.fillStyle = '#6366f1'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(padL, padT + gh, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(padL + gw, padT, 3.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        // 播放扫点
+        if (this._curvePreviewing && this._curveProgress !== undefined) {
+          const v = this.evaluateEasing(this._curveProgress, easing);
+          const x = padL + this._curveProgress * gw, y = padT + gh - v * gh;
+          ctx.fillStyle = '#38bdf8';
+          ctx.shadowColor = '#38bdf8'; ctx.shadowBlur = 8;
+          ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      },
+      animateCurve() {
+        if (this._curvePreviewing) return;
+        this._curvePreviewing = true;
+        this._curveProgress = 0;
+        const start = performance.now(), dur = 1200;
+        const step = (now) => {
+          this._curveProgress = Math.min(1, (now - start) / dur);
+          this.drawCurve();
+          if (this._curveProgress < 1) {
+            this._curveAnimId = requestAnimationFrame(step);
+          } else {
+            setTimeout(() => { this._curvePreviewing = false; this.drawCurve(); }, 200);
+          }
+        };
+        this._curveAnimId = requestAnimationFrame(step);
       },
     };
   };
@@ -1532,6 +2115,17 @@
       fps: 30,
       tc: '00:00:00:00',
       tcDur: '00:00:00:00',
+      tl: null, // 响应式时间轴数据(wfLayers/stageDims 依赖;timeline load 后赋值)
+      // —— 视口 gizmo(对齐 vidonex TransformGizmo/CropGizmo)——
+      // 完全体初始化:clip-selected 广播选中 clip → 读引用直接渲染 + 编辑
+      selClip: null,          // 选中 clip 引用(tl 里的对象,直接改字段)
+      selClipTrackKind: null, // video/overlay/audio/...
+      selClipThumb: '',       // 选中 clip 素材帧 URL(asset frame)
+      assets: [],             // 项目素材(匹配 clip.source → nativeW/H + frame url)
+      gizmoMode: 'transform', // 'transform' | 'crop'
+      showGuide: { cx: false, cy: false, l: false, r: false, t: false, b: false },
+      _gizmoDrag: null,       // 进行中的 gizmo 拖拽状态(startClipDrag/Resize/Rotate/Crop)
+      gizmoParams: { canvasW: 1920, canvasH: 1080, dispW: 960, dispH: 540 },
 
       init() {
         // 供渲染导出弹窗等无作用域组件调用(window.vp.projectViewOf)
@@ -1539,6 +2133,24 @@
         // 响应式时间码(播放时 rAF 推进 → playhead-changed → 这里刷新)
         this.tc = '00:00:00:00';
         this.tcDur = '00:00:00:00';
+        // gizmo:加载项目素材(匹配 clip.source → nativeW/H + frame url)
+        this.loadAssets();
+        // gizmo:监听时间轴选中(与检查器面板同事件;编辑走同一 tl 引用)
+        window.addEventListener('clip-selected', (e) => {
+          const d = e.detail || {};
+          this.selClip = d.clip || null;
+          this.selClipTrackKind = d.trackKind || null;
+          this.selClipEditor = d.editor || null;
+          if (d.tl) this.tl = d.tl;
+          if (this.selClip) this.refreshSelClipThumb();
+        });
+        // 时间轴加载完成 → 绑定同一 tl 引用(编辑一致落库,不复制)
+        window.addEventListener('timeline-loaded', (e) => {
+          const d = e.detail || {};
+          if (d.tl) { this.tl = d.tl; }
+          this.fps = (d.tl && d.tl.fps) || this.fps;
+          this.wfRedrawAll();
+        });
         // 页面进入:先取一个默认预览帧(t=0)
         this.refreshPreview(0);
         // 播放头移动 → 刷新画布(防抖 120ms,连拖不连打)
@@ -1547,6 +2159,7 @@
           if (ev.pid !== undefined && ev.pid !== pid) return;
           this.playhead = ev.t || 0;
           this.refreshPreview(this.playhead);
+          this.wfRedrawAll();
           this.tc = window.vp.playback.formatTimecode(this.playhead, this.fps);
         });
         // 同步项目帧率到播放状态机
@@ -1555,9 +2168,11 @@
           .then((r) => (r.ok ? r.json() : null))
           .then((tl) => {
             if (!tl) return;
+            this.tl = tl;
             this.fps = tl.fps || 30;
             window.vp.syncTimelineDurations(tl);
             this.tcDur = window.vp.playback.formatTimecode(window.vp.playback.contentDuration || 0, this.fps);
+            this.wfRedrawAll();
           })
           .catch(() => {});
         // 加载后(含 htmx swap 重新初始化)确保画布有帧 —— 由 playhead-changed 驱动,无需额外
@@ -1596,6 +2211,447 @@
         const s = sec % 60;
         const pad = (n, w) => String(n).padStart(w, '0');
         return `${pad(h, 2)}:${pad(m, 2)}:${s.toFixed(3).padStart(6, '0')}`;
+      },
+
+      // ============ 视口 gizmo(对齐 vidonex useTransformGizmo)============
+      loadAssets() {
+        fetch(`/api/projects/${pid}/assets`)
+          .then((r) => (r.ok ? r.json() : []))
+          .then((list) => { this.assets = list || []; })
+          .catch(() => { this.assets = []; });
+      },
+      isVisualClip(kind) { return kind === 'video' || kind === 'overlay'; },
+      // 选中 clip 的素材(匹配 clip.source = file_path / file_name / id)
+      selAsset() {
+        if (!this.selClip) return null;
+        return this.assets.find((a) => a.file_path === this.selClip.source ||
+          a.file_name === this.selClip.source || String(a.id) === String(this.selClip.source)) || null;
+      },
+      // 选中 clip 素材帧 URL(资产匹配不到 → 用项目预览帧兜底,仍可编辑位置/缩放)
+      refreshSelClipThumb() {
+        const a = this.selAsset();
+        if (a) {
+          const t = Math.max(0, (this.selClip.trim || 0));
+          this.selClipThumb = `/api/assets/${a.id}/frame?t=${t}&w=960`;
+        } else {
+          this.selClipThumb = this.previewSrc || '';
+        }
+      },
+      // 显示坐标系:画布框实际像素 = gizmoParams.dispW/H(由 screenStyle 100% 决定,
+      // 读 .canvas-stage rect 更准 —— 兜底 canvas 宽高)
+      stageDims() {
+        const st = document.querySelector('.canvas-stage');
+        if (st) {
+          const r = st.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) {
+            this.gizmoParams.dispW = r.width;
+            this.gizmoParams.dispH = r.height;
+          }
+        }
+        const tl = this.tl;
+        if (tl) {
+          this.gizmoParams.canvasW = tl.width || 1920;
+          this.gizmoParams.canvasH = tl.height || 1080;
+        }
+        return this.gizmoParams;
+      },
+      // calculateClipBounds(对齐上游):contain 拟合 → displayScale → position 偏移
+      calculateClipBounds(clip, dims) {
+        const cw = dims.canvasW, ch = dims.canvasH, dw = dims.dispW, dh = dims.dispH;
+        const a = this.selAsset();
+        let nativeW = a && a.width ? a.width : cw;
+        let nativeH = a && a.height ? a.height : ch;
+        const ratio = nativeW / nativeH;
+        let baseW = cw, baseH = cw / ratio;
+        if (baseH > ch) { baseH = ch; baseW = baseH * ratio; }
+        const ds = cw > 0 ? dw / cw : 1;
+        const scale = clip.scale || 1.0;
+        const posX = (clip.position && clip.position.x || 0) * ds;
+        const posY = (clip.position && clip.position.y || 0) * ds;
+        const w = baseW * scale * ds, h = baseH * scale * ds;
+        return {
+          left: (dw - w) / 2 + posX,
+          top: (dh - h) / 2 + posY,
+          width: w, height: h,
+          rotation: clip.rotation || 0,
+          opacity: clip.opacity !== undefined ? clip.opacity : 1.0,
+        };
+      },
+      // 选中 clip 画面 DOM style(含 crop 裁剪)
+      clipRenderStyle() {
+        if (!this.selClip) return 'display:none';
+        const d = this.stageDims();
+        const b = this.calculateClipBounds(this.selClip, d);
+        const c = this.selClip.crop || null;
+        const cp = c ? `inset(${c.top || 0}% ${c.right || 0}% ${c.bottom || 0}% ${c.left || 0}%)` : '';
+        return `left:${b.left}px;top:${b.top}px;width:${b.width}px;height:${b.height}px;` +
+          `transform:rotate(${b.rotation}deg);opacity:${b.opacity};` +
+          (cp ? `clip-path:${cp};` : '');
+      },
+      // gizmo 边框 style(与画面同框 + rotate)
+      gizmoFrameStyle() {
+        if (!this.selClip) return 'display:none';
+        const d = this.stageDims();
+        const b = this.calculateClipBounds(this.selClip, d);
+        return `left:${b.left}px;top:${b.top}px;width:${b.width}px;height:${b.height}px;` +
+          `transform:rotate(${b.rotation}deg);transform-origin:center center;`;
+      },
+
+      // —— 拖动移动(对齐上游 startDrag:6 条吸附,阈值 6px)——
+      startClipDrag(e) {
+        if (!this.selClip || e.button !== 0) return;
+        e.preventDefault(); e.stopPropagation();
+        const d = this.stageDims();
+        const b = this.calculateClipBounds(this.selClip, d);
+        const ds = d.canvasW > 0 ? d.dispW / d.canvasW : 1;
+        const scaleFactor = 1 / ds;
+        const startX = e.clientX, startY = e.clientY;
+        const initX = this.selClip.position && this.selClip.position.x || 0;
+        const initY = this.selClip.position && this.selClip.position.y || 0;
+        const halfW = b.width / 2, halfH = b.height / 2;
+        const cw = d.canvasW, ch = d.canvasH;
+        const thr = 6 * scaleFactor;
+        const show = this.showGuide;
+        const clearGuides = () => { show.cx = show.cy = show.l = show.r = show.t = show.b = false; };
+        const onMove = (ev) => {
+          if (!this.selClip) return;
+          const dx = (ev.clientX - startX) * scaleFactor;
+          const dy = (ev.clientY - startY) * scaleFactor;
+          let nx = initX + dx, ny = initY + dy;
+          if (Math.abs(nx) < thr) { nx = 0; show.cx = true; show.l = show.r = false; }
+          else if (Math.abs(nx - halfW - (-cw / 2)) < thr) { nx = -cw / 2 + halfW; show.l = true; show.cx = show.r = false; }
+          else if (Math.abs(nx + halfW - cw / 2) < thr) { nx = cw / 2 - halfW; show.r = true; show.cx = show.l = false; }
+          else { show.cx = show.l = show.r = false; }
+          if (Math.abs(ny) < thr) { ny = 0; show.cy = true; show.t = show.b = false; }
+          else if (Math.abs(ny - halfH - (-ch / 2)) < thr) { ny = -ch / 2 + halfH; show.t = true; show.cy = show.b = false; }
+          else if (Math.abs(ny + halfH - ch / 2) < thr) { ny = ch / 2 - halfH; show.b = true; show.cy = show.t = false; }
+          else { show.cy = show.t = show.b = false; }
+          this.selClip.position = { ...(this.selClip.position || {}), x: Math.round(nx), y: Math.round(ny), alignment: (this.selClip.position && this.selClip.position.alignment) || 'center' };
+        };
+        const onUp = () => {
+          clearGuides();
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          this.commitGizmo('Move Clip Position');
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp, { once: true });
+      },
+      // —— 缩放(对齐上游 startResize:径向距离比,8 柄共用)——
+      startResize(e, handle) {
+        if (!this.selClip || e.button !== 0) return;
+        e.preventDefault(); e.stopPropagation();
+        const d = this.stageDims();
+        const b = this.calculateClipBounds(this.selClip, d);
+        const st = document.querySelector('.canvas-stage');
+        const r = st ? st.getBoundingClientRect() : { left: 0, top: 0 };
+        const cx = r.left + b.left + b.width / 2;
+        const cy = r.top + b.top + b.height / 2;
+        const initScale = this.selClip.scale || 1.0;
+        const initDist = Math.hypot(e.clientX - cx, e.clientY - cy);
+        const onMove = (ev) => {
+          if (!this.selClip) return;
+          const cur = Math.hypot(ev.clientX - cx, ev.clientY - cy);
+          if (initDist > 0) {
+            const ratio = cur / initDist;
+            let ns = Math.max(0.05, Math.min(10.0, initScale * ratio));
+            if (Math.abs(ns - 1.0) < 0.015) { ns = 1.0; this.showGuide.cx = this.showGuide.cy = true; }
+            else { this.showGuide.cx = this.showGuide.cy = false; }
+            this.selClip.scale = Math.round(ns * 100) / 100;
+          }
+        };
+        const onUp = () => {
+          this.showGuide.cx = this.showGuide.cy = false;
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          this.commitGizmo('Resize Clip Scale');
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp, { once: true });
+      },
+      // —— 旋转(对齐上游 startRotate:atan2 归一化 + 角度吸附)——
+      startRotate(e) {
+        if (!this.selClip || e.button !== 0) return;
+        e.preventDefault(); e.stopPropagation();
+        const d = this.stageDims();
+        const b = this.calculateClipBounds(this.selClip, d);
+        const st = document.querySelector('.canvas-stage');
+        const r = st ? st.getBoundingClientRect() : { left: 0, top: 0 };
+        const cx = r.left + b.left + b.width / 2;
+        const cy = r.top + b.top + b.height / 2;
+        const initAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * (180 / Math.PI);
+        const initRot = this.selClip.rotation || 0;
+        const onMove = (ev) => {
+          if (!this.selClip) return;
+          const cur = Math.atan2(ev.clientY - cy, ev.clientX - cx) * (180 / Math.PI);
+          let nr = (initRot + (cur - initAngle)) % 360;
+          if (nr > 180) nr -= 360;
+          if (nr < -180) nr += 360;
+          const snaps = [0, 45, 90, 135, 180, -45, -90, -135, -180];
+          for (const s of snaps) { if (Math.abs(nr - s) < 4) { nr = s; break; } }
+          this.selClip.rotation = Math.round(nr);
+        };
+        const onUp = () => {
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          this.commitGizmo('Rotate Clip');
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp, { once: true });
+      },
+      // —— 裁剪(对齐上游 CropGizmo:角/边拖 → clip.crop 百分比)——
+      startCrop(e, handle) {
+        if (!this.selClip || e.button !== 0) return;
+        e.preventDefault(); e.stopPropagation();
+        const d = this.stageDims();
+        const b = this.calculateClipBounds(this.selClip, d);
+        const init = this.selClip.crop || { top: 0, bottom: 0, left: 0, right: 0 };
+        const w = b.width, h = b.height;
+        const toPct = (v, total) => Math.max(0, Math.min(100, (v / total) * 100));
+        const onMove = (ev) => {
+          if (!this.selClip) return;
+          const dx = ev.clientX - e.clientX, dy = ev.clientY - e.clientY;
+          const c = { ...init };
+          if (handle === 'tl' || handle === 'l' || handle === 'bl') c.left = toPct(dx, w);
+          if (handle === 'tr' || handle === 'r' || handle === 'br') c.right = toPct(-dx, w);
+          if (handle === 'tl' || handle === 't' || handle === 'tr') c.top = toPct(dy, h);
+          if (handle === 'bl' || handle === 'b' || handle === 'br') c.bottom = toPct(-dy, h);
+          this.selClip.crop = { top: Math.round(c.top), bottom: Math.round(c.bottom), left: Math.round(c.left), right: Math.round(c.right) };
+        };
+        const onUp = () => {
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          this.commitGizmo('Update Crop');
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp, { once: true });
+      },
+      // gizmo 编辑落库(复用 timelineEditor.editClip 300ms debounce,保留选中)
+      commitGizmo(label) {
+        const ed = this.selClipEditor || window.vp.timelineEditorOf;
+        if (ed && ed.editClip) {
+          ed.editClip(() => { ed.selectedId = this.selClip ? this.selClip.id : null; });
+        }
+      },
+
+      // ============ ViewportWaveformVisualizer(对齐上游:waveform 轨 clip 的
+      // canvas 5 模式波形,播放头驱动动画;检查器 waveform 面板配置)============
+      // 当前渲染的 waveform 层(所有 waveform 轨 clip,不限播放头重叠,
+      // 保证可编辑;检查器写 clip.waveform 后视口即时反映)
+      wfLayers() {
+        const tl = this.tl;
+        if (!tl || !tl.tracks) return [];
+        const out = [];
+        for (const tr of tl.tracks) {
+          if (tr.kind !== 'waveform') continue;
+          for (const c of tr.clips || []) out.push({ clip: c, track: tr });
+        }
+        return out;
+      },
+      // 波形容器 style(定位/尺寸/不透明度;zIndex 按轨道序)
+      wfStyle(clip, track) {
+        const d = this.stageDims();
+        const ds = d.canvasW > 0 ? d.dispW / d.canvasW : 1;
+        const cfg = clip.waveform || track.waveform || {};
+        const w = (cfg.width || Math.round(d.canvasW * 0.75)) * ds;
+        const h = (cfg.height || (cfg.mode === 'circular' ? Math.min(w, 400 * ds) : 180)) * ds;
+        const px = ((clip.position && clip.position.x) || 0) * ds;
+        const py = ((clip.position && clip.position.y) || 0) * ds;
+        const left = (d.dispW - w) / 2 + px;
+        const top = (d.dispH - h) / 2 + py;
+        const idx = this.wfLayers().findIndex((l) => l.clip.id === clip.id);
+        return `left:${Math.round(left)}px;top:${Math.round(top)}px;width:${Math.round(w)}px;height:${Math.round(h)}px;` +
+          `opacity:${clip.opacity !== undefined ? clip.opacity : 1};z-index:${100 + idx};`;
+      },
+      // 初始化波形 canvas(存引用 → 立即绘制;HiDPI 2x)
+      wfInit(el, clip, track) {
+        if (!el) return;
+        el.__wf = { clip, track };
+        this.wfDraw(el);
+      },
+      // 波形拖动(pure DOM 层自身拖动,不占 TransformGizmo;写回 position)
+      startDragWaveform(e, clip) {
+        if (e.button !== 0) return;
+        e.preventDefault(); e.stopPropagation();
+        // 选中该 clip(检查器同步显示 waveform 面板)
+        const ed = this.selClipEditor || window.vp.timelineEditorOf;
+        if (ed && ed.select) ed.select(clip);
+        const d = this.stageDims();
+        const ds = d.canvasW > 0 ? d.dispW / d.canvasW : 1;
+        const startX = e.clientX, startY = e.clientY;
+        const ix = (clip.position && clip.position.x) || 0;
+        const iy = (clip.position && clip.position.y) || 0;
+        const onMove = (ev) => {
+          if (!clip) return;
+          let nx = Math.round(ix + (ev.clientX - startX) / ds);
+          let ny = Math.round(iy + (ev.clientY - startY) / ds);
+          // 居中吸附(对齐上游:阈值 8px)
+          if (Math.abs(nx) < 8) { nx = 0; this.showGuide.cx = true; } else this.showGuide.cx = false;
+          if (Math.abs(ny) < 8) { ny = 0; this.showGuide.cy = true; } else this.showGuide.cy = false;
+          clip.position = { ...(clip.position || {}), x: nx, y: ny, alignment: (clip.position && clip.position.alignment) || 'center' };
+        };
+        const onUp = () => {
+          this.showGuide.cx = this.showGuide.cy = false;
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          if (ed && ed.editClip) ed.editClip(() => { ed.selectedId = clip.id; });
+        };
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp, { once: true });
+      },
+      // 重绘所有波形 canvas(播放头移动 / 配置变化时)
+      wfRedrawAll() {
+        document.querySelectorAll('[data-wf-canvas]').forEach((el) => {
+          if (el.__wf) this.wfDraw(el);
+        });
+      },
+      // 绘制 5 种模式(对齐上游 drawWaveform;程序化伪音频,播放时随 playhead 动)
+      wfDraw(el) {
+        const d = el.__wf;
+        if (!d || !el.getContext) return;
+        const cfg = d.clip.waveform || d.track.waveform || {};
+        const mode = (cfg.mode || 'peak_to_peak').toLowerCase();
+        const pColor = cfg.color || '#00E6B4';
+        const sColor = cfg.secondary_color || '#6366F1';
+        const density = Number(cfg.bar_density) || 48;
+        const roundness = Number(cfg.bar_roundness) || 6;
+        const isGlow = cfg.glow !== undefined ? cfg.glow : true;
+        const glowRadius = Number(cfg.glow_radius) || 8;
+        const lineWidth = Number(cfg.line_width) || 3;
+        const isFill = cfg.fill_area || false;
+        const innerR = Number(cfg.inner_radius) || 0.45;
+        // HiDPI:canvas 物理像素 = 容器 CSS 尺寸 × 2
+        const rect = el.getBoundingClientRect();
+        const cssW = Math.max(10, rect.width || 100);
+        const cssH = Math.max(10, rect.height || 40);
+        const W = Math.round(cssW * 2), H = Math.round(cssH * 2);
+        if (el.width !== W) el.width = W;
+        if (el.height !== H) el.height = H;
+        const ctx = el.getContext('2d');
+        if (!ctx) return;
+        ctx.clearRect(0, 0, W, H);
+        ctx.save();
+        const halfH = H / 2;
+        const t = this.playhead;
+        const playing = window.vp.playback && window.vp.playback.isPlaying;
+        const grad = ctx.createLinearGradient(0, 0, W, H);
+        grad.addColorStop(0, pColor);
+        grad.addColorStop(1, sColor);
+        if (isGlow) { ctx.shadowColor = pColor; ctx.shadowBlur = glowRadius * 2; }
+        if (mode === 'peak_to_peak' || mode === 'bars' || mode === 'p2p') {
+          const n = Math.max(16, Math.min(128, density));
+          const sp = W / n, bw = Math.max(3, sp * 0.65);
+          const r = Math.min(bw / 2, roundness * 2);
+          ctx.fillStyle = grad;
+          for (let i = 0; i < n; i++) {
+            const seed = i * 0.35 + t * 8;
+            const harm = Math.abs(Math.sin(seed) * 0.5 + Math.cos(seed * 2.1) * 0.3 + Math.sin(seed * 0.7) * 0.2);
+            const amp = playing ? Math.max(0.08, harm) : Math.max(0.06, Math.sin(i * 0.2 + t) * 0.3 + 0.4);
+            const bh = amp * (H * 0.85);
+            const x = i * sp + (sp - bw) / 2, y = halfH - bh / 2;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(x, y, bw, Math.max(4, bh), r); else ctx.rect(x, y, bw, Math.max(4, bh));
+            ctx.fill();
+          }
+        } else if (mode === 'spectrum') {
+          const n = Math.max(16, Math.min(96, density));
+          const sp = W / n, bw = Math.max(3, sp * 0.7);
+          const r = Math.min(bw / 2, roundness * 2);
+          ctx.fillStyle = grad;
+          for (let i = 0; i < n; i++) {
+            const seed = i * 0.4 + t * 9;
+            const harm = Math.abs(Math.sin(seed) * 0.6 + Math.cos(seed * 1.8) * 0.4);
+            const amp = playing ? Math.max(0.05, harm) : Math.max(0.05, Math.sin(i * 0.25) * 0.4 + 0.4);
+            const bh = amp * (H * 0.8);
+            const x = i * sp + (sp - bw) / 2, y = H - bh;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(x, y, bw, Math.max(4, bh), [r, r, 0, 0]); else ctx.rect(x, y, bw, Math.max(4, bh));
+            ctx.fill();
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(x + bw / 2, Math.max(2, y - 6), Math.max(1.5, bw / 4), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = grad;
+          }
+        } else if (mode === 'circular') {
+          const cx = W / 2, cy = halfH;
+          const base = Math.min(cx, cy) * innerR;
+          const n = Math.max(32, Math.min(96, density));
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = Math.max(2, (W / n) * 0.5);
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.arc(cx, cy, base, 0, Math.PI * 2);
+          ctx.strokeStyle = pColor + '40';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = Math.max(2, (W / n) * 0.5);
+          for (let i = 0; i < n; i++) {
+            const ang = (i / n) * Math.PI * 2;
+            const seed = i * 0.45 + t * 7;
+            const amp = Math.abs(Math.sin(seed) * 0.65 + Math.cos(seed * 2.2) * 0.35);
+            const len = playing ? amp * (base * 0.9) + 4 : 8;
+            ctx.beginPath();
+            ctx.moveTo(cx + Math.cos(ang) * base, cy + Math.sin(ang) * base);
+            ctx.lineTo(cx + Math.cos(ang) * (base + len), cy + Math.sin(ang) * (base + len));
+            ctx.stroke();
+          }
+        } else if (mode === 'dots') {
+          const cols = Math.max(20, Math.min(80, density));
+          const rows = 8;
+          const sx = W / cols, sy = H / rows;
+          for (let col = 0; col < cols; col++) {
+            const seed = col * 0.35 + t * 8;
+            const colAmp = playing ? Math.abs(Math.sin(seed) * 0.6 + Math.cos(seed * 1.7) * 0.4) : Math.abs(Math.sin(col * 0.2) * 0.5 + 0.3);
+            const active = Math.round(colAmp * rows);
+            for (let row = 0; row < rows; row++) {
+              const fromBottom = rows - 1 - row;
+              const on = fromBottom <= active;
+              const x = col * sx + sx / 2, y = row * sy + sy / 2;
+              const dr = on ? Math.max(2, sx * 0.35) : Math.max(1, sx * 0.15);
+              ctx.fillStyle = on ? grad : pColor + '20';
+              ctx.beginPath();
+              ctx.arc(x, y, dr, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        } else {
+          // wave 模式:平滑曲线 + 可选填充
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = lineWidth * 2;
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+          const pts = 120, step = W / pts;
+          const wave = [];
+          for (let i = 0; i <= pts; i++) {
+            const x = i * step;
+            const seed = i * 0.18 + t * 9;
+            const amp = playing ? Math.sin(seed) * 0.6 + Math.cos(seed * 2.3) * 0.3 : Math.sin(i * 0.15 + t * 2) * 0.35;
+            wave.push({ x, y: halfH + amp * (halfH * 0.75) });
+          }
+          ctx.beginPath();
+          for (let i = 0; i < wave.length; i++) {
+            const pt = wave[i];
+            if (i === 0) ctx.moveTo(pt.x, pt.y);
+            else {
+              const prev = wave[i - 1];
+              ctx.quadraticCurveTo(prev.x, prev.y, (prev.x + pt.x) / 2, (prev.y + pt.y) / 2);
+            }
+          }
+          ctx.stroke();
+          if (isFill) {
+            const fg = ctx.createLinearGradient(0, halfH, 0, H);
+            fg.addColorStop(0, pColor + '40');
+            fg.addColorStop(1, 'transparent');
+            ctx.fillStyle = fg;
+            ctx.lineTo(W, H);
+            ctx.lineTo(0, H);
+            ctx.closePath();
+            ctx.fill();
+          }
+        }
+        ctx.restore();
       },
 
       get outputName() {
@@ -1679,6 +2735,221 @@
             })
             .catch(() => {}); // 瞬时失败忽略,下一拍再试
         }, 700);
+      },
+    };
+  };
+
+  // ============ 图可视化(graphModal)============
+  // 对齐 vidonex GraphVisualizerModal:GET spec/graph → mermaid 文本 →
+  // 简易 DAG SVG 渲染(轻量:mermaid 只做源码展示,不引库)。
+  // 挂 project_detail 视口顶栏"图"按钮;fetch /api/projects/{id}/spec/graph。
+  window.graphModal = function (pid) {
+    return {
+      pid: pid || null,
+      open: false,
+      loading: false,
+      error: '',
+      code: '',
+      svgHtml: '',
+      isCopied: false,
+
+      init() {
+        // 视口顶栏"图"按钮广播 graph-open → 这里打开(事件总线,与其它弹窗一致)
+        window.addEventListener('graph-open', () => {
+          this.pid = pid || this.pid || (window.vp && window.vp.currentProjectId) || null;
+          this.open = true;
+          this.reload();
+        });
+      },
+      openGraph() {
+        this.open = true;
+        this.reload();
+      },
+      close() { this.open = false; },
+      reload() {
+        if (!this.pid) { this.error = '无项目'; return; }
+        this.loading = true;
+        this.error = '';
+        this.code = '';
+        this.svgHtml = '';
+        fetch(`/api/projects/${this.pid}/spec/graph?format=mermaid`)
+          .then((r) => {
+            if (!r.ok) { throw new Error('请求失败 ' + r.status); }
+            return r.text();
+          })
+          .then((text) => {
+            this.code = text || '';
+            this.svgHtml = this.renderMermaid(text);
+          })
+          .catch((e) => { this.error = e.message; })
+          .finally(() => { this.loading = false; });
+      },
+      copyCode() {
+        const self = this;
+        if (!this.code) return;
+        (navigator.clipboard ? navigator.clipboard.writeText(this.code) : Promise.reject())
+          .then(() => { this.isCopied = true; setTimeout(() => { self.isCopied = false; }, 1500); })
+          .catch(() => {});
+      },
+
+      // 轻量 mermaid `graph LR` 解析 + SVG 渲染:节点声明与边声明分层,
+      // 从左到右排布(同深度同列),标色 indigo,边带 pad 标签。
+      renderMermaid(text) {
+        const lines = (text || '').split('\n').map((l) => l.trim()).filter((l) => l);
+        if (!lines.length) return '';
+        const nodes = new Map(); // id → { id, label, filter }
+        const edges = [];
+        for (const line of lines) {
+          if (!line || line.includes('graph ')) continue;
+          // 边:A -->|pad| B
+          const m = line.match(/^([A-Za-z0-9_]+)\s+-->\|([^|]*)\|\s+([A-Za-z0-9_]+)$/);
+          if (m) { edges.push({ from: m[1], to: m[3], pad: m[2] }); continue; }
+          // 节点:id["label<br/><i>filter</i>"]
+          const n = line.match(/^([A-Za-z0-9_]+)\s*\["(.*)"\]\s*$/);
+          if (n) {
+            const parts = n[2].split('<br/>');
+            const label = parts[0] || n[1];
+            const filter = parts[1] ? parts[1].replace(/<\/?i>/g, '') : '';
+            nodes.set(n[1], { id: n[1], label, filter });
+          }
+        }
+        if (!nodes.size) return '';
+        // BFS 分层(源在最左)
+        const indeg = {};
+        for (const e of edges) { indeg[e.to] = (indeg[e.to] || 0) + 1; }
+        const roots = [...nodes.keys()].filter((id) => !indeg[id]);
+        const layer = {};
+        const queue = roots.length ? roots : [...nodes.keys()];
+        for (const id of queue) {
+          if (layer[id] === undefined) layer[id] = 0;
+        }
+        for (let qi = 0; qi < queue.length; qi++) {
+          const id = queue[qi];
+          const cur = layer[id] || 0;
+          for (const e of edges) {
+            if (e.from === id && layer[e.to] === undefined) {
+              layer[e.to] = cur + 1;
+              queue.push(e.to);
+            }
+          }
+        }
+        for (const id of nodes.keys()) {
+          if (layer[id] === undefined) layer[id] = 0;
+        }
+        const byLayer = {};
+        for (const [id, lv] of Object.entries(layer)) {
+          (byLayer[lv] = byLayer[lv] || []).push(id);
+        }
+        const maxLayer = Math.max(0, ...Object.keys(byLayer).map(Number));
+        // 列宽/行高
+        const NODE_W = 170, NODE_H = 52, GX = 70, GY = 46;
+        const positions = {};
+        const rowsPerLayer = {};
+        const colsW = [];
+        for (let lv = 0; lv <= maxLayer; lv++) {
+          const ids = byLayer[lv] || [];
+          colsW[lv] = NODE_W;
+          ids.forEach((id, i) => { positions[id] = { x: lv * (NODE_W + GX), y: i * (NODE_H + GY) }; });
+          rowsPerLayer[lv] = ids.length;
+        }
+        const totalW = (maxLayer + 1) * (NODE_W + GX) - GX + 40;
+        let maxH = 120;
+        for (let lv = 0; lv <= maxLayer; lv++) {
+          maxH = Math.max(maxH, (rowsPerLayer[lv] || 0) * (NODE_H + GY) - GY + 40);
+        }
+        // 构建 SVG
+        const esc = (s) => String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+        let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${maxH}" viewBox="0 0 ${totalW} ${maxH}" font-family="ui-monospace, SFMono-Regular, monospace">`;
+        svg += `<defs><marker id="graphArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6366f1"/></marker></defs>`;
+        // 边(先画,节点盖其上)
+        for (const e of edges) {
+          const a = positions[e.from], b = positions[e.to];
+          if (!a || !b) continue;
+          const x1 = a.x + NODE_W, y1 = a.y + NODE_H / 2;
+          const x2 = b.x, y2 = b.y + NODE_H / 2;
+          const mx = (x1 + x2) / 2;
+          svg += `<path d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}" fill="none" stroke="#6366f1" stroke-width="1.5" marker-end="url(#graphArrow)" opacity="0.7"/>`;
+          if (e.pad && e.pad !== 'out') {
+            svg += `<text x="${mx}" y="${(y1 + y2) / 2 - 4}" text-anchor="middle" fill="#9ca3af" font-size="10">${esc(e.pad)}</text>`;
+          }
+        }
+        // 节点(圆角矩形 + label + filter)
+        for (const [id, pos] of Object.entries(positions)) {
+          const nd = nodes.get(id) || { label: id, filter: '' };
+          const x = pos.x + 10, y = pos.y + 6;
+          svg += `<g><rect x="${x}" y="${y}" width="${NODE_W - 20}" height="${NODE_H - 12}" rx="8" fill="#1f2937" stroke="#6366f1" stroke-width="1.2"/>`;
+          svg += `<text x="${x + (NODE_W - 20) / 2}" y="${y + 18}" text-anchor="middle" fill="#e5e7eb" font-size="11" font-weight="600">${esc(nd.label)}</text>`;
+          if (nd.filter) {
+            svg += `<text x="${x + (NODE_W - 20) / 2}" y="${y + 34}" text-anchor="middle" fill="#818cf8" font-size="9" font-style="italic" font-family="ui-monospace, monospace">${esc(nd.filter)}</text>`;
+          }
+          svg += `</g>`;
+        }
+        svg += '</svg>';
+        return svg;
+      },
+    };
+  };
+
+  // ============ 底部状态栏(appFooter)============
+  // 对齐 vidonex AppFooter:左=时间码/时长/FPS,右=吸附开关 + 缩放滑条(min15 max200 step5)。
+  // 数据源全部来自全局 window.vp(playback 状态机 + timelineEditorOf),无 props 注入;
+  // playhead-changed / timeline-loaded 事件驱动刷新。
+  window.appFooter = function () {
+    return {
+      timecode: '00:00:00',
+      duration: '00:00:00',
+      fps: 30,
+      pps: 80, // 缩放滑条值(px/s),= timelineEditor.pps
+      snapOn: true,
+
+      init() {
+        // 对齐 vidonex AppFooter:左=时间码/时长/FPS,右=吸附开关 + 缩放滑条(min15 max200 step5)。
+        // 数据源全部来自全局 window.vp(playback 状态机 + timelineEditorOf),无 props 注入;
+        // playhead-changed / timeline-loaded 事件驱动刷新。
+        window.addEventListener('playhead-changed', () => this.refresh());
+        window.addEventListener('timeline-loaded', () => this.refresh());
+        this.refresh();
+      },
+      refresh() {
+        const pb = window.vp && window.vp.playback;
+        const ed = window.vp && window.vp.timelineEditorOf;
+        const fps = (ed && ed.tl && ed.tl.fps) || (window.vp && window.vp.projectViewOf && window.vp.projectViewOf.fps) || 30;
+        this.fps = fps;
+        // 用 ed.zoom 计算 pps(watch 异步,zoom×80 即时权威;对齐上游 pixelsPerSecond=pps 语义)
+        this.pps = ed ? Math.round(80 * ed.zoom) : 80;
+        // 时间码读时间轴播放头(scrub/seek/播放都会同步到 ed.playhead),
+        // 而非 vp.playback.currentTime——后者是播放状态机,scrub 不更新它。
+        this.timecode = pb ? pb.formatTimecode((ed && ed.playhead) || (pb.currentTime || 0), fps) : '00:00:00';
+        const dur = (pb && pb.contentDuration) || 0;
+        this.duration = pb ? pb.formatTimecode(dur, fps) : '00:00:00';
+        const snap = document.querySelector('[data-snap]');
+        this.snapOn = !snap || snap.dataset.snap === 'on';
+      },
+      toggleSnap() {
+        const ed = window.vp && window.vp.timelineEditorOf;
+        if (ed && ed.toggleSnap) ed.toggleSnap();
+        else {
+          const snap = document.querySelector('[data-snap]');
+          if (snap) snap.dataset.snap = snap.dataset.snap === 'on' ? 'off' : 'on';
+        }
+        this.refresh();
+      },
+      zoomIn() {
+        const ed = window.vp && window.vp.timelineEditorOf;
+        if (ed) ed.zoom = Math.min(200 / 80, ed.zoom + 15 / 80); // +15px/s
+        this.refresh();
+      },
+      zoomOut() {
+        const ed = window.vp && window.vp.timelineEditorOf;
+        if (ed) ed.zoom = Math.max(15 / 80, ed.zoom - 15 / 80); // -15px/s
+        this.refresh();
+      },
+      setZoom(value) {
+        const ed = window.vp && window.vp.timelineEditorOf;
+        if (ed && value) ed.zoom = Math.min(200 / 80, Math.max(15 / 80, value / 80));
+        this.refresh();
       },
     };
   };

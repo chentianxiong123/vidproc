@@ -164,20 +164,26 @@
 
       <!-- 轨道区 -->
       <div class="flex">
-        <!-- 轨道头列（对齐 TrackHeader） -->
+        <!-- 轨道头列（对齐 TrackHeader；点击选中轨道 → Ducking/Waveform 检查器） -->
         <div class="w-12 flex-shrink-0 border-r border-gray-800 bg-gray-950/60 z-10 relative">
           <template x-for="tr in videoTracks()" :key="'h' + tr.id">
-            <div class="h-12 border-b border-gray-800/80 flex items-center justify-center text-gray-500">
+            <div class="h-12 border-b border-gray-800/80 flex items-center justify-center cursor-pointer"
+                 :class="selectedTrackId === tr.id ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-500 hover:text-gray-300'"
+                 @click.stop="selectTrack(tr)">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
             </div>
           </template>
           <template x-for="tr in audioTracks()" :key="'h' + tr.id">
-            <div class="h-12 border-b border-gray-800/80 flex items-center justify-center text-gray-500">
+            <div class="h-12 border-b border-gray-800/80 flex items-center justify-center cursor-pointer"
+                 :class="selectedTrackId === tr.id ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-500 hover:text-gray-300'"
+                 @click.stop="selectTrack(tr)">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z"/></svg>
             </div>
           </template>
           <template x-for="tr in otherTracks()" :key="'h' + tr.id">
-            <div class="h-12 border-b border-gray-800/80 flex items-center justify-center text-gray-500">
+            <div class="h-12 border-b border-gray-800/80 flex items-center justify-center cursor-pointer"
+                 :class="selectedTrackId === tr.id ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-500 hover:text-gray-300'"
+                 @click.stop="selectTrack(tr)">
               <span class="text-[9px] font-mono" x-text="tr.kind.slice(0,2)"></span>
             </div>
           </template>
@@ -266,10 +272,16 @@
             <span>轨道为空 — 从媒体库添加素材</span>
           </div>
 
-          <!-- 播放头（对齐 TimelineRuler playhead：indigo 竖线 + 顶部三角） -->
-          <div class="absolute top-[-24px] bottom-0 border-l-2 border-indigo-500 z-20 pointer-events-none"
-               :style="'left:' + (48 + playhead * pps) + 'px'">
-            <div class="w-0 h-0 border-l-[5px] border-r-[5px] border-b-[6px] border-l-transparent border-r-transparent border-b-indigo-500 -ml-[5px]"></div>
+          <!-- 播放头(对齐 TimelineRuler playhead:indigo 竖线 + 顶部圆角拖动块 + pointer 拖拽 scrub) -->
+          <div class="absolute top-[-24px] bottom-0 border-l-2 border-indigo-500 z-20 cursor-ew-resize group"
+               :style="'left:' + (48 + playhead * pps) + 'px'"
+               @pointerdown.stop="beginScrub($event)"
+               @dblclick.stop>
+            <!-- 拖动块(圆角,吸附跟手):比竖线宽,点击更准 -->
+            <div class="absolute -left-[7px] top-[-3px] w-4 h-3.5 rounded-t-md rounded-b-sm bg-indigo-500 shadow-md shadow-indigo-950/60 group-hover:bg-indigo-400 transition-colors"></div>
+            <div class="absolute -left-[7px] top-[-3px] w-4 h-3.5 flex items-end justify-center pb-0.5">
+              <svg class="w-2.5 h-2 text-white opacity-80" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v2l4 3-4 3v2h8V5z"/></svg>
+            </div>
           </div>
         </div>
       </div>

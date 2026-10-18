@@ -53,6 +53,10 @@
               <p class="text-[9px] text-gray-500 font-mono"
                  x-text="(a.file_type) + (a.duration_seconds ? ' · ' + a.duration_seconds.toFixed(2) + 's' : '') + (a.width ? ' · ' + a.width + '×' + a.height : '')"></p>
             </div>
+            <!-- 详情 -->
+            <button type="button" @click="openProbeModal(a)" class="p-1 rounded text-gray-600 hover:text-indigo-400 transition flex-shrink-0" title="素材详情">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 12v4" stroke-linecap="round"/></svg>
+            </button>
             <!-- 删除 -->
             <button type="button" @click="removeAsset(a)" class="p-1 rounded text-gray-600 hover:text-red-400 transition flex-shrink-0" title="删除素材">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 14H7z" stroke-linejoin="round"/><path d="M9 4h6l1 3H8z" stroke-linejoin="round"/></svg>
@@ -108,4 +112,70 @@
       </div>
     </div>
   </template>
+
+  <!-- ProbeDetailsModal(对齐 vidonex 素材详情:7 字段,媒体库内嵌) -->
+  <div x-show="isProbeModalOpen" x-cloak
+       class="fixed inset-0 z-[92] flex items-center justify-center p-4"
+       style="background:rgba(0,0,0,.6);backdrop-filter:blur(2px)"
+       @click.self="closeProbeModal()">
+    <div class="w-full max-w-lg rounded-xl bg-gray-950 border border-gray-800 shadow-2xl"
+         x-show="activeProbeAsset">
+      <!-- Header -->
+      <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-gray-200 flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          素材详情
+        </h3>
+        <button type="button" class="p-1 text-gray-500 hover:text-gray-300 transition" @click="closeProbeModal()">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <!-- Body:7 字段(对齐上游:file_name/duration/width×height/frame_rate/sample_rate/channels/file_size) -->
+      <div class="p-4 text-xs">
+        <template x-if="activeProbeAsset">
+          <div class="p-3 bg-gray-900/60 rounded-lg border border-gray-800 space-y-2 font-mono">
+          <div class="flex justify-between py-1 border-b border-gray-800">
+            <span class="text-gray-500">文件</span>
+            <span class="text-gray-200 truncate max-w-[240px]" x-text="activeProbeAsset.file_name"></span>
+          </div>
+          <div class="flex justify-between py-1 border-b border-gray-800">
+            <span class="text-gray-500">时长</span>
+            <span class="text-indigo-400 font-semibold" x-text="activeProbeAsset.duration_seconds ? activeProbeAsset.duration_seconds.toFixed(2) + 's' : '—'"></span>
+          </div>
+          <template x-if="activeProbeAsset.width && activeProbeAsset.height">
+            <div class="flex justify-between py-1 border-b border-gray-800">
+              <span class="text-gray-500">分辨率</span>
+              <span class="text-gray-200" x-text="activeProbeAsset.width + ' × ' + activeProbeAsset.height"></span>
+            </div>
+          </template>
+          <template x-if="activeProbeAsset.frame_rate">
+            <div class="flex justify-between py-1 border-b border-gray-800">
+              <span class="text-gray-500">帧率</span>
+              <span class="text-gray-200" x-text="activeProbeAsset.frame_rate + ' FPS'"></span>
+            </div>
+          </template>
+          <template x-if="activeProbeAsset.sample_rate">
+            <div class="flex justify-between py-1 border-b border-gray-800">
+              <span class="text-gray-500">采样率</span>
+              <span class="text-gray-200" x-text="activeProbeAsset.sample_rate + ' Hz'"></span>
+            </div>
+          </template>
+          <template x-if="activeProbeAsset.channels">
+            <div class="flex justify-between py-1 border-b border-gray-800">
+              <span class="text-gray-500">声道</span>
+              <span class="text-gray-200" x-text="activeProbeAsset.channels + ' Channels'"></span>
+            </div>
+          </template>
+          <div class="flex justify-between py-1">
+            <span class="text-gray-500">大小</span>
+            <span class="text-gray-200" x-text="activeProbeAsset.file_size ? (activeProbeAsset.file_size / (1024 * 1024)).toFixed(2) + ' MB' : '—'"></span>
+          </div>
+          <div class="mt-3 flex justify-end">
+            <button type="button" class="px-3 py-1.5 rounded-lg text-xs text-gray-300 bg-gray-900 border border-gray-800 hover:border-indigo-500 transition" @click="closeProbeModal()">关闭</button>
+          </div>
+        </div>
+        </template>
+      </div>
+    </div>
+  </div>
 </div>
