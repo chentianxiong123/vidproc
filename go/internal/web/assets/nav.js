@@ -2510,6 +2510,11 @@
       selClipThumb: '',       // 选中 clip 素材帧 URL(asset frame)
       assets: [],             // 项目素材(匹配 clip.source → nativeW/H + frame url)
       gizmoMode: 'transform', // 'transform' | 'crop'
+      // —— 视口平移(Space/中键拖拽,对齐 vidonex useViewportZoom startPan)——
+      isSpacePressed: false,
+      isPanning: false,
+      zoomMenu: { open: false }, // 缩放预设下拉(常驻对象)
+      _pan: null,                // 进行中平移状态 {sx, sy, ox, oy}
       showGuide: { cx: false, cy: false, l: false, r: false, t: false, b: false },
       _gizmoDrag: null,       // 进行中的 gizmo 拖拽状态(startClipDrag/Resize/Rotate/Crop)
       gizmoParams: { canvasW: 1920, canvasH: 1080, dispW: 960, dispH: 540 },
@@ -2517,6 +2522,15 @@
       init() {
         // 供渲染导出弹窗等无作用域组件调用(window.vp.projectViewOf)
         window.vp.projectViewOf = this;
+        // 视口平移:Space 按住(排除输入框;对齐 vidonex handleKeyDown/Up)
+        window.addEventListener('keydown', (e) => {
+          const t = e.target;
+          if (t && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable)) return;
+          if (e.code === 'Space' || e.key === ' ') { this.isSpacePressed = true; e.preventDefault(); }
+        });
+        window.addEventListener('keyup', (e) => {
+          if (e.code === 'Space' || e.key === ' ') this.isSpacePressed = false;
+        });
         // 响应式时间码(播放时 rAF 推进 → playhead-changed → 这里刷新)
         this.tc = '00:00:00:00';
         this.tcDur = '00:00:00:00';
@@ -2573,18 +2587,57 @@
       // ============ 播放工具条/视口缩放(对齐 vidonex PlaybackToolbar + useViewportZoom)============
       pb() { return window.vp.playback; },
       vz() { return window.vp.viewportZoom; },
-      cycleZoom() {
-        const presets = this.vz().ZOOM_PRESETS;
-        const cur = this.vz().zoom;
-        const next = presets.find((p) => p.value > cur + 0.001) || presets[0];
-        this.vz().setZoom(next.value, true);
-      },
       onWheel(e) {
         e.preventDefault();
         const factor = e.deltaY < 0 ? 1.15 : 0.87;
         this.vz().setZoom(this.vz().zoom * factor);
       },
       resetViewportZoom() { this.vz().reset(); },
+      // 舞台按下:中键或 Space → 平移;空白处 → 取消选中(对齐 vidonex handleStageMouseDown)
+      handleStageMouseDown(e) {
+        if (this.isSpacePressed || e.button === 1) { this.startPan(e); return; }
+        // 点击画布空白背景(非 clip/gizmo)→ 取消选中
+        if (e.target === e.currentTarget || e.target.classList.contains('canvas-stage') || e.target === e.currentTarget.querySelector('.canvas-stage')) {
+          this.selClip = null;
+        }
+      },
+      startPan(e) {
+        if (e.button !== 0 && e.button !== 1) return;
+        e.preventDefault();
+        this.isPanning = true;
+        const vz = this.vz();
+        this._pan = { sx: e.clientX, sy: e.clientY, ox: vz.panX, oy: vz.panY };
+        const move = (ev) => {
+          if (!this._pan) return;
+          vz.panX = Math.round(this._pan.ox + (ev.clientX - this._pan.sx));
+          vz.panY = Math.round(this._pan.oy + (ev.clientY - this._pan.sy));
+        };
+        const up = () => {
+          this.isPanning = false;
+          this._pan = null;
+          window.removeEventListener('pointermove', move);
+          window.removeEventListener('pointerup', up);
+        };
+        window.addEventListener('pointermove', move);
+        window.addEventListener('pointerup', up, { once: true });
+      },
+      // 全屏切换(对齐 vidonex toggleFullscreen:视口面板 requestFullscreen)
+      async toggleFullscreen() {
+        try {
+          if (!document.fullscreenElement) {
+            const el = this.$refs.viewportPanel || document.documentElement;
+            if (el.requestFullscreen) await el.requestFullscreen();
+          } else if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          }
+        } catch (_) { /* 全屏被拒/环境不支持 */ }
+      },
+      // 缩放下拉当前项高亮(对齐 vidonex zoomMenuItems 勾选)
+      zoomMenuItemClass(p) {
+        const z = this.vz().zoom;
+        if (p.isFit) return this.vz().isFit ? 'text-indigo-400' : 'text-gray-300';
+        return Math.round(z * 100) === Math.round(p.value * 100) ? 'text-indigo-400' : 'text-gray-300';
+      },
       get stageStyle() {
         const z = this.vz().zoom;
         return `transform:translate(${this.vz().panX}px, ${this.vz().panY}px) scale(${z})`;
