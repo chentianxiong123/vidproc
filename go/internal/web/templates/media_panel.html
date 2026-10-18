@@ -48,7 +48,7 @@
              :class="uploading ? 'opacity-50 pointer-events-none' : ''">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
         <span x-text="uploading ? '上传中…' : '上传素材'"></span>
-        <input type="file" class="hidden" multiple @change="uploadFiles($event)">
+        <input x-ref="fileInput" type="file" class="hidden" multiple @change="uploadFiles($event)">
       </label>
     </div>
   </div>
@@ -74,7 +74,8 @@
       <!-- 素材区:空态 / 分类树 / 网格(对齐 vidonex MediaLibrary 三态) -->
       <div class="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-0">
         <!-- 空态(无素材且无搜索) -->
-        <div x-show="assets.length === 0" class="text-center py-10 px-4 space-y-3 border border-dashed border-gray-800 rounded-xl m-1 bg-gray-950/30">
+        <div x-show="assets.length === 0" @click="$refs.fileInput.click()"
+             class="text-center py-10 px-4 space-y-3 border border-dashed border-gray-800 rounded-xl m-1 bg-gray-950/30 hover:border-gray-700 transition cursor-pointer">
           <div class="w-10 h-10 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center mx-auto text-gray-400">
             <svg class="w-5 h-5 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
@@ -125,10 +126,10 @@
                       <span x-show="a.duration_seconds > 0" class="text-[10px] font-mono text-gray-500"
                             x-text="Math.floor(a.duration_seconds / 60) + ':' + String(Math.floor(a.duration_seconds % 60)).padStart(2, '0')"></span>
                       <div class="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                        <button type="button" @click="openProbeModal(a)" class="p-1 rounded text-gray-400 hover:text-indigo-400 transition" title="素材详情">
+                        <button type="button" @click="openProbeModal(a)" class="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200 transition" title="素材详情">
                           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 12v4" stroke-linecap="round"/></svg>
                         </button>
-                        <button type="button" @click="removeAsset(a)" class="p-1 rounded text-gray-400 hover:text-red-400 transition" title="删除素材">
+                        <button type="button" @click="removeAsset(a)" class="p-1 rounded hover:bg-red-950/80 text-gray-400 hover:text-red-400 transition" title="删除素材">
                           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 14H7z" stroke-linejoin="round"/><path d="M9 4h6l1 3H8z" stroke-linejoin="round"/></svg>
                         </button>
                       </div>
