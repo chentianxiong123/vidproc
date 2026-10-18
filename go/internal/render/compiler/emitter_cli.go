@@ -10,6 +10,7 @@ type EncodingOptions struct {
 	AudioCodec   string // e.g. "aac"
 	PixelFormat  string // e.g. "yuv420p"
 	AudioBitrate string // e.g. "192k"
+	VideoBitrate int    // 0 = 不设(-crf 优先);>0 输出 "-b:v" 恒定码率
 	CRF          int    // Constant Rate Factor (default 23)
 	Preset       string // e.g. "medium", "fast"
 	CustomArgs   []string
@@ -68,6 +69,9 @@ func BuildFFmpegArgs(inputs []string, filterComplex string, outVLabel, outALabel
 	}
 	if opts.CRF > 0 {
 		args = append(args, "-crf", fmt.Sprintf("%d", opts.CRF))
+	}
+	if opts.VideoBitrate > 0 {
+		args = append(args, "-b:v", fmt.Sprintf("%dk", opts.VideoBitrate))
 	}
 	if opts.Preset != "" {
 		args = append(args, "-preset", opts.Preset)

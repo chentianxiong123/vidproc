@@ -30,6 +30,7 @@ type EncodingSpec struct {
 	AudioBitrate string `json:"audio_bitrate,omitempty" yaml:"audio_bitrate,omitempty"`
 	CRF          int    `json:"crf,omitempty" yaml:"crf,omitempty"`
 	Preset       string `json:"preset,omitempty" yaml:"preset,omitempty"`
+	VideoBitrate int    `json:"video_bitrate,omitempty" yaml:"video_bitrate,omitempty"` // kbps;>0 覆盖 CRF 用恒定码率
 }
 
 // TrackSpec defines a single media layer (video, audio, overlay, subtitle, or waveform).

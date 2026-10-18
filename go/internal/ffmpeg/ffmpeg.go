@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 
 	"vidproc/internal/mp4"
 )
@@ -110,7 +111,8 @@ func (c *Config) WithFFprobe(path string) *Config {
 // ProbeResult holds the result of probing a file.
 type ProbeResult struct {
 	Format struct {
-		Tags map[string]string `json:"tags"`
+		Duration string            `json:"duration"`
+		Tags     map[string]string `json:"tags"`
 	} `json:"format"`
 	Streams []struct {
 		CodecType  string `json:"codec_type"`
@@ -122,6 +124,18 @@ type ProbeResult struct {
 		SampleRate string `json:"sample_rate"`
 		Channels   int    `json:"channels"`
 	} `json:"streams"`
+}
+
+// FormatDuration 返回媒体总时长秒(0 = 未能探测)。
+func (p *ProbeResult) FormatDuration() float64 {
+	if p == nil || p.Format.Duration == "" {
+		return 0
+	}
+	d, err := strconv.ParseFloat(p.Format.Duration, 64)
+	if err != nil || d < 0 {
+		return 0
+	}
+	return d
 }
 
 // StreamInfo holds video/audio stream information.
@@ -147,7 +161,7 @@ type FileInfo struct {
 func (c *Config) Probe(filePath string) (*ProbeResult, error) {
 	cmd := exec.Command(c.FFprobe,
 		"-v", "error",
-		"-show_entries", "format=tags:stream=codec_type,width,height,codec_name,pix_fmt,r_frame_rate,sample_rate,channels",
+		"-show_entries", "format=duration:format=tags:stream=codec_type,width,height,codec_name,pix_fmt,r_frame_rate,sample_rate,channels",
 		"-of", "json",
 		filePath)
 	out, err := cmd.CombinedOutput()

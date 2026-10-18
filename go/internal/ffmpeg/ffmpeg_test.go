@@ -72,8 +72,10 @@ func TestCheckCompatibility(t *testing.T) {
 func TestFileInfoFromProbe(t *testing.T) {
 	pr := &ProbeResult{
 		Format: struct {
-			Tags map[string]string `json:"tags"`
+			Duration string            `json:"duration"`
+			Tags     map[string]string `json:"tags"`
 		}{
+			Duration: "10.5",
 			Tags: map[string]string{
 				"creation_time": "2025-02-09T10:05:36.000000Z",
 			},

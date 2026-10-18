@@ -17,29 +17,39 @@ import (
 type ClipJSON struct {
 	ID       string  `json:"id"`
 	Source   string  `json:"source"`
-	Name     string  `json:"name"` // 源文件名(时间轴/预览显示)
-	Start    float64 `json:"start"`     // 时间轴起始秒
-	Duration float64 `json:"duration"`  // 时长秒
-	Trim     float64 `json:"trim"`      // 源内裁剪起点秒
+	Name     string  `json:"name"`     // 源文件名(时间轴/预览显示)
+	Start    float64 `json:"start"`    // 时间轴起始秒
+	Duration float64 `json:"duration"` // 时长秒
+	Trim     float64 `json:"trim"`     // 源内裁剪起点秒
 	Speed    float64 `json:"speed"`
 	HasAudio bool    `json:"has_audio"`
 	Kind     string  `json:"kind"` // 所属轨道类型,前端配色用
 }
 
+// TransitionJSON 转场(前端展示 TransitionHandle + 序列化回 spec)。
+type TransitionJSON struct {
+	Type     string  `json:"type"`
+	Duration float64 `json:"duration"`
+	From     string  `json:"from,omitempty"`
+	To       string  `json:"to,omitempty"`
+}
+
 // TrackJSON 数值化的轨道。
 type TrackJSON struct {
-	ID    string     `json:"id"`
-	Kind  string     `json:"kind"`
-	Clips []ClipJSON `json:"clips"`
+	ID          string           `json:"id"`
+	Kind        string           `json:"kind"`
+	Clips       []ClipJSON       `json:"clips"`
+	Transitions []TransitionJSON `json:"transitions,omitempty"`
 }
 
 // TimelineJSON 时间轴整体:画布 + 轨道 + 总时长。
 type TimelineJSON struct {
-	Width    int         `json:"width"`
-	Height   int         `json:"height"`
-	FPS      float64     `json:"fps"`
-	Duration float64     `json:"duration"` // 最大 clip 末端秒
-	Tracks   []TrackJSON `json:"tracks"`
+	Width           int         `json:"width"`
+	Height          int         `json:"height"`
+	FPS             float64     `json:"fps"`
+	Duration        float64     `json:"duration"` // 最大 clip 末端秒
+	BackgroundColor string      `json:"background_color,omitempty"`
+	Tracks          []TrackJSON `json:"tracks"`
 }
 
 // parseSeconds 统一把 spec 的 any 时长(数字 / "3.3s" / "00:00:03.300")转成秒。
@@ -56,10 +66,11 @@ func parseSeconds(raw any) float64 {
 // 不触碰 DB/渲染;可单测。
 func specToTimelineJSON(vs *spec.VideoSpec) TimelineJSON {
 	tl := TimelineJSON{
-		Width:  vs.Canvas.Width,
-		Height: vs.Canvas.Height,
-		FPS:    specFPS(vs.FPS),
-		Tracks: make([]TrackJSON, 0, len(vs.Tracks)),
+		Width:           vs.Canvas.Width,
+		Height:          vs.Canvas.Height,
+		FPS:             specFPS(vs.FPS),
+		BackgroundColor: vs.Canvas.BackgroundColor,
+		Tracks:          make([]TrackJSON, 0, len(vs.Tracks)),
 	}
 	if tl.Width == 0 {
 		tl.Width = 1920
@@ -100,6 +111,19 @@ func specToTimelineJSON(vs *spec.VideoSpec) TimelineJSON {
 			if end := start + dur; end > maxEnd {
 				maxEnd = end
 			}
+		}
+		// 透传转场(前端 TransitionHandle 展示 + 序列化回 spec)
+		for _, ts := range tr.Transitions {
+			fd := parseSeconds(ts.Duration)
+			if fd <= 0 {
+				continue
+			}
+			tj.Transitions = append(tj.Transitions, TransitionJSON{
+				Type:     ts.Type,
+				Duration: fd,
+				From:     ts.From,
+				To:       ts.To,
+			})
 		}
 		tl.Tracks = append(tl.Tracks, tj)
 	}

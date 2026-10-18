@@ -1,46 +1,137 @@
-{{/* 检查器面板（对齐 vidonex PanelsInspectorPanel：属性分组 + 值） */}}
-<div class="h-full w-full flex flex-col bg-gray-950 border-l border-gray-800 select-none">
-  <div class="h-10 border-b border-gray-800 px-3 flex items-center bg-gray-950/80 flex-shrink-0">
-    <span class="text-xs font-semibold text-gray-300">检查器</span>
+{{/* 检查器面板(对齐 vidonex InspectorPanel:clip 属性分组编辑)。
+    监听 clip-selected 事件(时间轴广播),编辑直接改内存 clip 引用 →
+    editor.editClip() 300ms debounce autosave。未选中显示空态。 */}}
+<div class="h-full flex flex-col bg-gray-950 select-none overflow-hidden"
+     x-data="clipInspector()">
+  <!-- Header -->
+  <div class="h-10 border-b border-gray-800 px-4 flex items-center justify-between flex-shrink-0">
+    <span class="text-xs font-semibold text-gray-200 tracking-wide uppercase">检查器</span>
+    <span x-show="clip" class="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20"
+          x-text="clip ? clip.id : ''"></span>
   </div>
-  <div class="flex-1 overflow-y-auto p-3 space-y-4">
-    {{if .Project}}
-    <div>
-      <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">项目</p>
-      <div class="space-y-1.5">
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] text-gray-500">ID</span>
-          <span class="text-[11px] font-mono text-gray-200">#{{.Project.ID}}</span>
+
+  <!-- Body -->
+  <div class="flex-1 overflow-y-auto p-4 space-y-5">
+    <!-- 空态 -->
+    <div x-show="!clip && !trackKind" class="h-full flex flex-col items-center justify-center text-center text-gray-500 gap-2">
+      <svg class="w-8 h-8 opacity-40" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 4.8L19 8l-3.4 4 1 5.5L12 15l-4.6 2.5 1-5.5L5 8l4.6-1.2z"/></svg>
+      <p class="text-xs">从时间轴选择一个 clip 编辑属性</p>
+    </div>
+
+    <template x-if="clip">
+      <div>
+        <!-- 时序 & 时长(对齐 vidonex Timing & Duration section) -->
+        <div class="space-y-3">
+          <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">时序</h4>
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="block text-gray-500 mb-1">起点 (s)</label>
+              <input type="number" min="0" step="0.1" x-model.number="clip.start"
+                     @change="commit('Update Start')"
+                     class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-gray-500 mb-1">时长 (s)</label>
+              <input type="number" min="0.1" step="0.1" x-model.number="clip.duration"
+                     @change="commit('Update Duration')"
+                     class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-gray-500 mb-1">修剪 (s)</label>
+              <input type="number" min="0" step="0.1" x-model.number="clip.trim"
+                     @change="commit('Update Trim')"
+                     class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-gray-500 mb-1">速度 (x)</label>
+              <input type="number" min="0.1" step="0.1" x-model.number="clip.speed"
+                     @change="commit('Update Speed')"
+                     class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
+            </div>
+          </div>
+          <!-- 源文件 -->
+          <div class="text-[10px] text-gray-500 font-mono truncate px-1" x-text="clip.source" title="源文件路径"></div>
         </div>
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] text-gray-500">名称</span>
-          <span class="text-[11px] text-gray-200 truncate max-w-[140px]">{{.Project.Name}}</span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] text-gray-500">创建</span>
-          <span class="text-[11px] font-mono text-gray-400">{{.Project.CreatedAt.Format "01-02 15:04"}}</span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="text-[11px] text-gray-500">更新</span>
-          <span class="text-[11px] font-mono text-gray-400">{{.Project.UpdatedAt.Format "01-02 15:04"}}</span>
-        </div>
+
+        <!-- 变换(视频/overlay clip) -->
+        <template x-if="trackKind === 'video' || trackKind === 'overlay'">
+          <div class="space-y-3 pt-3 border-t border-gray-800/80">
+            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">变换</h4>
+            <!-- 位置 X/Y -->
+            <div class="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="block text-gray-500 mb-1">位置 X</label>
+                <input type="number" x-model.number="posX" @change="commit('Update Position')"
+                       class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
+              </div>
+              <div>
+                <label class="block text-gray-500 mb-1">位置 Y</label>
+                <input type="number" x-model.number="posY" @change="commit('Update Position')"
+                       class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
+              </div>
+            </div>
+            <!-- 对齐 -->
+            <div class="text-xs">
+              <label class="block text-gray-500 mb-1">对齐方式</label>
+              <select x-model="clip.position.alignment" @change="commit('Update Alignment')"
+                      class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 text-gray-200 focus:outline-none focus:border-indigo-500">
+                <option value="center">居中</option>
+                <option value="top-left">左上</option>
+                <option value="top-right">右上</option>
+                <option value="bottom-left">左下</option>
+                <option value="bottom-right">右下</option>
+              </select>
+            </div>
+            <!-- 缩放 & 旋转 -->
+            <div class="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <div class="flex justify-between text-gray-500 mb-1"><span>缩放</span><span class="font-mono text-gray-300" x-text="(clip.scale ?? 1).toFixed(2) + 'x'"></span></div>
+                <input type="range" min="0.1" max="3" step="0.05" x-model.number="clip.scale" @input="commit('Update Scale')"
+                       class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
+              </div>
+              <div>
+                <div class="flex justify-between text-gray-500 mb-1"><span>旋转</span><span class="font-mono text-gray-300" x-text="(clip.rotation ?? 0) + '°'"></span></div>
+                <input type="range" min="-180" max="180" step="1" x-model.number="clip.rotation" @input="commit('Update Rotation')"
+                       class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
+              </div>
+            </div>
+            <!-- 不透明度 & 混合模式 -->
+            <div class="text-xs">
+              <div class="flex justify-between text-gray-500 mb-1"><span>不透明度</span><span class="font-mono text-gray-300" x-text="Math.round((clip.opacity ?? 1) * 100) + '%'"></span></div>
+              <input type="range" min="0" max="1" step="0.05" x-model.number="clip.opacity" @input="commit('Update Opacity')"
+                     class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
+            </div>
+            <div class="text-xs">
+              <label class="block text-gray-500 mb-1">混合模式</label>
+              <select x-model="clip.blend_mode" @change="commit('Update Blend Mode')"
+                      class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 text-gray-200 focus:outline-none focus:border-indigo-500">
+                <option value="normal">正常</option>
+                <option value="multiply">正片叠底</option>
+                <option value="screen">滤色</option>
+                <option value="overlay">叠加</option>
+                <option value="add">加亮</option>
+                <option value="darken">变暗</option>
+                <option value="lighten">变亮</option>
+                <option value="difference">差值</option>
+                <option value="hardlight">强光</option>
+                <option value="softlight">柔光</option>
+              </select>
+            </div>
+          </div>
+        </template>
+
+        <!-- 音频音量(音频/视频 clip) -->
+        <template x-if="trackKind === 'audio' || trackKind === 'video'">
+          <div class="space-y-3 pt-3 border-t border-gray-800/80">
+            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">音频</h4>
+            <div class="text-xs">
+              <div class="flex justify-between text-gray-500 mb-1"><span>音量</span><span class="font-mono text-gray-300" x-text="Math.round((clip.volume ?? 1) * 100) + '%'"></span></div>
+              <input type="range" min="0" max="2" step="0.05" x-model.number="clip.volume" @input="commit('Update Volume')"
+                     class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
+            </div>
+          </div>
+        </template>
       </div>
-    </div>
-    <div>
-      <p class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-2">输出</p>
-      <div class="space-y-1.5">
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-[11px] text-gray-500 flex-shrink-0">路径</span>
-          <span class="text-[11px] font-mono text-gray-400 break-all text-right">{{if .Project.OutputPath}}{{.Project.OutputPath}}{{else}}—{{end}}</span>
-        </div>
-      </div>
-    </div>
-    {{else}}
-    <div class="text-center py-10 text-gray-500">
-      <svg class="w-8 h-8 mx-auto mb-2 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 15l4-4 3 3 4-5 5 6"/></svg>
-      <p class="text-xs">未选择项目</p>
-      <p class="text-[10px] mt-1">从媒体库或视口打开一个项目</p>
-    </div>
-    {{end}}
+    </template>
   </div>
 </div>

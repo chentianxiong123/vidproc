@@ -6,6 +6,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -18,6 +19,9 @@ import (
 	"vidproc/internal/cmdrender"
 	"vidproc/internal/project"
 	"vidproc/internal/render/executor"
+	"vidproc/internal/timeline/spec"
+
+	"gopkg.in/yaml.v3"
 )
 
 // jobStatus 任务生命周期。
@@ -108,8 +112,18 @@ func jobCtx() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 30*time.Minute)
 }
 
-// launch 后台执行渲染:materialize spec → cmdrender.Render(带进度回调)。
-func launch(db *sql.DB, projectID, jobID int64, output string) {
+// RenderParams 渲染导出选项(POST /api/projects/{id}/render body)。
+type RenderParams struct {
+	Output string `json:"output"`  // 输出路径;空 = 项目默认
+	Format string `json:"format"`  // mp4/mov/webm;空 = 按路径扩展名
+	GPU    string `json:"gpu"`     // none/nvenc/…;空 = spec 默认
+	Preset string `json:"preset"`  // 平台预设 tiktok/youtube_1080/…(覆盖 spec 编码)
+	CRF    int    `json:"crf"`     // 0 = 不变;14-35 质量档
+	Bitrate int   `json:"bitrate"` // kbps;>0 恒定码率覆盖 CRF
+}
+
+// launch 后台执行渲染:materialize spec(注入导出参数)→ cmdrender.Render(带进度回调)。
+func launch(db *sql.DB, projectID, jobID int64, params RenderParams) {
 	p, err := project.Get(db, projectID)
 	if err != nil {
 		fail(jobID, err.Error(), time.Now())
@@ -117,22 +131,64 @@ func launch(db *sql.DB, projectID, jobID int64, output string) {
 	}
 
 	tmpSpec := filepath.Join(os.TempDir(), fmt.Sprintf("vidproc_job_%d.yaml", jobID))
+	// 注入导出参数:解析 spec → 覆盖 output/crf/bitrate/gpu → 序列化回临时文件。
+	// 这样渲染只影响本次 job,项目 spec 保持原样。GZIP:yaml.v3 会保留字段顺序。
 	if err := project.SaveSpecToFile(tmpSpec, p.SpecYAML); err != nil {
 		fail(jobID, err.Error(), time.Now())
 		return
 	}
+	if params.Output == "" {
+		params.Output = p.OutputPath
+	}
+	if params.Format != "" && params.Output != "" {
+		// 显式格式 → 输出路径扩展名对齐(mp4/mov/webm;别处语义:仅当输出无扩展名时)
+		ext := filepath.Ext(params.Output)
+		if ext == "" {
+			params.Output += "." + params.Format
+		}
+	}
+	if params.Preset != "" || params.CRF > 0 || params.Bitrate > 0 || params.GPU != "" {
+		if specFile, openErr := os.Open(tmpSpec); openErr == nil {
+			if vs, parseErr := spec.ParseYAML(specFile); parseErr == nil {
+				_ = openErr
+				modified := false
+				if params.Preset != "" {
+					vs.Preset = params.Preset
+					modified = true
+				}
+				if params.GPU != "" && params.GPU != "none" {
+					vs.HardwareAcceleration = params.GPU
+					modified = true
+				}
+				if params.CRF > 0 || params.Bitrate > 0 {
+					if vs.Encoding == nil {
+						vs.Encoding = &spec.EncodingSpec{}
+					}
+					if params.CRF > 0 {
+						vs.Encoding.CRF = params.CRF
+					}
+					if params.Bitrate > 0 {
+						vs.Encoding.VideoBitrate = params.Bitrate
+					}
+					modified = true
+				}
+				if modified {
+					if data, marshalErr := yaml.Marshal(vs); marshalErr == nil {
+						_ = os.WriteFile(tmpSpec, data, 0o600)
+					}
+				}
+			}
+		}
+	}
 	defer os.Remove(tmpSpec)
 
-	if output == "" {
-		output = p.OutputPath
-	}
 	renderJobs.update(jobID, func(j *RenderJob) { j.Status = jobRunning })
 
 	ctx, cancel := jobCtx()
 	defer cancel()
 	start := time.Now()
 	out, renderErr := cmdrender.Render(ctx, tmpSpec, cmdrender.Options{
-		Output: output,
+		Output: params.Output,
 		OnProgress: func(ev executor.ProgressEvent) {
 			renderJobs.update(jobID, func(j *RenderJob) {
 				j.Percent = ev.Percentage
@@ -161,15 +217,23 @@ func launch(db *sql.DB, projectID, jobID int64, output string) {
 }
 
 // RenderStartHandler POST /api/projects/{id}/render → 启动异步任务,返回 job。
+// Body(可选 JSON):{output, format, gpu, preset, crf, bitrate} 覆盖导出参数;
+// 空 body = 项目默认渲染。
 func RenderStartHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p, err := getProject(w, r, db)
 		if err != nil {
 			return
 		}
-		output := r.URL.Query().Get("output")
+		var params RenderParams
+		if r.Body != nil && r.ContentLength > 0 {
+			if decodeErr := json.NewDecoder(r.Body).Decode(&params); decodeErr != nil {
+				writeErr(w, 400, "bad render params: "+decodeErr.Error())
+				return
+			}
+		}
 		jobID := renderJobs.start(p.ID)
-		go launch(db, p.ID, jobID, output)
+		go launch(db, p.ID, jobID, params)
 		writeJSON(w, 202, renderJobs.get(jobID))
 	}
 }

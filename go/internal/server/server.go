@@ -12,6 +12,7 @@ import (
 
 	"vidproc/internal/api"
 	"vidproc/internal/hx"
+	"vidproc/internal/media"
 	"vidproc/internal/project"
 	"vidproc/internal/store"
 	"vidproc/internal/web"
@@ -31,9 +32,13 @@ func New(dataDir string) http.Handler {
 		log.Fatalf("open db: %v", err)
 	}
 	// 组装层收集各域包 schema 传入 store(store 不 import 业务,避免环)
-	if err := store.Migrate(db, project.ProjectSchema); err != nil {
+	if err := store.Migrate(db, append(project.ProjectSchema, media.MediaSchema...)); err != nil {
 		log.Fatalf("migrate db: %v", err)
 	}
+
+	// 素材落盘目录(与数据库同目录)
+	mediaDir := filepath.Join(dataDir, "media")
+	api.SetMediaDir(mediaDir)
 
 	hxH := hx.New(db)
 

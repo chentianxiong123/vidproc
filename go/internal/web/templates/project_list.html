@@ -56,37 +56,67 @@
     </div>
     {{end}}
 
-    <!-- 新建项目卡片（对齐 vidonex NewProjectModal 字段：名称/画布/输出/spec） -->
-    <div id="new" class="mt-6 rounded-xl bg-gray-900/60 border border-gray-800 p-4">
-      <h2 class="text-sm font-semibold text-gray-200 mb-3 flex items-center gap-2">
-        <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+    <!-- 新建项目(弹窗触发按钮,对齐 vidonex NewProjectModal) -->
+    <div class="mt-6">
+      <button type="button" @click="window.dispatchEvent(new CustomEvent('new-project-open'))"
+              class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-medium transition shadow-lg shadow-indigo-500/20">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
         新建项目
-      </h2>
-      <form hx-post="/project" hx-target="#main" hx-swap="innerHTML">
-        <div class="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label class="block text-[11px] font-medium text-gray-400 mb-1">名称</label>
-            <input type="text" name="name" placeholder="我的项目" required
-                   class="w-full px-2.5 py-1.5 rounded-lg bg-gray-950 border border-gray-800 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition">
+      </button>
+    </div>
+
+    <!-- 新建项目弹窗(对齐 vidonex NewProjectModal:预设网格 + fps) -->
+    <div x-data="newProjectModal()" x-show="open" x-cloak
+         class="fixed inset-0 z-[90] flex items-center justify-center p-4"
+         style="background:rgba(0,0,0,.6);backdrop-filter:blur(2px)"
+         @click.self="open = false">
+      <div class="w-full max-w-lg rounded-xl bg-gray-950 border border-gray-800 shadow-2xl p-5 text-gray-200">
+        <h3 class="text-sm font-semibold flex items-center gap-2 mb-4">
+          <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
+          新建项目
+        </h3>
+        <!-- 项目名 -->
+        <div class="mb-4">
+          <label class="block text-[11px] text-gray-500 mb-1">项目名称</label>
+          <input type="text" x-model="name" class="w-full bg-gray-900 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-indigo-500">
+        </div>
+        <!-- 画布预设网格(对齐 vidonex aspect ratio presets) -->
+        <div class="mb-4">
+          <label class="block text-[11px] text-gray-500 mb-2">画布预设</label>
+          <div class="grid grid-cols-2 gap-2">
+            <template x-for="p in presets" :key="p.id">
+              <button type="button" @click="applyPreset(p)"
+                      class="flex items-center gap-2 p-2 rounded-lg border text-left transition"
+                      :class="presetId === p.id ? 'border-indigo-500 bg-indigo-500/10' : 'border-gray-800 hover:border-gray-600'">
+                <svg class="w-4 h-4 flex-shrink-0 text-gray-400" viewBox="0 0 24 24" fill="currentColor"><path :d="p.icon"/></svg>
+                <span class="min-w-0">
+                  <span class="block text-[11px] text-gray-200 truncate" x-text="p.name"></span>
+                  <span class="block text-[9px] text-gray-500 font-mono" x-text="p.width + '×' + p.height"></span>
+                </span>
+              </button>
+            </template>
           </div>
-          <div>
-            <label class="block text-[11px] font-medium text-gray-400 mb-1">输出路径</label>
-            <input type="text" name="output" placeholder="C:/out/video.mp4"
-                   class="w-full px-2.5 py-1.5 rounded-lg bg-gray-950 border border-gray-800 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition">
+        </div>
+        <!-- fps -->
+        <div class="mb-4">
+          <label class="block text-[11px] text-gray-500 mb-1">帧率</label>
+          <div class="flex gap-2">
+            <template x-for="f in fpsOptions" :key="f.value">
+              <button type="button" @click="fps = f.value"
+                      class="flex-1 px-2 py-1.5 rounded-lg border text-[11px] transition"
+                      :class="fps === f.value ? 'border-indigo-500 bg-indigo-500/10 text-white' : 'border-gray-800 text-gray-400 hover:border-gray-600'"
+                      x-text="f.label"></button>
+            </template>
           </div>
         </div>
-        <div class="mt-3">
-          <label class="block text-[11px] font-medium text-gray-400 mb-1">Spec YAML（vidonex 兼容 project.yaml）</label>
-          <textarea name="spec" required rows="6" placeholder='version: "1.0"&#10;canvas:&#10;  preset: "1080p"&#10;tracks: []'
-                    class="w-full px-2.5 py-1.5 rounded-lg bg-gray-950 border border-gray-800 text-xs font-mono text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition"></textarea>
+        <p x-show="error" class="text-[11px] text-red-400 mb-2" x-text="error"></p>
+        <div class="flex justify-end gap-2">
+          <button type="button" @click="open = false" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-gray-900 transition">取消</button>
+          <button type="button" @click="create()" :disabled="creating || !name.trim()"
+                  class="px-4 py-1.5 rounded-lg text-xs font-medium bg-indigo-500 hover:bg-indigo-400 text-white transition disabled:opacity-50"
+                  x-text="creating ? '创建中…' : '创建项目'"></button>
         </div>
-        <div class="mt-3">
-          <button type="submit" class="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-medium transition shadow-lg shadow-indigo-500/20">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
-            创建项目
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   </div>
 </div>

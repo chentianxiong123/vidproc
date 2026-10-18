@@ -154,6 +154,11 @@ func Router(db *sql.DB) http.Handler {
 	// 异步渲染:POST 启动,GET 轮询进度
 	mux.HandleFunc("POST /api/projects/{id}/render", RenderStartHandler(db))
 	mux.HandleFunc("GET /api/render/{jobID}", RenderStatusHandler)
+	// 媒体素材:列表/上传/删除/缩略图
+	mux.HandleFunc("GET /api/projects/{id}/assets", AssetsListHandler(db))
+	mux.HandleFunc("POST /api/projects/{id}/assets", AssetsUploadHandler(db))
+	mux.HandleFunc("DELETE /api/assets/{id}", AssetsDeleteHandler(db))
+	mux.HandleFunc("GET /api/assets/{id}/frame", ThumbFrameHandler(db))
 
 	return mux
 }
@@ -175,4 +180,10 @@ func getProject(w http.ResponseWriter, r *http.Request, db *sql.DB) (*project.Pr
 		return nil, err
 	}
 	return p, nil
+}
+
+// mustID 无条件解析路径数字 id(调用方已保证路由模式合法)。
+func mustID(s string) int64 {
+	id, _ := strconv.ParseInt(s, 10, 64)
+	return id
 }

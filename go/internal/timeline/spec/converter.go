@@ -603,6 +603,9 @@ func resolveEncodingOptions(specification *VideoSpec, platformPreset *presets.Pl
 		if specification.Encoding.CRF > 0 {
 			encodingOptions.CRF = specification.Encoding.CRF
 		}
+		if specification.Encoding.VideoBitrate > 0 {
+			encodingOptions.VideoBitrate = specification.Encoding.VideoBitrate
+		}
 		if specification.Encoding.Preset != "" {
 			encodingOptions.Preset = specification.Encoding.Preset
 		}
