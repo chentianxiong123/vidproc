@@ -175,8 +175,9 @@
 
       <!-- 轨道区 -->
       <div class="flex">
-        <!-- 轨道头列（对齐 TrackHeader；点击选中轨道 → Ducking/Waveform 检查器） -->
-        <div class="w-56 flex-shrink-0 border-r border-gray-800 bg-gray-950/60 z-10 relative">
+        <!-- 轨道头列（对齐参考 TrackHeader 真实结构：外层 w-56 column，内层 flex-1 overflow-y-hidden min-h-0 包轨道行） -->
+        <div class="w-56 flex-shrink-0 border-r border-gray-800 flex flex-col bg-gray-950 z-10 min-h-0">
+          <div class="flex-1 overflow-y-hidden min-h-0">
           <template x-for="tr in videoTracks()" :key="'h' + tr.id">
             <div class="h-14 border-b border-gray-800/80 flex items-center gap-1 px-1 cursor-pointer transition"
                  :class="selectedTrackId === tr.id ? 'text-indigo-400 bg-indigo-500/10 border-l-2 border-l-indigo-500' : 'text-gray-500 hover:text-gray-300'"
@@ -237,6 +238,7 @@
               </div>
             </div>
           </template>
+          </div>
         </div>
 
         <!-- 轨道内容 -->
