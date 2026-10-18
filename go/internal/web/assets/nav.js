@@ -186,7 +186,14 @@
       // 转场设置弹窗(常驻对象,永不 null → 模板引用天然空安全)
       // {open, track, fromClip, toId, type, duration, existed}
       transitionModal: { open: false, track: null, fromClip: null, toId: null, type: 'dissolve', duration: 0.5, existed: false },
+      // 右键上下文菜单(对齐 vidonex ClipItem UContextMenu 四段式;常驻对象避免 null 引用)
+      ctxMenu: { open: false, x: 0, y: 0, clip: null, track: null },
+      // 拖拽幻影(对齐 vidonex TrackRow ghost:兼容靛蓝/重叠红/不兼容红;常驻对象)
+      dragGhost: { show: false, targetKind: '', left: 0, width: 0, duration: 0, snapped: false, snapType: '', overlap: false, compatible: true, title: '' },
+      // source → thumbnail_url 映射(filmstrip 胶片条,对齐上游 ClipItem 缩略图背景)
+      assetThumbs: {},
       trackWidth: 800, // 滚动区实测宽,做成 clip 区域 min-width
+      contentSec: 0, // 内容时长(响应式;标尺 END 高亮宽度 = contentSec × pps)
       loading: true,
       error: '',
       busy: false, // 渲染中(详情页按钮联动)
@@ -215,9 +222,23 @@
           if (!res.ok) throw new Error(await res.text());
           this.tl = await res.json();
           this.pps = 80 * this.zoom;
+          // 素材缩略图映射(source → thumbnail_url;filmstrip 与右键 Probe 用)
+          try {
+            const ar = await fetch(`/api/projects/${this.pid}/assets`);
+            if (ar.ok) {
+              const list = await ar.json();
+              this.assetThumbs = {};
+              for (const a of list || []) {
+                // 按文件名匹配(媒体库里 source 可能带路径,文件名即可对上)
+                const base = (a.file_name || '').toLowerCase();
+                if (base) this.assetThumbs[base] = (a.thumbnail_url || `/api/assets/${a.id}/frame?t=0`) + '';
+              }
+            }
+          } catch (_) { /* 缩略图可选,失败忽略 */ }
           // 播放状态机同步内容/工作区时长
           window.vp.currentProjectId = this.pid;
           window.vp.syncTimelineDurations(this.tl);
+          this.contentSec = (window.vp.playback && window.vp.playback.contentDuration) || 0;
           // 播放头默认停在第一个 clip 起点
           const first = this.firstClipStart();
           this.setPlayhead(first);
@@ -274,9 +295,28 @@
         }
         if (!el || el === root) el = root;
         const rect = el.getBoundingClientRect();
-        const x = e.clientX - rect.left - 48; // 减轨道头列宽
-        const t = Math.max(0, x / this.pps);
+        const x = e.clientX - rect.left - 64; // 减轨道头列宽
+        let t = Math.max(0, x / this.pps);
+        // 磁吸吸附(对齐上游 useSnapping:吸附 0/播放头/clip 起止,阈值 6px;Snap OFF 忽略)
+        if (this.snapEnabled()) t = this.snapScrub(t);
         this.setPlayhead(t, { source: 'timeline' });
+      },
+      // scrub 磁吸:吸附到 0、当前播放头、各 clip 起止边(上游 snapTime left-edge 分支;Snap OFF 原样返回)
+      snapScrub(t) {
+        if (!this.snapEnabled()) return t;
+        const edges = [0, this.playhead];
+        for (const tr of this.tracks()) {
+          for (const c of tr.clips) {
+            edges.push(c.start, c.start + c.duration);
+          }
+        }
+        const th = 6 / this.pps; // 秒(上游 thresholdPixels=6 ÷ pps)
+        let best = t, bestD = th;
+        for (const ed of edges) {
+          const d = Math.abs(ed - t);
+          if (d < bestD) { bestD = d; best = ed; }
+        }
+        return best;
       },
       onScrubEnd() {
         window.removeEventListener('pointermove', this._scrubMove);
@@ -322,24 +362,115 @@
       },
 
       // ============ 素材拖入时间轴(对齐 vidonex addClipToTrack)============
-      // 轨道 dragover 显示可放;drop 解析 dataTransfer 素材 → 按落点时间建 clip。
-      // 非重叠放置:与轨道已有 clip 冲突时推到最近空档(findNonOverlappingStart)。
+      // 轨道 dragover:计算拖拽幻影(对齐 vidonex TrackRow handleDragOver:
+      // 磁吸吸附 + 重叠/兼容校验 → 靛蓝(可放)/红(重叠)/红(不兼容)三态)
       onTrackDragOver(e, kind) {
-        if (!this.hasDraggedAsset(e) && !this.hasDraggedClip(e)) return;
+        if (!this.hasDraggedAsset(e) && !this.hasDraggedClip(e)) { this.dragGhost.show = false; return; }
         e.preventDefault();
         e.dataTransfer.dropEffect = 'copy';
+        const src = window.vp && window.vp.dragSrc;
+        if (!src) { this.dragGhost.show = false; return; }
+        const rect = e.currentTarget.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        let duration = 5.0, excludeId = null, grabOffset = 0;
+        if (src.clip) {
+          duration = Number(src.clip.duration) || 5.0;
+          excludeId = src.clip.id;
+          grabOffset = src.grabOffsetTime || 0;
+        } else if (src.asset) {
+          const a = src.asset;
+          if (a.file_type === 'image') duration = 5.0;
+          else if (a.duration_seconds > 0) duration = a.duration_seconds;
+        }
+        const rawTime = Math.max(0, (mouseX - grabOffset * this.pps) / this.pps);
+        const { time: candidate, snapped, snapType } = this.snapTimeFor(rawTime, duration, excludeId);
+        const track = this.tracks().find((tr) => tr.kind === kind) ||
+                      this.tracks().find((tr) => tr.kind === (kind === 'audio' ? 'video' : 'audio'));
+        const { hasOverlap } = this.checkTrackOverlap(track, excludeId, candidate, duration);
+        const source = src.clip ? src.clip.source : (src.asset ? (src.asset.file_path || src.asset.file_name) : '');
+        const compatible = this.isSourceCompatibleWithTrack(source, kind);
+        this.dragGhost = {
+          show: true, targetKind: kind,
+          left: candidate * this.pps, width: Math.max(10, duration * this.pps),
+          duration, snapped, snapType, overlap: hasOverlap, compatible,
+          title: src.clip ? (src.clip.name || String(src.clip.id)) : (src.asset ? src.asset.file_name : ''),
+        };
+      },
+      // ghost 可见性:当前轨道 kind 匹配(模板每轨调用)
+      ghostVisible(kind) {
+        return this.dragGhost.show && this.dragGhost.targetKind === kind;
+      },
+      // 通用磁吸吸附(对齐上游 snapTime:左缘吸附点=0/播放头/clip 起止,右缘=start+duration;阈值 6px)
+      snapTimeFor(targetStart, duration, excludeClipId) {
+        if (!this.snapEnabled()) return { time: Math.max(0, targetStart), snapped: false, snapType: '' };
+        const points = new Set([0, this.playhead]);
+        for (const tr of this.tracks()) {
+          for (const c of tr.clips) {
+            if (c.id === excludeClipId) continue;
+            points.add(c.start); points.add(c.start + c.duration);
+          }
+        }
+        const th = 6 / this.pps; // 秒
+        let best = Math.max(0, targetStart), minD = Infinity, snapped = false, snapType = '';
+        for (const p of points) {
+          const d = Math.abs(p - targetStart);
+          if (d <= th && d < minD) { minD = d; best = Math.max(0, p); snapped = true; snapType = p === this.playhead ? 'playhead' : 'start'; }
+        }
+        if (duration > 0) {
+          const targetEnd = targetStart + duration;
+          for (const p of points) {
+            const d = Math.abs(p - targetEnd);
+            if (d <= th && d < minD) { minD = d; best = Math.max(0, p - duration); snapped = true; snapType = 'end'; }
+          }
+        }
+        return { time: best, snapped, snapType };
+      },
+      // 严格重叠校验(对齐上游 checkTrackOverlap:区间交集 > ε=0.005)
+      checkTrackOverlap(track, clipIdToExclude, start, duration) {
+        if (!track || !track.clips) return { hasOverlap: false };
+        const targetStart = Math.max(0, start);
+        const targetEnd = targetStart + duration;
+        const eps = 0.005;
+        for (const clip of track.clips) {
+          if (clip.id === clipIdToExclude) continue;
+          const cs = Number(clip.start) || 0;
+          const ce = cs + (Number(clip.duration) || 0);
+          const os = Math.max(targetStart, cs);
+          const oe = Math.min(targetEnd, ce);
+          if (os < oe - eps) return { hasOverlap: true, overlappingClipId: clip.id };
+        }
+        return { hasOverlap: false };
+      },
+      // 素材与轨类型兼容(对齐上游 isSourceCompatibleWithTrack)
+      isSourceCompatibleWithTrack(source, targetKind) {
+        if (!source) return true;
+        const ext = String(source).toLowerCase().split('.').pop() || '';
+        const isImage = ['png', 'jpg', 'jpeg', 'webp', 'svg', 'bmp', 'gif'].includes(ext);
+        const isAudio = ['mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a'].includes(ext);
+        if (isImage) return targetKind === 'video' || targetKind === 'overlay';
+        if (isAudio) return targetKind === 'audio' || targetKind === 'waveform';
+        return true; // 视频可进任意轨
       },
       hasDraggedClip(e) {
         return e.dataTransfer && e.dataTransfer.types &&
           Array.from(e.dataTransfer.types).includes('application/x-vidproc-clip');
       },
+      hasDraggedAsset(e) {
+        if (!e.dataTransfer || !e.dataTransfer.types) return false;
+        const types = Array.from(e.dataTransfer.types);
+        return types.includes('application/x-vidproc-asset') || types.includes('text/plain');
+      },
       onTrackDrop(e, kind) {
         if (!this.tl) return;
+        this.dragGhost.show = false;
+        window.vp.dragSrc = null;
         // 跨轨 clip 拖拽优先(HTML5 DnD)
         if (this.hasDraggedClip(e)) { this.onTrackClipDrop(e, kind); return; }
         const asset = this.parseAsset(e);
         if (!asset) return;
         e.preventDefault();
+        // 兼容预检(对齐上游:图片不可进 audio,音频不可进 video;视频全兼容)
+        if (!this.isSourceCompatibleWithTrack(asset.file_path || asset.file_name, kind)) return;
         // 落点时间 = 鼠标位置秒 + 轨道区左侧偏移(标尺在轨道头右侧 48px 开始)
         const rect = e.currentTarget.getBoundingClientRect();
         const t = Math.max(0, (e.clientX - rect.left) / this.pps);
@@ -651,7 +782,8 @@
         window.addEventListener('pointerup', this._dragEnd, { once: true });
         try { e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId); } catch (_) {}
       },
-      // 拖到另一轨道的 drop:把 clip 挪过去(时间按落点)
+      // 拖到另一轨道的 drop:把 clip 挪过去(时间按落点)。
+      // 对齐 vidonex handleDrop:兼容校验 + 严格零重叠(重叠则取消移动)
       onTrackClipDrop(e, targetKind) {
         e.preventDefault();
         e.stopPropagation();
@@ -665,25 +797,36 @@
           dst = this.tracks().find((tr) => tr.kind === targetKind);
         }
         if (!dst || !srcTrack || dst.id === srcTrack.id) return;
+        // 兼容校验:素材类型不可进目标轨则取消(对齐 isSourceCompatibleWithTrack)
+        if (!this.isSourceCompatibleWithTrack(clip.source, targetKind)) return;
+        // 落点时间(相对目标轨内容区)+ 磁吸吸附
+        const rect = e.currentTarget ? e.currentTarget.getBoundingClientRect() : null;
+        let t = clip.start;
+        if (rect) {
+          const raw = Math.max(0, (e.clientX - rect.left) / this.pps);
+          const snapped = this.snapTimeFor(raw, clip.duration, clip.id);
+          t = snapped.time;
+        }
+        // 严格零重叠:与目标轨既有 clip 相交则取消移动(对齐 checkTrackOverlap)
+        const { hasOverlap } = this.checkTrackOverlap(dst, clip.id, t, clip.duration);
+        if (hasOverlap) return;
         // 从源轨移除
         srcTrack.clips = srcTrack.clips.filter((c) => c.id !== clip.id);
-        // 落点时间(相对目标轨内容区)
-        const rect = e.currentTarget ? e.currentTarget.getBoundingClientRect() : null;
-        if (rect) {
-          const t = Math.max(0, (e.clientX - rect.left) / this.pps);
-          clip.start = t;
-        }
+        clip.start = t;
         if (!dst.clips) dst.clips = [];
         dst.clips.push(clip);
         this.selectedId = clip.id;
         this.updateTrackWidth();
         this.persistTimeline();
       },
-      // HTML5 DnD:clip 元素 dragstart 时把 id 挂 transport
+      // HTML5 DnD:clip 元素 dragstart 时把 id 挂 transport + 全局 dragSrc(幻影计算用)
       beginClipDnD(e, clip) {
         e.dataTransfer.setData('application/x-vidproc-clip', clip.id);
         e.dataTransfer.effectAllowed = 'move';
         this.selectedId = clip.id;
+        if (window.vp) window.vp.dragSrc = { clip, sourceTrackId: this.tracks().find((tr) => tr.clips && tr.clips.some((c) => c.id === clip.id))?.id || null, grabOffsetTime: 0 };
+        // dragend 清全局槽(幻影/后续校验)
+        e.target.addEventListener('dragend', () => { if (window.vp) window.vp.dragSrc = null; }, { once: true });
         try { e.dataTransfer.setDragImage(e.target, e.offsetX, 10); } catch (_) {}
       },
       parseDraggedClip(e) {
@@ -761,11 +904,29 @@
         this.selectedId = this.selectedId === clip.id ? null : clip.id;
       },
 
-      // 标尺/轨道点击 → 定位播放头(对齐 vidonex Ruler click)
+      // 标尺("/ 轨道点击 → 定位播放头(对齐 vidonex Ruler click)
       seek(e) {
         const rect = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - rect.left;
         this.setPlayhead(Math.max(0, x / this.pps), { source: 'timeline' });
+      },
+// 标尺动态刻度(对齐上游 TimelineRuler timeMarks:pps<30→5s,<60→2s,否则 1s)
+      rulerMarks() {
+        const dur = this.trackWidth / Math.max(this.pps, 1);
+        let interval = 1;
+        if (this.pps < 30) interval = 5;
+        else if (this.pps < 60) interval = 2;
+        const out = [];
+        for (let t = 0; t <= dur; t += interval) {
+          const m = Math.floor(t / 60);
+          const s = Math.floor(t % 60);
+          out.push({
+            t,
+            pos: t * this.pps,
+            label: String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0'),
+          });
+        }
+        return out;
       },
       dispatchPlayhead() {
         window.dispatchEvent(new CustomEvent('playhead-changed', { detail: { t: this.playhead, pid: this.pid, source: 'timeline' } }));
@@ -801,6 +962,89 @@
             editor: this,
           },
         }));
+      },
+
+      // ============ 右键上下文菜单(对齐 vidonex ClipItem UContextMenu 四段式)============
+      openCtxMenu(e, clip, track) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.select(clip);
+        this.ctxMenu = { open: true, x: e.clientX, y: e.clientY, clip, track };
+        // 点击别处关闭
+        document.addEventListener('click', this._ctxClose = () => { this.ctxMenu.open = false; }, { once: true });
+      },
+      ctxProbe() {
+        // Probe 详情:匹配项目素材(文件名对 assetThumbs 的值是 thumbnail_url,需找 asset 对象)
+        // 素材详情弹窗归 mediaLibrary 管,这里广播 probe-open 由 mediaLibrary 打开。
+        const m = this.ctxMenu;
+        if (!m) return;
+        this.ctxMenu.open = false;
+        // mediaLibrary 用 detail:{fileName} 自行匹配自己缓存的 assets
+        window.dispatchEvent(new CustomEvent('probe-open', { detail: { fileName: (m.clip.source || '').split('/').pop() } }));
+      },
+      ctxDelete() {
+        const m = this.ctxMenu;
+        if (!m) return;
+        this.ctxMenu.open = false;
+        const self = this;
+        this.select(m.clip);
+        window.vp.confirm({
+          title: '删除 clip',
+          message: `删除 ${m.clip.id}?`,
+          confirmText: '删除',
+          cancelText: '取消',
+          isDanger: true,
+        }).then((ok) => { if (ok) self.deleteSelected(); });
+      },
+      ctxDuplicate() {
+        const m = this.ctxMenu;
+        if (!m) return;
+        this.ctxMenu.open = false;
+        this.select(m.clip);
+        this.duplicate();
+      },
+      ctxInspect() {
+        const m = this.ctxMenu;
+        if (!m) return;
+        this.ctxMenu.open = false;
+        this.select(m.clip);
+        // 选中即广播 clip-selected(timelineEditor.select 已做 → 检查器显示)
+      },
+      splitAtCtx() {
+        const m = this.ctxMenu;
+        if (!m) return;
+        this.ctxMenu.open = false;
+        this.select(m.clip);
+        this.split();
+      },
+      // filmstrip 缩略图 URL(clip.source 文件名 → assets 缩略图;无 → null)
+      thumbFor(clip) {
+        if (!clip || !this.assetThumbs) return null;
+        const base = (clip.source || '').split(/[\\/]/).pop().toLowerCase();
+        return this.assetThumbs[base] || null;
+      },
+      // ============ 轨道操作(对齐 vidonex TrackHeader mute/删除)============
+      toggleMute(track) {
+        if (!track) return;
+        track.muted = !track.muted;
+        this.persistTimeline();
+      },
+      removeTrack(track) {
+        if (!track || !this.tl) return;
+        const self = this;
+        window.vp.confirm({
+          title: '删除轨道',
+          message: `删除轨道 ${track.id}?其所有 clip 将一并移除。`,
+          confirmText: '删除',
+          cancelText: '取消',
+          isDanger: true,
+        }).then((ok) => {
+          if (!ok) return;
+          this.tl.tracks = this.tl.tracks.filter((t) => t !== track);
+          if (this.selectedTrackId === track.id) this.selectedTrackId = null;
+          this.updateTrackWidth();
+          this.persistTimeline();
+        });
       },
 
       // ============ 拖拽移动 clip ============
@@ -1097,6 +1341,7 @@
           for (const tr of this.tracks()) {
             lines.push(`  - id: "${tr.id}"`);
             lines.push(`    kind: "${tr.kind}"`);
+            if (tr.muted) lines.push(`    muted: true`);
             if (tr.clips && tr.clips.length) {
               lines.push('    clips:');
               for (const c of tr.clips) {
@@ -1235,6 +1480,12 @@
 
       async init() {
         if (!this.pid) return;
+        // timelineEditor 右键菜单 "查看详情" → probe-open{fileName} → 这里打开
+        window.addEventListener('probe-open', (e) => {
+          const fn = (e.detail || {}).fileName || '';
+          const hit = this.assets.find((a) => (a.file_name || '').toLowerCase() === fn.toLowerCase());
+          if (hit) this.openProbeModal(hit);
+        });
         await this.load();
       },
       get filtered() {
@@ -1285,6 +1536,9 @@
         ev.dataTransfer.setData('application/x-vidproc-asset', JSON.stringify(a));
         ev.dataTransfer.setData('text/plain', a.file_name);
         ev.dataTransfer.effectAllowed = 'copy';
+        // 全局 dragSrc:时间轴轨道 dragover 幻影计算读取(对齐 vidonex mediaStore.draggedAsset)
+        if (window.vp) window.vp.dragSrc = { asset: a };
+        ev.target.addEventListener('dragend', () => { if (window.vp) window.vp.dragSrc = null; }, { once: true });
         if (ev.dataTransfer.setDragImage && ev.target) { try { ev.dataTransfer.setDragImage(ev.target.closest('[draggable]') || ev.target, 20, 20); } catch (_) {} }
       },
     };
@@ -2276,6 +2530,11 @@
           this.selClipEditor = d.editor || null;
           if (d.tl) this.tl = d.tl;
           if (this.selClip) this.refreshSelClipThumb();
+        });
+        // 时间轴工具条"裁剪"按钮 → 切 gizmoMode(对齐 vidonex TimelineContainer Crop)
+        window.addEventListener('gizmo-mode', (e) => {
+          const m = (e.detail || {}).mode;
+          if (m === 'crop' || m === 'transform') this.gizmoMode = m;
         });
         // 时间轴加载完成 → 绑定同一 tl 引用(编辑一致落库,不复制)
         window.addEventListener('timeline-loaded', (e) => {

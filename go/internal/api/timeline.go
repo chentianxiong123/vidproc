@@ -59,6 +59,7 @@ type TrackJSON struct {
 	ID          string           `json:"id"`
 	Kind        string           `json:"kind"`
 	Clips       []ClipJSON       `json:"clips"`
+	Muted       bool             `json:"muted,omitempty"`
 	Transitions []TransitionJSON `json:"transitions,omitempty"`
 }
 
@@ -120,7 +121,7 @@ func specToTimelineJSON(vs *spec.VideoSpec) TimelineJSON {
 
 	var maxEnd float64
 	for _, tr := range vs.Tracks {
-		tj := TrackJSON{ID: tr.ID, Kind: tr.Kind, Clips: make([]ClipJSON, 0, len(tr.Clips))}
+		tj := TrackJSON{ID: tr.ID, Kind: tr.Kind, Clips: make([]ClipJSON, 0, len(tr.Clips)), Muted: tr.Muted}
 		for _, c := range tr.Clips {
 			start := parseSeconds(c.Start)
 			dur := parseSeconds(c.Duration)
