@@ -398,7 +398,8 @@
   </div>
 
   <!-- 渲染导出弹窗(对齐 vidonex RenderExportModal)。挂在外层 x-data(projectView)内,
-       x-data="renderModal()" 子作用域;调 window.vp.projectViewOf.startRender。 -->
+       x-data="renderModal()" 子作用域;调 window.vp.projectViewOf.startRender。
+       三态:配置(默认)/ 渲染中进度 / 失败折叠+Copy / 完成预览+大小。 -->
   <div x-data="renderModal()" x-show="open" x-cloak
        class="fixed inset-0 z-[90] flex items-center justify-center p-4"
        style="background:rgba(0,0,0,.6);backdrop-filter:blur(2px)"
@@ -407,8 +408,77 @@
       <h3 class="text-sm font-semibold flex items-center gap-2 mb-4">
         <svg class="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         渲染导出
+        <span x-show="status === 'rendering'" class="ml-auto text-[10px] font-mono text-indigo-300" x-text="Math.round(percent) + '%'"></span>
+        <span x-show="status === 'done'" class="ml-auto text-[10px] font-mono text-emerald-300 flex items-center gap-1">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2l-3.5-3.5L4 14.2l5 5 11-11-1.5-1.5z"/></svg>
+          完成
+        </span>
+        <span x-show="status === 'failed'" class="ml-auto text-[10px] font-mono text-red-400">失败</span>
       </h3>
 
+      <!-- 渲染中:进度条(对齐上游 store.isRendering) -->
+      <div x-show="status === 'rendering'" class="mb-4 space-y-2">
+        <div class="h-1.5 rounded-full bg-gray-900 overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-300"
+               :style="'width:' + percent + '%'"></div>
+        </div>
+        <div class="flex justify-between text-[10px] font-mono text-gray-500">
+          <span x-text="'帧 ' + frame"></span>
+          <span x-text="speed ? speed.toFixed(2) + 'x' : ''"></span>
+          <span>渲染中…</span>
+        </div>
+      </div>
+
+      <!-- 失败:折叠错误 + Copy(对齐上游 collapsible error alert) -->
+      <div x-show="status === 'failed'" class="mb-4 rounded-lg border border-red-800/50 bg-red-950/30 overflow-hidden">
+        <div class="flex items-center gap-2 px-3 py-2.5">
+          <svg class="w-4 h-4 text-red-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4m0 4h.01" stroke-linecap="round"/></svg>
+          <div class="min-w-0 flex-1">
+            <p class="text-[11px] font-semibold text-red-300">渲染执行失败</p>
+            <p class="text-[11px] text-red-300/80 font-mono truncate mt-0.5" :title="error" x-text="errorSummary()"></p>
+          </div>
+          <button type="button" @click="copyError()"
+                  class="px-2 py-1 rounded text-[10px] border border-red-800/60 text-red-300 hover:bg-red-900/40 transition flex items-center gap-1 flex-shrink-0"
+                  :title="'复制完整错误日志'">
+            <svg class="w-3 h-3" x-show="!copied" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" stroke-linejoin="round"/></svg>
+            <svg class="w-3 h-3" x-show="copied" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2l-3.5-3.5L4 14.2l5 5 11-11-1.5-1.5z"/></svg>
+            <span x-text="copied ? '已复制!' : 'Copy'"></span>
+          </button>
+          <button type="button" @click="errorOpen = !errorOpen" class="p-1 rounded text-red-300 hover:bg-red-900/40 transition flex-shrink-0" title="详情">
+            <svg class="w-3.5 h-3.5" x-show="!errorOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="w-3.5 h-3.5" x-show="errorOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 15l6-6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <!-- 展开完整错误日志 -->
+        <div x-show="errorOpen" class="pt-2 border-t border-red-800/40">
+          <pre class="max-h-48 overflow-y-auto rounded bg-black/80 border border-red-900/50 p-2.5 text-[10px] font-mono text-red-300/90 whitespace-pre-wrap break-all select-all leading-relaxed" x-text="error"></pre>
+        </div>
+      </div>
+
+      <!-- 完成:成功横幅 + 大小 + 视频预览(对齐上游 completedDownloadUrl) -->
+      <div x-show="status === 'done'" class="mb-4 space-y-3">
+        <div class="flex items-center justify-between p-3 rounded-lg bg-emerald-950/40 border border-emerald-800/50 text-emerald-300 shadow-sm">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-5 h-5 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2l-3.5-3.5L4 14.2l5 5 11-11-1.5-1.5z"/></svg>
+            </div>
+            <div class="min-w-0">
+              <h4 class="text-xs font-semibold text-emerald-200 leading-tight">渲染完成</h4>
+              <p class="text-[11px] text-emerald-400/80 truncate mt-0.5" x-text="'输出已就绪' + (doneInfo.duration ? ' · ' + doneInfo.duration : '')"></p>
+            </div>
+          </div>
+          <span x-show="doneInfo.sizeText" class="px-2 py-1 rounded bg-emerald-900/50 border border-emerald-700/40 text-[10px] font-mono text-emerald-200 flex-shrink-0"
+                x-text="doneInfo.sizeText"></span>
+        </div>
+        <!-- 预览播放器 -->
+        <div class="relative w-full rounded-xl overflow-hidden bg-black/95 border border-gray-800 flex items-center justify-center min-h-[180px]">
+          <video :src="doneInfo.url" controls playsinline preload="metadata"
+                 class="max-h-[300px] w-auto max-w-full object-contain mx-auto focus:outline-none"></video>
+        </div>
+      </div>
+
+      <!-- 配置表单(仅初始态显示) -->
+      <div x-show="status !== 'rendering' && status !== 'done'">
       <!-- 格式 -->
       <div class="mb-3.5">
         <label class="block text-[11px] text-gray-500 mb-1.5">格式</label>
@@ -479,10 +549,15 @@
 
       <div class="flex justify-end gap-2">
         <button type="button" @click="open = false" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-gray-900 transition">取消</button>
-        <button type="button" @click="start()"
+        <button type="button" x-show="status !== 'failed' && status !== 'done'" @click="start()"
                 class="px-4 py-1.5 rounded-lg text-xs font-medium bg-emerald-500 hover:bg-emerald-400 text-gray-950 transition"
-                x-text="window.vp && window.vp.projectViewOf && window.vp.projectViewOf.busy ? '渲染中…' : '开始渲染'"></button>
+                x-text="status === 'rendering' ? '渲染中…' : '开始渲染'"></button>
+        <button type="button" x-show="status === 'failed'" @click="newRender()"
+                class="px-4 py-1.5 rounded-lg text-xs font-medium bg-amber-500 hover:bg-amber-400 text-gray-950 transition">重试</button>
+        <button type="button" x-show="status === 'done'" @click="newRender()"
+                class="px-4 py-1.5 rounded-lg text-xs font-medium bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 transition">新渲染</button>
       </div>
+      </div><!-- /配置表单 -->
     </div>
   </div>
 

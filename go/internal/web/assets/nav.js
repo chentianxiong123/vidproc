@@ -2109,21 +2109,52 @@
   // - About(vp 全局图标 / 命令面板内"关于")
   // 单例 + 事件总线(与其它弹窗一致);挂在 shell 顶层,任何页面可用。
   // 全局 doc keydown 在此处理(Ctrl+K / Ctrl+/ / Esc),避免每组件重复监听。
-  const APP_COMMANDS = [
-    { id: 'new-project', name: '新建项目', desc: '创建新的视频项目', keys: '', run: () => window.dispatchEvent(new CustomEvent('new-project-open')) },
-    { id: 'open-project', name: '返回项目列表', desc: '切换到项目列表', keys: 'Esc', run: () => { location.href = '/'; } },
-    { id: 'settings', name: '项目设置', desc: '画布尺寸 / 背景色 / 帧率', keys: 'P', run: () => window.dispatchEvent(new CustomEvent('project-settings-open', { detail: { tl: (window.vp.timelineEditorOf || {}).tl } })) },
-    { id: 'render', name: '渲染导出', desc: '编码格式 / GPU / 质量', keys: '', run: () => { const m = window.renderModal(); m.openFor(window.vp.currentProjectId, (window.vp.projectViewOf || {}).output || ''); } },
-    { id: 'split', name: '分割选中 clip', desc: '在播放头处切开', keys: 'S', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.split(); } },
-    { id: 'duplicate', name: '复制选中 clip', desc: '复制到当前轨道末尾', keys: 'Ctrl+D', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.duplicateClip(); } },
-    { id: 'delete', name: '删除选中 clip', desc: '从时间轴移除', keys: 'Del', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.deleteSelected(); } },
-    { id: 'undo', name: '撤销', desc: '回退上一步编辑', keys: 'Ctrl+Z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.undo(); } },
-    { id: 'redo', name: '重做', desc: '恢复撤销的编辑', keys: 'Ctrl+Shift+Z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.redo(); } },
-    { id: 'toggle-play', name: '播放 / 暂停', desc: '切换传输状态', keys: 'Space', run: () => { const pb = window.vp && window.vp.playback; if (pb) pb.togglePlay(); } },
-    { id: 'toggle-snap', name: '磁吸开关', desc: 'Snap 吸附对齐', keys: 'N', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.toggleSnap(); } },
-    { id: 'shortcuts', name: '键盘快捷键', desc: '查看全部快捷键', keys: 'Ctrl+/', run: () => {} },
-    { id: 'about', name: '关于 vidproc', desc: '版本与架构信息', keys: '', run: () => {} },
+  // 对齐 vidonex CommandPaletteModal 分组:Timeline Editing / Tracks / Aspect Ratios / Playback & Viewport / Project & Modals
+  const COMMAND_GROUPS = [
+    { id: 'editing', label: '时间轴编辑' },
+    { id: 'tracks', label: '轨道管理' },
+    { id: 'aspect', label: '画布比例' },
+    { id: 'playback', label: '播放与视口' },
+    { id: 'project', label: '项目与模态' },
+    { id: 'about', label: '关于与更新' },
   ];
+  const APP_COMMANDS = [
+    // —— 时间轴编辑 ——
+    { id: 'split', group: 'editing', name: '分割选中 Clip', desc: '在播放头处切开', keys: 'S', icon: 'M6 4v16l8-8zM14 12l4-8v16z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.split(); } },
+    { id: 'duplicate', group: 'editing', name: '复制选中 Clip', desc: '复制到当前轨道末尾', keys: 'Ctrl+D', icon: 'M4 4h12v12H4zM16 8h4v12H8v-4', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.duplicateClip(); } },
+    { id: 'delete', group: 'editing', name: '删除选中 Clip', desc: '从时间轴移除', keys: 'Del', icon: 'M6 7h12l-1 14H7zM9 4h6l1 3H8z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.deleteSelected(); } },
+    { id: 'undo', group: 'editing', name: '撤销', desc: '回退上一步编辑', keys: 'Ctrl+Z', icon: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.undo(); } },
+    { id: 'redo', group: 'editing', name: '重做', desc: '恢复撤销的编辑', keys: 'Ctrl+Shift+Z', icon: 'M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.redo(); } },
+    { id: 'toggle-snap', group: 'editing', name: '磁吸开关', desc: 'Snap 吸附对齐(Snap ON/OFF)', keys: 'N', icon: 'M13 2L3 14h7l-1 8 10-12h-7z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.toggleSnap(); } },
+    // —— 轨道管理(对齐上游 addTrack video/audio/waveform)——
+    { id: 'add-video-track', group: 'tracks', name: '添加视频轨道', desc: '顶部新建覆盖视频轨', keys: '', icon: 'M8 5v14l11-7z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.addTrack('video'); } },
+    { id: 'add-audio-track', group: 'tracks', name: '添加音频轨道', desc: '新建背景音乐 / 配音轨', keys: '', icon: 'M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.addTrack('audio'); } },
+    { id: 'add-waveform-track', group: 'tracks', name: '添加波形轨道', desc: '动画波形可视化轨', keys: '', icon: 'M4 18v-6M9 18V6m5 12v-9m5 9V9', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.addTrack('waveform'); } },
+    // —— 画布比例(对齐上游 setAspectRatio 4 预设)——
+    { id: 'aspect-16-9', group: 'aspect', name: '16:9 横屏', desc: '1920×1080 · YouTube / Web', keys: '', icon: 'M3 6h18v12H3z', run: () => applyAspect(1920, 1080) },
+    { id: 'aspect-9-16', group: 'aspect', name: '9:16 竖屏', desc: '1080×1920 · TikTok / Reels', keys: '', icon: 'M8 3h8v18H8z', run: () => applyAspect(1080, 1920) },
+    { id: 'aspect-1-1', group: 'aspect', name: '1:1 方形', desc: '1080×1080 · 社交卡片', keys: '', icon: 'M4 4h16v16H4z', run: () => applyAspect(1080, 1080) },
+    { id: 'aspect-21-9', group: 'aspect', name: '21:9 超宽', desc: '2560×1080 · 影院宽银幕', keys: '', icon: 'M2 6h20v12H2z', run: () => applyAspect(2560, 1080) },
+    // —— 播放与视口 ——
+    { id: 'toggle-play', group: 'playback', name: '播放 / 暂停', desc: '切换传输状态', keys: 'Space', icon: 'M8 5v14l11-7z', run: () => { const pb = window.vp && window.vp.playback; if (pb) pb.togglePlay(); } },
+    { id: 'jump-start', group: 'playback', name: '跳到开头', desc: '播放头归零', keys: 'Home', icon: 'M19 5v14l-9-7zM5 5h2v14H5z', run: () => { const pb = window.vp && window.vp.playback; if (pb) pb.jumpToStart(); } },
+    { id: 'jump-end', group: 'playback', name: '跳到结尾', desc: '播放头到内容末端', keys: 'End', icon: 'M5 5v14l9-7zM19 5h2v14h-2z', run: () => { const pb = window.vp && window.vp.playback; if (pb) pb.jumpToEnd(); } },
+    { id: 'fit-viewport', group: 'playback', name: '视口适配', desc: '重置画布缩放与平移', keys: 'Shift+Z', icon: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', run: () => { const pv = window.vp.projectViewOf; if (pv) pv.resetViewportZoom(); } },
+    // —— 项目与模态 ——
+    { id: 'render', group: 'project', name: '渲染导出…', desc: 'FFmpeg 编码 / GPU / 质量', keys: 'Ctrl+E', icon: 'M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2', run: () => { const m = window.renderModal(); m.openFor(window.vp.currentProjectId, (window.vp.projectViewOf || {}).output || ''); } },
+    { id: 'new-project', group: 'project', name: '新建项目…', desc: '创建新的视频项目', keys: '', icon: 'M12 5v14M5 12h14', run: () => window.dispatchEvent(new CustomEvent('new-project-open')) },
+    { id: 'settings', group: 'project', name: '项目设置…', desc: '画布尺寸 / 背景色 / 帧率', keys: 'P', icon: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8 4a8 8 0 0 1-.1 1.4l2 1.5-2 3.5-2.4-.9a8 8 0 0 1-2.4 1.4L14.8 22h-4l-.3-2.6a8 8 0 0 1-2.4-1.4l-2.4.9-2-3.5 2-1.5A8 8 0 0 1 5.6 12a8 8 0 0 1 .1-1.4l-2-1.5 2-3.5 2.4.9a8 8 0 0 1 2.4-1.4L10.8 2h4l.3 2.6a8 8 0 0 1 2.4 1.4l2.4-.9 2 3.5-2 1.5a8 8 0 0 1 .1 1.4z', run: () => window.dispatchEvent(new CustomEvent('project-settings-open', { detail: { tl: (window.vp.timelineEditorOf || {}).tl } })) },
+    { id: 'graph', group: 'project', name: '图可视化…', desc: 'FFmpeg filtergraph 流程图', keys: '', icon: 'M4 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm16 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-8-7a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0 10a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM7 10l3-3m4 0l3 3M7 11v6m10-4v4', run: () => window.dispatchEvent(new CustomEvent('graph-open')) },
+    { id: 'shortcuts', group: 'project', name: '键盘快捷键…', desc: '查看完整快捷键表', keys: 'Ctrl+/', icon: 'M12 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM7 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm10 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z', run: () => {} },
+    // —— 关于与更新 ——
+    { id: 'about', group: 'about', name: '关于 vidproc…', desc: '版本 / 系统诊断 / 更新', keys: '', icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z', run: () => {} },
+  ];
+  // 画布比例:写回 tl + 落库(对齐上游 setAspectRatio → projectStore)
+  function applyAspect(w, h) {
+    const ed = window.vp.timelineEditorOf;
+    if (!ed || !ed.tl) return;
+    ed.saveSettings({ width: w, height: h, fps: ed.tl.fps || 30, background_color: ed.tl.background_color || 'black' });
+  }
   const APP_SHORTCUTS = [
     { keys: 'Space', desc: '播放 / 暂停' },
     { keys: '← / →', desc: '上一帧 / 下一帧' },
@@ -2145,15 +2176,44 @@
       view: null, // null | 'palette' | 'shortcuts' | 'about'
       query: '',
       commands: APP_COMMANDS,
+      commandGroups: COMMAND_GROUPS,
       shortcuts: APP_SHORTCUTS,
+      shortcutQuery: '',
+      palIdx: 0, // 命令面板键盘导航高亮
       version: '0.1.0',
       architecture: 'htmx + Alpine + Go / vidonex 兼容 spec',
+      // 系统诊断(对齐 vidonex AboutModal:OS/Arch/Cores/GPU/FFmpeg)
+      sys: {
+        os: typeof navigator !== 'undefined' ? navigator.userAgent.replace(/\(([^)]*)\).*/, '$1') : '',
+        arch: (navigator.userAgent.match(/(x86_64|arm64|aarch64)/i) || [''])[0] || 'x64',
+        cores: (navigator.hardwareConcurrency || '—') + '',
+        gpu: '',
+        ffmpeg: '检测中…',
+      },
+      sysLoaded: false,
       init() {
         // 事件总线入口(与其它弹窗一致:Alpine 响应式代理要求从组件内改字段;
         // 外部 vp.openShortcuts/openPalette 广播事件,这里收)
         window.addEventListener('app-modals-open', (e) => {
           this.view = (e.detail && e.detail.view) || 'palette';
+          this.palIdx = 0;
         });
+        // 系统诊断延迟探测(GPU:WebGL renderer)
+        setTimeout(() => {
+          try {
+            const c = document.createElement('canvas');
+            const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+            if (gl) {
+              const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+              if (dbg) this.sys.gpu = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '';
+            }
+          } catch (_) {}
+          this.sysLoaded = true;
+          // FFmpeg 探测(/api/sysinfo)
+          fetch('/api/sysinfo').then((r) => (r.ok ? r.json() : null)).then((j) => {
+            if (j && j.ffmpeg) this.sys.ffmpeg = j.ffmpeg;
+          }).catch(() => { this.sys.ffmpeg = '不可用'; });
+        }, 300);
         document.addEventListener('keydown', (e) => {
           // 输入框内不劫持
           const tag = (e.target.tagName || '').toLowerCase();
@@ -2163,20 +2223,41 @@
             e.preventDefault();
             this.view = this.view === 'palette' ? null : 'palette';
             this.query = '';
+            this.palIdx = 0;
           } else if (mod && e.key === '/' && !inField) {
             e.preventDefault();
             this.view = this.view === 'shortcuts' ? null : 'shortcuts';
           } else if (e.key === 'Escape') {
             if (this.view) this.view = null;
+          } else if (this.view === 'palette') {
+            // 键盘导航:↑↓ 移动高亮,Enter 执行(对齐 UCommandPalette)
+            if (e.key === 'ArrowDown') { e.preventDefault(); this.palIdx = Math.min(this.flatCommands().length - 1, this.palIdx + 1); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); this.palIdx = Math.max(0, this.palIdx - 1); }
+            else if (e.key === 'Enter') {
+              e.preventDefault();
+              const list = this.flatCommands();
+              const c = list[this.palIdx] || list[0];
+              if (c) this.run(c);
+            }
           }
         });
       },
-      open(view) { this.view = view; },
-      get filteredCommands() {
-        if (!this.query.trim()) return this.commands;
-        const q = this.query.toLowerCase();
-        return this.commands.filter((c) =>
-          c.name.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q) || c.keys.toLowerCase().includes(q));
+      open(view) { this.view = view; this.palIdx = 0; },
+      // 分组命令过滤(对齐上游 commandGroups:仅显示有匹配的分组)
+      get filteredGroups() {
+        const q = this.query.trim().toLowerCase();
+        const match = (c) => !q || c.name.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q) || c.keys.toLowerCase().includes(q);
+        return COMMAND_GROUPS
+          .map((g) => ({ ...g, items: APP_COMMANDS.filter((c) => c.group === g.id && match(c)) }))
+          .filter((g) => g.items.length > 0);
+      },
+      // 扁平命令列表(键盘导航用)
+      flatCommands() {
+        return this.filteredGroups.reduce((acc, g) => acc.concat(g.items), []);
+      },
+      // 命令在扁平列表中的索引(模板高亮判断)
+      flatCmdIndex(id) {
+        return this.flatCommands().findIndex((c) => c.id === id);
       },
       // 命令执行:自身类(shortcuts/about)切换视图,其它执行后关闭
       run(cmd) {
@@ -2184,6 +2265,29 @@
         if (cmd.id === 'about') { this.view = 'about'; return; }
         try { cmd.run && cmd.run(); } catch (_) {}
         this.view = null;
+      },
+      // 快捷键表过滤(对齐上游搜索)
+      get filteredShortcuts() {
+        if (!this.shortcutQuery.trim()) return this.shortcuts;
+        const q = this.shortcutQuery.toLowerCase();
+        return this.shortcuts.filter((s) => s.desc.toLowerCase().includes(q) || s.keys.toLowerCase().includes(q));
+      },
+      // 快捷键分类(概览:播放/编辑/视图/其他)
+      shortcutGroups() {
+        const cats = [
+          { label: '播放控制', re: /播放|帧|开头|结尾|暂停|关闭/ },
+          { label: '时间轴编辑', re: /分割|复制|删除|撤销|重做|磁吸/ },
+          { label: '视口与弹窗', re: /设置|命令|快捷键|列表/ },
+        ];
+        const rest = [];
+        const out = cats.map((c) => ({ label: c.label, items: [] }));
+        for (const s of this.filteredShortcuts) {
+          const hit = cats.findIndex((c) => c.re.test(s.desc));
+          const group = hit >= 0 ? out[hit] : null;
+          if (group) group.items.push(s); else rest.push(s);
+        }
+        if (rest.length) out.push({ label: '其他', items: rest });
+        return out.filter((g) => g.items.length > 0);
       },
     };
     return _appModals;
@@ -2360,6 +2464,15 @@
       formats: RENDER_FORMATS,
       gpus: RENDER_GPUS,
       presets: RENDER_PRESETS,
+      // 渲染状态(对齐 vidonex RenderExportModal:rendering/failed/done 三态)
+      status: '', // '' | 'rendering' | 'failed' | 'done'
+      percent: 0,
+      frame: 0,
+      speed: 0,
+      error: '',
+      errorOpen: false,
+      copied: false,
+      doneInfo: { url: '', sizeText: '', duration: '' },
       init() {
         // Alpine 对 x-data 返回值做响应式代理,外部直接改单例字段不触发 x-show;
         // 统一走事件总线:openFor() 广播 render-modal-open,这里收。
@@ -2367,7 +2480,37 @@
           const d = e.detail || {};
           this.pid = d.pid || this.pid;
           if (d.output !== undefined) this.output = d.output;
+          this.status = '';
+          this.error = '';
           this.open = true;
+        });
+        // 渲染状态事件(projectView.poll 广播;对齐上游 store 三态)
+        window.addEventListener('render-progress', (e) => {
+          if (!this.open) return;
+          const d = e.detail || {};
+          this.status = 'rendering';
+          this.percent = d.percent || 0;
+          this.frame = d.frame || 0;
+          this.speed = d.speed || 0;
+        });
+        window.addEventListener('render-fail', (e) => {
+          if (!this.open) return;
+          const d = e.detail || {};
+          this.status = 'failed';
+          this.error = d.error || '渲染失败';
+          this.errorOpen = false;
+        });
+        window.addEventListener('render-done', (e) => {
+          if (!this.open) return;
+          const d = e.detail || {};
+          this.status = 'done';
+          this.percent = 100;
+          const mb = Number(d.sizeMB) || 0;
+          this.doneInfo = {
+            url: d.url || '',
+            sizeText: mb > 0 ? (mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : mb.toFixed(1) + ' MB') : '',
+            duration: d.duration || '',
+          };
         });
         window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.open) this.open = false; });
       },
@@ -2397,13 +2540,34 @@
         return p;
       },
       close() { this.open = false; },
-      // 开始渲染:取全局 projectView 实例 → startRender(collect())。完成后关闭弹窗,
-      // 进度在检查器侧进度条展示。
+      // 复制错误日志(对齐上游 copyErrorText → clipboard)
+      copyError() {
+        if (!this.error) return;
+        (navigator.clipboard ? navigator.clipboard.writeText(this.error) : Promise.reject())
+          .then(() => { this.copied = true; setTimeout(() => { this.copied = false; }, 1500); })
+          .catch(() => {});
+      },
+      // 错误摘要(首行,对齐上游 errorSummary)
+      errorSummary() {
+        const e = this.error || '';
+        const first = e.split('\n')[0] || e;
+        return first.length > 90 ? first.slice(0, 90) + '…' : first;
+      },
+      // 开始渲染:取全局 projectView 实例 → startRender(collect())。
+      // 弹窗保持打开显示渲染中态;失败/完成由 render-progress/fail/done 事件驱动。
       start() {
         const host = window.vp && window.vp.projectViewOf;
         if (!host || host.busy) return;
+        this.status = 'rendering';
+        this.percent = 0;
+        this.error = '';
         host.startRender(this.collect());
-        this.open = false;
+      },
+      // 重开新渲染(完成/失败后;对齐上游 newRender)
+      newRender() {
+        this.status = '';
+        this.error = '';
+        this.doneInfo = { url: '', sizeText: '', duration: '' };
       },
     };
     return _renderModal;
@@ -3254,6 +3418,7 @@
       },
 
       poll(id) {
+        this._renderJobId = id;
         clearInterval(pollTimer);
         pollTimer = setInterval(() => {
           fetch(`/api/render/${id}`)
@@ -3262,17 +3427,25 @@
               this.percent = j.percent || 0;
               this.frame = j.frame || 0;
               this.speed = j.speed || 0;
+              // 进度广播(渲染弹窗显示渲染中态)
+              window.dispatchEvent(new CustomEvent('render-progress', {
+                detail: { percent: j.percent || 0, frame: j.frame || 0, speed: j.speed || 0 },
+              }));
               if (j.status === 'failed') {
                 clearInterval(pollTimer);
                 this.busy = false;
                 this.failed = true;
                 this.result = { error: j.error };
+                window.dispatchEvent(new CustomEvent('render-fail', { detail: { error: j.error } }));
               } else if (j.status === 'done') {
                 clearInterval(pollTimer);
                 this.busy = false;
                 this.done = true;
                 this.percent = 100;
                 this.result = j;
+                window.dispatchEvent(new CustomEvent('render-done', {
+                  detail: { output: j.output, sizeMB: j.size_mb, duration: j.duration, url: `/api/render/${id}/file` },
+                }));
               }
             })
             .catch(() => {}); // 瞬时失败忽略,下一拍再试

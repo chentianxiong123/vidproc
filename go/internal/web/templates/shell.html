@@ -159,7 +159,7 @@
 
   <!-- 全站模态:命令面板(Ctrl+K)/ 快捷键表(Ctrl+/)/ 关于(对齐 vidonex CommandPalette + KeyboardShortcutsModal + AboutModal) -->
   <div x-data="appModals()" class="contents">
-    <!-- 命令面板 -->
+    <!-- 命令面板(对齐 vidonex UCommandPalette:分组 + 键盘导航 ↑↓ Enter + 图标) -->
     <div x-show="view === 'palette'" x-cloak
          class="fixed inset-0 z-[98] flex items-start justify-center pt-[12vh] p-4"
          style="background:rgba(0,0,0,.6);backdrop-filter:blur(2px)"
@@ -168,51 +168,79 @@
         <!-- 搜索框 -->
         <div class="flex items-center gap-2 px-3 py-2.5 border-b border-gray-800">
           <svg class="w-4 h-4 text-gray-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
-          <input type="text" x-model="query" placeholder="输入命令…(新建 / 渲染 / 撤销)" autofocus
-                 class="w-full bg-transparent text-sm text-gray-200 placeholder-gray-600 focus:outline-none"
-                 @keydown.enter="filteredCommands.length && run(filteredCommands[0])">
+          <input type="text" x-model="query" placeholder="输入命令…(分割 / 添加轨道 / 比例)" autofocus
+                 class="w-full bg-transparent text-sm text-gray-200 placeholder-gray-600 focus:outline-none">
           <span class="text-[10px] text-gray-600 border border-gray-800 rounded px-1.5 py-0.5">Esc</span>
         </div>
-        <!-- 命令列表 -->
+        <!-- 分组命令列表 -->
         <div class="max-h-72 overflow-y-auto py-1">
-          <template x-for="(c, i) in filteredCommands" :key="c.id">
-            <button type="button" data-pal-item :data-i="i" @click="run(c)"
-                    class="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-900 transition text-left">
-              <span class="flex items-center gap-2.5 min-w-0">
-                <svg class="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z"/></svg>
-                <span class="min-w-0">
-                  <span class="block text-xs font-medium text-gray-200 truncate" x-text="c.name"></span>
-                  <span class="block text-[10px] text-gray-500 truncate" x-text="c.desc"></span>
-                </span>
-              </span>
-              <span class="text-[10px] font-mono text-gray-600 flex-shrink-0 ml-2" x-text="c.keys"></span>
-            </button>
+          <template x-for="(g, gi) in filteredGroups" :key="'g' + g.id">
+            <div>
+              <!-- 组标题 -->
+              <div class="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-600" x-text="g.label"></div>
+              <template x-for="c in g.items" :key="c.id">
+                <button type="button" data-pal-item @click="run(c)"
+                        class="w-full px-3 py-2 flex items-center justify-between transition text-left"
+                        :class="palIdx === flatCmdIndex(c.id) ? 'bg-indigo-500/15' : 'hover:bg-gray-900'">
+                  <span class="flex items-center gap-2.5 min-w-0">
+                    <svg class="w-3.5 h-3.5 flex-shrink-0" :class="palIdx === flatCmdIndex(c.id) ? 'text-indigo-300' : 'text-gray-500'"
+                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path :d="c.icon"></path>
+                    </svg>
+                    <span class="min-w-0">
+                      <span class="block text-xs font-medium text-gray-200 truncate" x-text="c.name"></span>
+                      <span class="block text-[10px] text-gray-500 truncate" x-text="c.desc"></span>
+                    </span>
+                  </span>
+                  <span x-show="c.keys" class="text-[10px] font-mono text-gray-600 flex-shrink-0 ml-2" x-text="c.keys"></span>
+                </button>
+              </template>
+            </div>
           </template>
-          <div x-show="!filteredCommands.length" class="px-3 py-4 text-center text-xs text-gray-600">无匹配命令</div>
+          <div x-show="!filteredGroups.length" class="px-3 py-4 text-center text-xs text-gray-600">无匹配命令</div>
+        </div>
+        <!-- 底部导航提示 -->
+        <div class="px-3 py-1.5 border-t border-gray-800 flex items-center gap-3 text-[9px] text-gray-600">
+          <span class="flex items-center gap-1"><kbd class="px-1 rounded border border-gray-800 bg-gray-900">↑</kbd><kbd class="px-1 rounded border border-gray-800 bg-gray-900">↓</kbd> 导航</span>
+          <span class="flex items-center gap-1"><kbd class="px-1 rounded border border-gray-800 bg-gray-900">Enter</kbd> 执行</span>
         </div>
       </div>
     </div>
 
-    <!-- 快捷键表 -->
+    <!-- 快捷键表(对齐 vidonex KeyboardShortcutsModal:搜索 + 分类) -->
     <div x-show="view === 'shortcuts'" x-cloak
          class="fixed inset-0 z-[98] flex items-center justify-center p-4"
          style="background:rgba(0,0,0,.6);backdrop-filter:blur(2px)"
          @click.self="view = null">
       <div class="w-full max-w-md rounded-xl bg-gray-950 border border-gray-800 shadow-2xl p-5">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-gray-200 flex items-center gap-2">
             <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4m0 4h.01" stroke-linecap="round"/></svg>
             键盘快捷键
           </h3>
           <button type="button" class="p-1 text-gray-500 hover:text-gray-300 transition" @click="view = null">✕</button>
         </div>
-        <div class="grid gap-1.5 max-h-80 overflow-y-auto">
-          <template x-for="(s, i) in shortcuts" :key="i">
-            <div class="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-900/60">
-              <span class="text-[11px] text-gray-400" x-text="s.desc"></span>
-              <kbd class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-gray-800 bg-gray-900 text-indigo-300" x-text="s.keys"></kbd>
+        <!-- 搜索 -->
+        <div class="flex items-center gap-2 px-2.5 py-1.5 mb-3 rounded-lg bg-gray-900/60 border border-gray-800">
+          <svg class="w-3.5 h-3.5 text-gray-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
+          <input type="text" x-model="shortcutQuery" placeholder="搜索快捷键…(如 分割 / Ctrl+Z)"
+                 class="w-full bg-transparent text-[11px] text-gray-200 placeholder-gray-600 focus:outline-none">
+        </div>
+        <div class="max-h-80 overflow-y-auto space-y-2.5">
+          <template x-for="g in shortcutGroups()" :key="g.label">
+            <div>
+              <div class="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-600" x-text="g.label"></div>
+              <div class="grid gap-1">
+                <template x-for="s in g.items" :key="s.keys + s.desc">
+                  <div class="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-900/60">
+                    <span class="text-[11px] text-gray-400" x-text="s.desc"></span>
+                    <kbd class="text-[10px] font-mono px-1.5 py-0.5 rounded border border-gray-800 bg-gray-900 text-indigo-300" x-text="s.keys"></kbd>
+                  </div>
+                </template>
+              </div>
             </div>
           </template>
+          <div x-show="!filteredShortcuts.length" class="text-center text-xs text-gray-600 py-4">无匹配快捷键</div>
         </div>
         <div class="mt-3 pt-3 border-t border-gray-800 text-[10px] text-gray-600 text-center">
           按 Ctrl+/ 或 Esc 关闭
@@ -220,7 +248,7 @@
       </div>
     </div>
 
-    <!-- 关于 -->
+    <!-- 关于(对齐 vidonex AboutModal:系统诊断 OS/Arch/Cores/GPU/FFmpeg + 链接) -->
     <div x-show="view === 'about'" x-cloak
          class="fixed inset-0 z-[98] flex items-center justify-center p-4"
          style="background:rgba(0,0,0,.6);backdrop-filter:blur(2px)"
@@ -233,8 +261,31 @@
         <p class="text-[11px] text-gray-500 mt-0.5" x-text="'v' + version"></p>
         <p class="text-xs text-gray-400 mt-3" x-text="architecture"></p>
         <p class="text-[10px] text-gray-600 mt-2">vidonex 兼容 project.yaml · htmx + Alpine 事件总线</p>
-        <div class="mt-4">
-          <button type="button" class="px-4 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300 hover:border-indigo-500 transition" @click="view = null">关闭</button>
+        <!-- 系统诊断(对齐 vidonex AboutModal diagnostics) -->
+        <div class="mt-4 rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-left space-y-1.5">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-gray-500">操作系统</span>
+            <span class="font-mono text-gray-300 truncate ml-3" x-text="sys.os"></span>
+          </div>
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-gray-500">架构</span>
+            <span class="font-mono text-gray-300" x-text="sys.arch"></span>
+          </div>
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-gray-500">CPU 核心</span>
+            <span class="font-mono text-gray-300" x-text="sys.cores + (sys.cores !== '—' ? ' 逻辑核' : '')"></span>
+          </div>
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-gray-500">GPU</span>
+            <span class="font-mono text-gray-300 truncate ml-3 max-w-[180px]" x-text="sys.gpu || '未知'"></span>
+          </div>
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-gray-500">FFmpeg</span>
+            <span class="font-mono text-gray-300" x-text="sys.ffmpeg"></span>
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-center gap-2">
+          <button type="button" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300 hover:border-indigo-500 transition" @click="view = null">关闭</button>
         </div>
       </div>
     </div>

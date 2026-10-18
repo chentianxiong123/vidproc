@@ -8,8 +8,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"runtime"
 	"strconv"
 
+	"vidproc/internal/ffmpeg"
 	"vidproc/internal/project"
 )
 
@@ -51,6 +53,18 @@ func writeErr(w http.ResponseWriter, code int, msg string) {
 // Router 挂载 JSON API 路由(前缀 /api)。
 func Router(db *sql.DB) http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/sysinfo", func(w http.ResponseWriter, r *http.Request) {
+		ff, err := ffmpeg.NewConfig()
+		ver := "不可用"
+		if err == nil {
+			ver = ff.Version()
+		}
+		writeJSON(w, 200, map[string]string{
+			"os":     runtime.GOOS,
+			"arch":   runtime.GOARCH,
+			"ffmpeg": ver,
+		})
+	})
 	mux.HandleFunc("GET /api/projects", func(w http.ResponseWriter, r *http.Request) {
 		projects, err := project.List(db)
 		if err != nil {
@@ -154,6 +168,7 @@ func Router(db *sql.DB) http.Handler {
 	// 异步渲染:POST 启动,GET 轮询进度
 	mux.HandleFunc("POST /api/projects/{id}/render", RenderStartHandler(db))
 	mux.HandleFunc("GET /api/render/{jobID}", RenderStatusHandler)
+	mux.HandleFunc("GET /api/render/{jobID}/file", RenderFileHandler)
 	// 媒体素材:列表/上传/删除/缩略图
 	mux.HandleFunc("GET /api/projects/{id}/assets", AssetsListHandler(db))
 	mux.HandleFunc("POST /api/projects/{id}/assets", AssetsUploadHandler(db))

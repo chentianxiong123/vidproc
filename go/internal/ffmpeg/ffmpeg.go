@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
 	"vidproc/internal/mp4"
 )
@@ -411,4 +412,23 @@ func RemoveEmpty(path string) {
 	if st, err := os.Stat(path); err == nil && st.Size() == 0 {
 		os.Remove(path)
 	}
+}
+
+// Version returns the first line of `ffmpeg -version`(About 系统诊断用)。
+func (c *Config) Version() string {
+	if c == nil || c.FFmpeg == "" {
+		return "不可用"
+	}
+	out, err := exec.Command(c.FFmpeg, "-version").Output()
+	if err != nil {
+		return "不可用"
+	}
+	line := string(out)
+	if i := strings.IndexByte(line, '\n'); i >= 0 {
+		line = line[:i]
+	}
+	if line == "" {
+		return "不可用"
+	}
+	return line
 }

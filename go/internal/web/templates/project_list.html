@@ -97,6 +97,19 @@
             </template>
           </div>
         </div>
+        <!-- 宽高自定义(对齐 vidonex:预设点击后仍可手动编辑 Width/Height) -->
+        <div class="mb-4 grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] text-gray-500 mb-1">宽度 (px)</label>
+            <input type="number" min="16" max="7680" step="2" x-model.number="width"
+                   class="w-full bg-gray-900 border border-gray-800 rounded px-2.5 py-1.5 text-xs font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-[11px] text-gray-500 mb-1">高度 (px)</label>
+            <input type="number" min="16" max="4320" step="2" x-model.number="height"
+                   class="w-full bg-gray-900 border border-gray-800 rounded px-2.5 py-1.5 text-xs font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
         <!-- fps -->
         <div class="mb-4">
           <label class="block text-[11px] text-gray-500 mb-1">帧率</label>

@@ -252,3 +252,23 @@ func RenderStatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, job)
 }
+
+// RenderFileHandler GET /api/render/{jobID}/file → 已完成渲染产物(预览/下载)。
+// 仅 done 任务可读;输出路径必须在任务记录里,防止任意文件泄露。
+func RenderFileHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("jobID"), 10, 64)
+	if err != nil {
+		writeErr(w, 400, "bad job id")
+		return
+	}
+	job := renderJobs.get(id)
+	if job == nil {
+		writeErr(w, 404, "job not found")
+		return
+	}
+	if job.Status != jobDone || job.Output == "" {
+		writeErr(w, 409, "render not finished")
+		return
+	}
+	http.ServeFile(w, r, job.Output)
+}
