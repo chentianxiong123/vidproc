@@ -30,26 +30,26 @@
             x-text="pid ? assets.length : {{len .Projects}}"></span>
     </div>
     <div class="flex items-center gap-1.5 flex-shrink-0" x-show="pid">
-      <!-- 视图切换:树/网格(对齐 vidonex viewMode switcher) -->
-      <div class="flex items-center bg-gray-900 border border-gray-800 rounded p-0.5">
-        <button type="button" @click="viewMode = 'tree'"
-                class="p-1 rounded text-xs transition-colors" :class="viewMode === 'tree' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
-                title="分类树视图">
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h6M4 12h6M4 18h6M14 6h6M14 12h6M14 18h6" stroke-linecap="round"/></svg>
-        </button>
-        <button type="button" @click="viewMode = 'grid'"
-                class="p-1 rounded text-xs transition-colors" :class="viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
-                title="网格视图">
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        </button>
-      </div>
-      <!-- 上传按钮(对齐 vidonex UButton xs primary soft) -->
+      <!-- 上传按钮(参考物理位置:最左;对齐 vidonex UButton xs primary soft) -->
       <label class="flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 text-[11px] cursor-pointer transition flex-shrink-0"
              :class="uploading ? 'opacity-50 pointer-events-none' : ''">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
         <span x-text="uploading ? '上传中…' : '上传素材'"></span>
         <input x-ref="fileInput" type="file" class="hidden" multiple @change="uploadFiles($event)">
       </label>
+      <!-- 视图切换:网格 → 树(参考物理顺序:网格中、树右;对齐 vidonex viewMode switcher) -->
+      <div class="flex items-center bg-gray-900 border border-gray-800 rounded p-0.5">
+        <button type="button" @click="viewMode = 'grid'"
+                class="p-1 rounded text-xs transition-colors" :class="viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
+                title="网格视图">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </button>
+        <button type="button" @click="viewMode = 'tree'"
+                class="p-1 rounded text-xs transition-colors" :class="viewMode === 'tree' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
+                title="分类树视图">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h6M4 12h6M4 18h6M14 6h6M14 12h6M14 18h6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
     </div>
   </div>
 

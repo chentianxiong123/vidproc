@@ -13,7 +13,7 @@
 </head>
 <body class="h-screen w-screen flex flex-col bg-[#0b0f19] text-gray-100 overflow-hidden font-sans">
   <!-- Top Header（对齐 vidonex AppHeader：h-14 毛玻璃 + 项目名 + 保存状态） -->
-  <header class="h-14 border-b border-gray-800 bg-gray-950/90 backdrop-blur px-4 flex items-center justify-between select-none z-30 flex-shrink-0">
+  <header id="global-header" class="h-14 border-b border-gray-800 bg-gray-950/90 backdrop-blur px-4 flex items-center justify-between select-none z-30 flex-shrink-0">
     <!-- Left: Branding & Project Title -->
     <div class="flex items-center gap-3 min-w-0">
       <div class="flex items-center gap-2">
@@ -152,6 +152,19 @@
         <span class="text-gray-500">FPS:</span>
         <span class="text-gray-300" x-text="fps"></span>
       </div>
+
+      <div class="h-3.5 w-px bg-gray-800"></div>
+
+      <!-- 缩放按钮(对齐参考状态栏:放大在前、缩小在后) -->
+      <div class="items-center gap-1 hidden md:flex">
+        <button type="button" class="hover:text-gray-200 transition" title="放大" @click="zoomIn()">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+        </button>
+        <button type="button" class="hover:text-gray-200 transition" title="缩小" @click="zoomOut()">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" stroke-linecap="round"/></svg>
+        </button>
+        <span class="font-mono text-gray-500 w-12 text-right hidden lg:inline" x-text="pps + 'px/s'"></span>
+      </div>
     </div>
 
     <!-- 右:吸附开关与缩放 -->
@@ -164,24 +177,6 @@
         <span x-text="snapOn ? '磁吸开' : '磁吸关'" class="hidden sm:inline"></span>
       </button>
 
-      <div class="h-3.5 w-px bg-gray-800"></div>
-
-      <!-- 缩放滑条(窄屏隐藏,保留磁吸) -->
-      <div class="items-center gap-2 hidden md:flex">
-        <button type="button" class="hover:text-gray-200 transition" title="缩小" @click="zoomOut()">
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" stroke-linecap="round"/></svg>
-        </button>
-
-        <input type="range" min="15" max="200" step="5" :value="pps"
-               class="w-24 h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-               @input="setZoom($event.target.value)">
-
-        <button type="button" class="hover:text-gray-200 transition" title="放大" @click="zoomIn()">
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
-        </button>
-
-        <span class="font-mono text-gray-500 w-10 text-right" x-text="pps + 'px/s'"></span>
-      </div>
     </div>
   </footer>
 
