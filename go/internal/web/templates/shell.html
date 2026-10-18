@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>vidproc 工作室</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/assets/tailwind.js"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
   <link rel="icon" href="/assets/favicon.svg">
   <link rel="stylesheet" href="/assets/style.css">
@@ -69,38 +69,62 @@
   <!-- 主布局：垂直可拖拽（上部工作区 + 底部时间轴），对齐 vidonex USplitter -->
   <div id="studio-root" class="flex-1 min-h-0 relative" x-data="studioLayout()" x-init="initLayout()">
     <!-- 上部工作区：水平三栏（媒体库 | 视口 | 检查器），对齐 vidonex horizontal splitter -->
-    <div class="absolute inset-0 flex" :style="'bottom:' + timelineH + 'px'">
-      <!-- Media Library（对齐 PanelsMediaLibrary） -->
-      <aside class="h-full flex flex-col overflow-hidden" :style="'width:' + mediaW + 'px'">
+    <div class="absolute inset-0 flex" :style="'bottom:' + displayW('timeline') + 'px'">
+      <!-- Media Library（对齐 PanelsMediaLibrary;可折叠,折叠后 34px 窄条） -->
+      <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('media') + 'px'">
         {{template "media_panel.html" .}}
+        <button type="button" @click="togglePane('media')" :title="mediaFolded ? '展开素材库' : '折叠素材库'"
+                class="absolute top-2 z-30 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
+                :class="mediaFolded ? 'inset-x-0 flex justify-center' : 'right-2'">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               :class="mediaFolded ? '' : 'rotate-180'"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
       </aside>
-      <!-- 拖拽把手（水平） -->
-      <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center" @mousedown="dragCol('media')" @dblclick="resetPane('media')" title="双击复位">
+      <!-- 拖拽把手（水平;折叠态禁止拖动,展开才能调宽） -->
+      <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center"
+           :class="mediaFolded ? 'opacity-20 pointer-events-none' : ''"
+           @mousedown="dragCol('media')" @dblclick="resetPane('media')" title="双击复位">
         <div class="h-8 w-0.5 rounded-full bg-gray-600/70 group-hover:bg-indigo-200"></div>
       </div>
       <!-- Viewport Preview（对齐 ViewportCanvasViewport） -->
-      <main class="h-full flex flex-col overflow-hidden flex-1">
+      <main class="h-full flex flex-col overflow-hidden flex-1 min-w-0">
         <div id="main" class="flex-1 min-h-0 overflow-y-auto">
           {{.Content}}
         </div>
       </main>
-      <!-- 拖拽把手（水平） -->
-      <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center" @mousedown="dragCol('inspector')" @dblclick="resetPane('inspector')" title="双击复位">
+      <!-- 拖拽把手（水平;同上） -->
+      <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center"
+           :class="inspectorFolded ? 'opacity-20 pointer-events-none' : ''"
+           @mousedown="dragCol('inspector')" @dblclick="resetPane('inspector')" title="双击复位">
         <div class="h-8 w-0.5 rounded-full bg-gray-600/70 group-hover:bg-indigo-200"></div>
       </div>
-      <!-- Inspector（对齐 PanelsInspectorPanel） -->
-      <aside class="h-full flex flex-col overflow-hidden" :style="'width:' + inspectorW + 'px'">
+      <!-- Inspector（对齐 PanelsInspectorPanel;可折叠） -->
+      <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('inspector') + 'px'">
         {{template "inspector_panel.html" .}}
+        <button type="button" @click="togglePane('inspector')" :title="inspectorFolded ? '展开检查器' : '折叠检查器'"
+                class="absolute top-2 z-30 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
+                :class="inspectorFolded ? 'inset-x-0 flex justify-center' : 'left-2'">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               :class="inspectorFolded ? 'rotate-180' : ''"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
       </aside>
     </div>
 
-    <!-- 底部时间轴：对齐 vidonex TimelineContainer -->
-    <div class="absolute inset-x-0 bottom-0 border-t border-gray-800 bg-gray-950 flex flex-col" :style="'height:' + timelineH + 'px'">
+    <!-- 底部时间轴：对齐 vidonex TimelineContainer;可折叠到工具栏高度 -->
+    <div class="absolute inset-x-0 bottom-0 border-t border-gray-800 bg-gray-950 flex flex-col" :style="'height:' + displayW('timeline') + 'px'">
       {{template "timeline_panel.html" .}}
+      <button type="button" @click="togglePane('timeline')" :title="timelineFolded ? '展开时间轴' : '收起时间轴'"
+              class="absolute right-2 z-40 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
+              :style="'bottom:' + (timelineFolded ? 42 : 34) + 'px'">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             :class="timelineFolded ? '' : 'rotate-180'"><path d="M6 15l6-6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
 
-    <!-- 垂直拖拽把手（时间轴高度） -->
-    <div class="absolute bottom-0 inset-x-0 h-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-row-resize z-30" :style="'bottom:' + (timelineH - 6) + 'px'" @mousedown="dragRow()" @dblclick="resetPane('timeline')" title="双击复位">
+    <!-- 垂直拖拽把手（时间轴高度;折叠态禁止拖动） -->
+    <div class="absolute bottom-0 inset-x-0 h-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-row-resize z-30"
+         :class="timelineFolded ? 'opacity-0 pointer-events-none' : ''"
+         :style="'bottom:' + (displayW('timeline') - 6) + 'px'" @mousedown="dragRow()" @dblclick="resetPane('timeline')" title="双击复位">
       <div class="w-8 h-0.5 rounded-full bg-gray-600/70 mx-auto mt-0.5"></div>
     </div>
   </div>
@@ -200,7 +224,7 @@
           <div x-show="!filteredGroups.length" class="px-3 py-4 text-center text-xs text-gray-600">无匹配命令</div>
         </div>
         <!-- 底部导航提示 -->
-        <div class="px-3 py-1.5 border-t border-gray-800 flex items-center gap-3 text-[9px] text-gray-600">
+        <div class="px-3 py-1.5 border-t border-gray-800 flex items-center gap-3 text-[10px] text-gray-600">
           <span class="flex items-center gap-1"><kbd class="px-1 rounded border border-gray-800 bg-gray-900">↑</kbd><kbd class="px-1 rounded border border-gray-800 bg-gray-900">↓</kbd> 导航</span>
           <span class="flex items-center gap-1"><kbd class="px-1 rounded border border-gray-800 bg-gray-900">Enter</kbd> 执行</span>
         </div>
@@ -301,8 +325,23 @@
         mediaW: 280,
         inspectorW: 300,
         timelineH: 240,
+        mediaFolded: false,
+        inspectorFolded: false,
+        timelineFolded: false,
         min: { media: 180, inspector: 220, timeline: 120 },
         max: { media: 0.4, inspector: 0.4, timeline: 0.7 }, // 视口比例上限(响应式钳制)
+        // 显示尺寸:折叠时媒体库/检查器收成 34px 窄条,时间轴收成工具栏高度
+        displayW(side) {
+          if (side === 'media') return this.mediaFolded ? 34 : this.mediaW;
+          if (side === 'inspector') return this.inspectorFolded ? 34 : this.inspectorW;
+          return this.timelineFolded ? 40 : this.timelineH;
+        },
+        togglePane(side) {
+          if (side === 'media') this.mediaFolded = !this.mediaFolded;
+          else if (side === 'inspector') this.inspectorFolded = !this.inspectorFolded;
+          else this.timelineFolded = !this.timelineFolded;
+          this.save();
+        },
         clampAll() {
           const vw = window.innerWidth, vh = window.innerHeight;
           this.mediaW = Math.min(Math.max(this.mediaW, this.min.media), vw * this.max.media);
@@ -310,11 +349,21 @@
           this.timelineH = Math.min(Math.max(this.timelineH, this.min.timeline), vh * this.max.timeline);
         },
         save() {
-          localStorage.setItem('vidproc-layout', JSON.stringify({ mediaW: this.mediaW, inspectorW: this.inspectorW, timelineH: this.timelineH }));
+          localStorage.setItem('vidproc-layout', JSON.stringify({ mediaW: this.mediaW, inspectorW: this.inspectorW, timelineH: this.timelineH, mediaFolded: this.mediaFolded, inspectorFolded: this.inspectorFolded, timelineFolded: this.timelineFolded }));
         },
         initLayout() {
           const skin = JSON.parse(localStorage.getItem('vidproc-layout') || 'null');
-          if (skin) { this.mediaW = skin.mediaW; this.inspectorW = skin.inspectorW; this.timelineH = skin.timelineH; }
+          if (skin) {
+            this.mediaW = skin.mediaW; this.inspectorW = skin.inspectorW; this.timelineH = skin.timelineH;
+            if (skin.mediaFolded !== undefined) this.mediaFolded = skin.mediaFolded;
+            if (skin.inspectorFolded !== undefined) this.inspectorFolded = skin.inspectorFolded;
+            if (skin.timelineFolded !== undefined) this.timelineFolded = skin.timelineFolded;
+          } else {
+            // 首次打开:小窗口默认收窄侧栏,画布优先(人类 studio 习惯)
+            const vw = window.innerWidth;
+            if (vw < 1280) { this.mediaW = 220; this.inspectorW = 240; }
+            if (vw < 900) { this.mediaW = 180; this.inspectorW = 200; }
+          }
           this.clampAll(); // 窗口缩小后布局不溢出视口
           window.addEventListener('resize', this.clampAll.bind(this));
           const name = document.getElementById('project-name');
@@ -323,15 +372,17 @@
           }
         },
         resetPane(side) { // 双击把手复位默认宽度/高度
-          if (side === 'media') this.mediaW = 280;
-          else if (side === 'inspector') this.inspectorW = 300;
-          else if (side === 'timeline') this.timelineH = 240;
+          if (side === 'media') { this.mediaW = 280; this.mediaFolded = false; }
+          else if (side === 'inspector') { this.inspectorW = 300; this.inspectorFolded = false; }
+          else if (side === 'timeline') { this.timelineH = 240; this.timelineFolded = false; }
           this.clampAll();
           this.save();
         },
         dragCol(side) {
           const target = this;
           const root = document.getElementById('studio-root');
+          if (side === 'media') this.mediaFolded = false;
+          if (side === 'inspector') this.inspectorFolded = false;
           const onMove = (e) => {
             if (!root) return;
             const rect = root.getBoundingClientRect();
@@ -352,6 +403,7 @@
         dragRow() {
           const target = this;
           const root = document.getElementById('studio-root');
+          this.timelineFolded = false;
           const onMove = (e) => {
             if (!root) return;
             const rect = root.getBoundingClientRect();

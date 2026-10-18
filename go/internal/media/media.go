@@ -160,3 +160,40 @@ func FileTypeFromName(name string) string {
 		return "video"
 	}
 }
+
+// ResolveSource 解析 clip.source 的实际可用文件路径:
+// 源文件存在 → 原路径;不存在 → 项目素材库中同名副本(素材库 file_path 可能带
+// SDK 时间戳前缀,file_name 保留原名,按原名精确/LIKE 匹配)。
+// 素材也没有 → 返回原始 source(调用方抽帧报错,信息如实)。
+// 用途:画布预览/封面抽帧在源文件被移动或清理后,仍能从已上传素材恢复画面。
+func ResolveSource(db *sql.DB, projectID int64, source string) string {
+	if source == "" {
+		return source
+	}
+	if st, err := os.Stat(source); err == nil && !st.IsDir() {
+		return source
+	}
+	base := filepath.Base(source)
+	// 1) 素材库 file_name 精确同名
+	var path string
+	err := db.QueryRow(`SELECT file_path FROM media_assets WHERE project_id = ? AND file_name = ? LIMIT 1`, projectID, base).Scan(&path)
+	if err == nil && path != "" {
+		if st, err := os.Stat(path); err == nil && !st.IsDir() {
+			return path
+		}
+	}
+	// 2) LIKE 后缀兜底(素材库文件名带时间戳前缀等变体)
+	rows, err := db.Query(`SELECT file_path FROM media_assets WHERE project_id = ? AND file_name LIKE ? LIMIT 8`, projectID, "%"+base)
+	if err != nil {
+		return source
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if rows.Scan(&path) == nil && path != "" {
+			if st, err := os.Stat(path); err == nil && !st.IsDir() {
+				return path
+			}
+		}
+	}
+	return source
+}

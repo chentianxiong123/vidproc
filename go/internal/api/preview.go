@@ -9,11 +9,13 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"vidproc/internal/ffmpeg"
+	"vidproc/internal/media"
 	"vidproc/internal/timeline/spec"
 )
 
@@ -88,6 +90,80 @@ func resolveFrameTarget(vs *spec.VideoSpec, t float64) *frameTarget {
 	return nil
 }
 
+// SourceFrameHandler GET /api/projects/{id}/source-frame?src=<path>&t=0&w=240
+// 对 spec 中引用的任意源文件抽封面帧(对齐上游 ClipItem 直接用 clip.source 显示封面)。
+// 安全:src 必须命中该项目 spec 的某个 clip.source(白名单),只回 JPEG 帧/图片原图,不泄露任意文件。
+func SourceFrameHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		p, err := getProject(w, r, db)
+		if err != nil {
+			return
+		}
+		vs, err := spec.ParseYAML(strings.NewReader(p.SpecYAML))
+		if err != nil {
+			writeErr(w, 400, "spec 解析失败: "+err.Error())
+			return
+		}
+
+		src := r.URL.Query().Get("src")
+		if src == "" {
+			writeErr(w, 400, "src 必填")
+			return
+		}
+		// 白名单:必须等于某个 clip.source(精确匹配,防任意文件抽帧)
+		allowed := false
+		for _, tr := range vs.Tracks {
+			for _, c := range tr.Clips {
+				if c.Source == src {
+					allowed = true
+					break
+				}
+			}
+			if allowed {
+				break
+			}
+		}
+		if !allowed {
+			writeErr(w, 404, "src 不在该项目时间轴白名单内")
+			return
+		}
+
+		t := 0.0
+		if raw := r.URL.Query().Get("t"); raw != "" {
+			if f, err := strconv.ParseFloat(raw, 64); err == nil && f >= 0 {
+				t = f
+			}
+		}
+		width := 0
+		if raw := r.URL.Query().Get("w"); raw != "" {
+			if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+				width = n
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+		defer cancel()
+
+		// 图片源:直接回原图(不抽帧)
+		switch strings.ToLower(filepath.Ext(src)) {
+		case ".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp":
+			http.ServeFile(w, r, src)
+			return
+		}
+		// 源文件可能已不存在 → 用素材库同名副本恢复(画布预览/封面统一行为)
+		actual := media.ResolveSource(db, p.ID, src)
+		jpeg, err := extractFrame(ctx, actual, t, FrameOptions{Width: width})
+		if err != nil {
+			// 源丢失且无素材副本:204 静默(缩略图空,不污染控制台)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.Header().Set("Content-Type", "image/jpeg")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		w.Write(jpeg)
+	}
+}
+
 // FrameHandler GET /api/projects/{id}/frame?t=3.5&w=960 → 播放头帧 JPEG。
 func FrameHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -116,15 +192,19 @@ func FrameHandler(db *sql.DB) http.HandlerFunc {
 
 		target := resolveFrameTarget(vs, t)
 		if target == nil {
-			writeErr(w, 404, "该时刻无视频 clip(空画布)")
+			// 空画布/无视频 clip:204 静默(前端显示空态,不污染控制台)
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
-		jpeg, err := extractFrame(ctx, target.Source, target.SrcTime, FrameOptions{Width: width})
+		// 源文件可能已不存在 → 用素材库同名副本恢复画面
+		actual := media.ResolveSource(db, p.ID, target.Source)
+		jpeg, err := extractFrame(ctx, actual, target.SrcTime, FrameOptions{Width: width})
 		if err != nil {
-			writeErr(w, 502, err.Error())
+			// 抽帧失败(源丢失且无素材副本):204 静默
+			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 		w.Header().Set("Content-Type", "image/jpeg")

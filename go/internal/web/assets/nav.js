@@ -1017,11 +1017,25 @@
         this.select(m.clip);
         this.split();
       },
-      // filmstrip 缩略图 URL(clip.source 文件名 → assets 缩略图;无 → null)
+      // filmstrip 缩略图 URL(clip.source 文件名 → assets 缩略图;
+      // 素材不在库时兜底走 /source-frame 对 spec 源文件抽帧,对齐上游 ClipItem 直接用 clip.source)。
       thumbFor(clip) {
-        if (!clip || !this.assetThumbs) return null;
+        if (!clip) return null;
         const base = (clip.source || '').split(/[\\/]/).pop().toLowerCase();
-        return this.assetThumbs[base] || null;
+        if (this.assetThumbs) {
+          if (this.assetThumbs[base]) return this.assetThumbs[base];
+          // 上传副本带时间戳前缀(1792252822383_xxx.mp4 → 按去前缀名匹配)
+          const stem = base.replace(/^\d+_/, '');
+          if (stem !== base) {
+            for (const k in this.assetThumbs) {
+              if (k.replace(/^\d+_/, '') === stem) return this.assetThumbs[k];
+            }
+          }
+        }
+        if (clip.source && this.pid) {
+          return `/api/projects/${this.pid}/source-frame?src=${encodeURIComponent(clip.source)}&t=0&w=240`;
+        }
+        return null;
       },
       // ============ 轨道操作(对齐 vidonex TrackHeader mute/删除)============
       toggleMute(track) {
@@ -3372,7 +3386,7 @@
           this.loading = true;
           fetch(`/api/projects/${pid}/frame?t=${t}&w=960`)
             .then((r) => {
-              if (r.status === 404) {
+              if (r.status === 404 || r.status === 204) {
                 this.previewSrc = '';
                 this.previewErr = true;
                 return null;
