@@ -180,8 +180,7 @@
         {{if .Projects}}
         {{range .Projects}}
         <a href="/project/{{.ID}}"
-           class="flex items-center gap-2 p-2 rounded-lg bg-gray-900/60 hover:bg-gray-800 transition max-w-full"
-           hx-get="/project/{{.ID}}" hx-select="#main" hx-target="#main" hx-swap="innerHTML" hx-push-url="true">
+           class="flex items-center gap-2 p-2 rounded-lg bg-gray-900/60 hover:bg-gray-800 transition max-w-full">
           <div class="w-9 h-7 rounded-md bg-gradient-to-br from-indigo-500 to-violet-600 flex-shrink-0 flex items-center justify-center shadow">
             <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
           </div>
@@ -200,8 +199,7 @@
       </div>
       <div class="p-2 border-t border-gray-800 flex-shrink-0">
         <a href="/#new"
-           class="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300 hover:border-indigo-500 transition"
-           hx-get="/" hx-select="#main" hx-target="#main" hx-swap="innerHTML" hx-push-url="true">
+           class="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300 hover:border-indigo-500 transition">
           <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
           新建项目
         </a>

@@ -24,8 +24,7 @@
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {{range .Projects}}
       <div class="group rounded-xl overflow-hidden bg-gray-900/60 border border-gray-800 hover:border-indigo-500/50 transition-all duration-200">
-        <a href="/project/{{.ID}}" class="block"
-           hx-get="/project/{{.ID}}" hx-select="#main" hx-target="#main" hx-swap="innerHTML" hx-push-url="true">
+        <a href="/project/{{.ID}}" class="block">
           <div class="aspect-video bg-gradient-to-br from-gray-800 to-gray-900 relative flex items-center justify-center">
             <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>

@@ -10,8 +10,7 @@
   <div class="h-14 border-b border-gray-800 px-4 bg-gray-950/80 backdrop-blur flex items-center justify-between flex-shrink-0 z-30 select-none">
     <!-- 左:返回 + 项目名内联编辑 -->
     <div class="flex items-center gap-2 min-w-0">
-      <a href="/" class="p-1 text-gray-400 hover:text-white transition flex-shrink-0" title="返回列表"
-         hx-get="/" hx-select="#main" hx-target="#main" hx-swap="innerHTML" hx-push-url="true">
+      <a href="/" class="p-1 text-gray-400 hover:text-white transition flex-shrink-0" title="返回列表">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       </a>
       <input type="text" x-model="renameDraft" @focus="startRename()" @blur="commitRename()"
@@ -88,16 +87,17 @@
 
   <div class="flex-1 overflow-y-auto p-4 min-h-0">
     <!-- 画布预览（对齐 vidonex CanvasViewport:16:9 深底 + 播放头帧） -->
-    <div x-ref="viewportPanel" class="rounded-xl bg-gray-900/60 border border-gray-800 p-3 mb-4">
-      <div class="flex items-center justify-between mb-2">
+    <div x-ref="viewportPanel" class="rounded-xl bg-gray-900/60 border border-gray-800 p-3 mb-4 flex flex-col">
+      <div class="flex items-center justify-between mb-2 flex-shrink-0">
         <h3 class="text-xs font-semibold text-gray-300 flex items-center gap-2">
           <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
           画布预览
         </h3>
         <span class="text-[10px] font-mono text-indigo-300" x-text="fmt(playhead)"></span>
       </div>
-      <!-- 舞台容器:Space/中键拖拽平移(对齐 vidonex handleStageMouseDown→startPan) -->
-      <div class="relative aspect-video rounded-lg bg-[#05070c] border border-gray-800 overflow-hidden flex items-center justify-center select-none"
+      <!-- 舞台容器:Space/中键拖拽平移(对齐 vidonex handleStageMouseDown→startPan);flex-1 自适应,
+           播放工具条完整落在面板内,不与时间轴重叠 -->
+      <div class="relative flex-1 min-h-0 rounded-lg bg-[#05070c] border border-gray-800 overflow-hidden flex items-center justify-center select-none"
            :class="isSpacePressed ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'"
            @wheel.prevent="onWheel($event)" @dblclick="resetViewportZoom()"
            @mousedown="handleStageMouseDown($event)">
@@ -214,7 +214,7 @@
       </div>
 
       <!-- 播放工具条(对齐 vidonex PlaybackToolbar:h-12 传输控制) -->
-      <div class="h-12 bg-gray-950/80 border-t border-gray-800 flex items-center justify-between px-4 select-none">
+      <div class="h-12 bg-gray-950/80 border-t border-gray-800 flex items-center justify-between px-4 select-none relative z-20">
         <!-- 左:时间码 -->
         <div class="flex items-center gap-2 font-mono text-xs text-gray-300 flex-shrink-0">
           <span class="px-2 py-1 bg-gray-900 rounded border border-gray-800 text-indigo-400 font-semibold" x-text="tc"></span>
