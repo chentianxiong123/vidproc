@@ -176,11 +176,11 @@
     return {
       pid: pid || null,
       tl: null, // TimelineJSON
-      zoom: 1, // 缩放系数(x1 基准 80px/s)
+      zoom: 1, // 缩放系数(x1 基准 50px/s)
       playhead: 0, // 当前播放头秒
       selectedId: null, // 选中 clip id
       selectedTrackId: null, // 选中轨道 id(轨道头点击;Ducking/Waveform 检查器用)
-      pps: 80, // 像素/秒(zoom 驱动)
+      pps: 50, // 像素/秒(zoom 驱动;对齐 vidonex timeline.ts pixelsPerSecond=50)
       drag: null, // 进行中的拖拽 {clip, trackIdx, startX, origStart}
       scrubbing: false, // 播放头拖拽中(scrub)
       // 转场设置弹窗(常驻对象,永不 null → 模板引用天然空安全)
@@ -202,7 +202,7 @@
       _historyIdx: -1,
 
       init() {
-        this.$watch('zoom', (v) => { this.pps = 80 * v; });
+        this.$watch('zoom', (v) => { this.pps = 50 * v; });
         this.load();
         // 播放头也可以被外部(标尺/快捷键)跳转
         this.$watch('playhead', (v) => {
@@ -221,7 +221,7 @@
           const res = await fetch(`/api/projects/${this.pid}/timeline`);
           if (!res.ok) throw new Error(await res.text());
           this.tl = await res.json();
-          this.pps = 80 * this.zoom;
+          this.pps = 50 * this.zoom;
           // 素材缩略图映射(source → thumbnail_url;filmstrip 与右键 Probe 用)
           try {
             const ar = await fetch(`/api/projects/${this.pid}/assets`);
@@ -330,7 +330,7 @@
       },
 
       init() {
-        this.$watch('zoom', (v) => { this.pps = 80 * v; });
+        this.$watch('zoom', (v) => { this.pps = 50 * v; });
         this.load();
         // 外部播放/seek → 时间轴播放头跟随(来源非自身,避免回环)
         window.addEventListener('playhead-changed', (e) => {
@@ -3734,7 +3734,7 @@
       timecode: '00:00:00',
       duration: '00:00:00',
       fps: 30,
-      pps: 80, // 缩放滑条值(px/s),= timelineEditor.pps
+      pps: 50, // 缩放滑条值(px/s),= timelineEditor.pps
       snapOn: true,
 
       init() {
@@ -3750,8 +3750,8 @@
         const ed = window.vp && window.vp.timelineEditorOf;
         const fps = (ed && ed.tl && ed.tl.fps) || (window.vp && window.vp.projectViewOf && window.vp.projectViewOf.fps) || 30;
         this.fps = fps;
-        // 用 ed.zoom 计算 pps(watch 异步,zoom×80 即时权威;对齐上游 pixelsPerSecond=pps 语义)
-        this.pps = ed ? Math.round(80 * ed.zoom) : 80;
+        // 用 ed.zoom 计算 pps(watch 异步,zoom×50 即时权威;对齐上游 pixelsPerSecond=pps 语义)
+        this.pps = ed ? Math.round(50 * ed.zoom) : 50;
         // 时间码读时间轴播放头(scrub/seek/播放都会同步到 ed.playhead),
         // 而非 vp.playback.currentTime——后者是播放状态机,scrub 不更新它。
         this.timecode = pb ? pb.formatTimecode((ed && ed.playhead) || (pb.currentTime || 0), fps) : '00:00:00';
@@ -3771,17 +3771,17 @@
       },
       zoomIn() {
         const ed = window.vp && window.vp.timelineEditorOf;
-        if (ed) ed.zoom = Math.min(200 / 80, ed.zoom + 15 / 80); // +15px/s
+        if (ed) ed.zoom = Math.min(200 / 50, ed.zoom + 15 / 50); // +15px/s
         this.refresh();
       },
       zoomOut() {
         const ed = window.vp && window.vp.timelineEditorOf;
-        if (ed) ed.zoom = Math.max(15 / 80, ed.zoom - 15 / 80); // -15px/s
+        if (ed) ed.zoom = Math.max(15 / 50, ed.zoom - 15 / 50); // -15px/s
         this.refresh();
       },
       setZoom(value) {
         const ed = window.vp && window.vp.timelineEditorOf;
-        if (ed && value) ed.zoom = Math.min(200 / 80, Math.max(15 / 80, value / 80));
+        if (ed && value) ed.zoom = Math.min(200 / 50, Math.max(15 / 50, value / 50));
         this.refresh();
       },
     };
