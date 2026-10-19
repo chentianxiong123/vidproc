@@ -21,7 +21,7 @@
     <!-- 左:库名 + 计数徽章(对齐参考英文 LTR:folder+Media Library+徽章在左) -->
     <div class="flex items-center gap-1.5 min-w-0">
       <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-      <span class="font-semibold text-xs tracking-wider uppercase text-gray-300 truncate">Media Library</span>
+      <span class="font-semibold text-xs tracking-wider uppercase text-gray-300 truncate">媒体库</span>
       <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-gray-800 text-gray-400 border border-gray-700/60 flex-shrink-0"
             x-text="pid ? assets.length : {{len .Projects}}"></span>
     </div>
@@ -30,20 +30,20 @@
       <div class="flex items-center bg-gray-900 border border-gray-800 rounded p-0.5">
         <button type="button" @click="viewMode = 'tree'"
                 class="p-1 rounded text-xs transition-colors" :class="viewMode === 'tree' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
-                title="Tree View (Compact)">
+                title="树视图(紧凑)">
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h6M4 12h6M4 18h6M14 6h6M14 12h6M14 18h6" stroke-linecap="round"/></svg>
         </button>
         <button type="button" @click="viewMode = 'grid'"
                 class="p-1 rounded text-xs transition-colors" :class="viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
-                title="Tiles">
+                title="网格视图">
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         </button>
       </div>
       <button type="button" @click="$refs.fileInput.click()"
               class="rounded-md font-medium inline-flex items-center disabled:cursor-not-allowed disabled:opacity-75 transition-colors px-2 py-1 text-xs gap-1 text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/15 active:bg-indigo-500/15"
-              :disabled="uploading ? true : null" title="Add File">
+              :disabled="uploading ? true : null" title="添加文件">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
-        <span x-text="uploading ? 'Uploading…' : 'Add File'"></span>
+        <span x-text="uploading ? '上传中…' : '添加文件'"></span>
         <input x-ref="fileInput" type="file" class="hidden" multiple @change="uploadFiles($event)">
       </button>
     </div>
@@ -56,12 +56,12 @@
       <div class="p-2 border-b border-gray-800/60 flex items-center gap-1.5 bg-gray-950/20 flex-shrink-0">
         <div class="relative flex-1">
           <svg class="w-3.5 h-3.5 text-gray-500 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
-          <input type="text" x-model="query" placeholder="Search media..."
+          <input type="text" x-model="query" placeholder="搜索媒体..."
                  class="w-full bg-gray-900/90 border border-gray-800 rounded-md pl-7 pr-7 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors">
           <!-- 搜索清除按钮(对齐 vidonex:query 非空时显示 ×) -->
           <button type="button" x-show="query" @click="query = ''"
                   class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-500 hover:text-gray-200 transition"
-                  title="Clear Search">
+                  title="清除搜索">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg>
           </button>
         </div>
@@ -75,12 +75,12 @@
           <div class="w-10 h-10 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center mx-auto text-gray-400">
             <svg class="w-5 h-5 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </div>
-          <p class="text-xs font-medium text-gray-300">No media assets uploaded yet</p>
-          <p class="text-[11px] text-gray-500 max-w-[200px] mx-auto leading-relaxed">Drag & drop files here or click to browse</p>
+          <p class="text-xs font-medium text-gray-300">暂无媒体素材</p>
+          <p class="text-[11px] text-gray-500 max-w-[200px] mx-auto leading-relaxed">拖放文件到此处,或点击浏览</p>
         </div>
         <!-- 搜索无结果 -->
         <div x-show="assets.length > 0 && filtered.length === 0" class="text-center py-8 text-gray-500 text-xs">
-          No media matches your search
+          没有与搜索匹配的素材
         </div>
 
         <!-- 分类树视图(对齐 vidonex compact tree:可折叠分类分支 + 计数) -->
@@ -123,10 +123,10 @@
                       <span x-show="a.duration_seconds > 0" class="text-[10px] font-mono text-gray-500 group-hover/item:text-gray-400"
                             x-text="Math.floor(a.duration_seconds / 60) + ':' + String(Math.floor(a.duration_seconds % 60)).padStart(2, '0')"></span>
                       <div class="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                        <button type="button" @click="removeAsset(a)" class="p-1 rounded hover:bg-red-950/80 text-gray-400 hover:text-red-400 transition" title="Delete Asset">
+                        <button type="button" @click="removeAsset(a)" class="p-1 rounded hover:bg-red-950/80 text-gray-400 hover:text-red-400 transition" title="删除素材">
                           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 14H7z" stroke-linejoin="round"/><path d="M9 4h6l1 3H8z" stroke-linejoin="round"/></svg>
                         </button>
-                        <button type="button" @click="openProbeModal(a)" class="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200 transition" title="Inspect Metadata">
+                        <button type="button" @click="openProbeModal(a)" class="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200 transition" title="检查元数据">
                           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 12v4" stroke-linecap="round"/></svg>
                         </button>
                       </div>
@@ -157,10 +157,10 @@
               <div class="flex items-center justify-between gap-1 min-w-0">
                 <p class="text-[11px] font-medium text-gray-200 truncate flex-1" x-text="a.file_name"></p>
                 <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button type="button" @click="openProbeModal(a)" class="p-1 rounded text-gray-400 hover:text-indigo-400 transition" title="Inspect Metadata">
+                  <button type="button" @click="openProbeModal(a)" class="p-1 rounded text-gray-400 hover:text-indigo-400 transition" title="检查元数据">
                     <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 12v4" stroke-linecap="round"/></svg>
                   </button>
-                  <button type="button" @click="removeAsset(a)" class="p-1 rounded text-gray-400 hover:text-red-400 transition" title="Delete Asset">
+                  <button type="button" @click="removeAsset(a)" class="p-1 rounded text-gray-400 hover:text-red-400 transition" title="删除素材">
                     <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 14H7z" stroke-linejoin="round"/><path d="M9 4h6l1 3H8z" stroke-linejoin="round"/></svg>
                   </button>
                 </div>
@@ -171,7 +171,7 @@
       </div>
       <!-- 拖拽提示 -->
       <div class="p-2 border-t border-gray-800 text-[10px] text-gray-600 text-center flex-shrink-0">
-        Drag and drop onto timeline tracks
+        拖放到时间轴轨道
       </div>
     </div>
   </template>
@@ -196,7 +196,7 @@
         {{else}}
         <div class="text-center py-10 text-gray-500">
           <svg class="w-8 h-8 mx-auto mb-2 text-gray-600" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polygon points="14 2 14 8 20 8"/></svg>
-          <p class="text-xs">No projects yet</p>
+          <p class="text-xs">暂无项目</p>
         </div>
         {{end}}
       </div>
@@ -210,7 +210,7 @@
     </div>
   </template>
 
-  <!-- ProbeDetailsModal(对齐 vidonex Inspect Metadata:7 字段,媒体库内嵌) -->
+  <!-- ProbeDetailsModal(对齐 vidonex 检查元数据:7 字段,媒体库内嵌) -->
   <div x-show="isProbeModalOpen" x-cloak
        class="fixed inset-0 z-[92] flex items-center justify-center p-4"
        style="background:rgba(0,0,0,.6);backdrop-filter:blur(2px)"
@@ -221,7 +221,7 @@
       <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
         <h3 class="text-sm font-semibold text-gray-200 flex items-center gap-2">
           <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-          Inspect Metadata
+          检查元数据
         </h3>
         <button type="button" class="p-1 text-gray-500 hover:text-gray-300 transition" @click="closeProbeModal()">
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12" stroke-linecap="round"/></svg>
@@ -232,43 +232,43 @@
         <template x-if="activeProbeAsset">
           <div class="p-3 bg-gray-900/60 rounded-lg border border-gray-800 space-y-2 font-mono">
           <div class="flex justify-between py-1 border-b border-gray-800">
-            <span class="text-gray-500">File</span>
+            <span class="text-gray-500">文件</span>
             <span class="text-gray-200 truncate max-w-[240px]" x-text="activeProbeAsset.file_name"></span>
           </div>
           <div class="flex justify-between py-1 border-b border-gray-800">
-            <span class="text-gray-500">Duration</span>
+            <span class="text-gray-500">时长</span>
             <span class="text-indigo-400 font-semibold" x-text="activeProbeAsset.duration_seconds ? activeProbeAsset.duration_seconds.toFixed(2) + 's' : '—'"></span>
           </div>
           <template x-if="activeProbeAsset.width && activeProbeAsset.height">
             <div class="flex justify-between py-1 border-b border-gray-800">
-              <span class="text-gray-500">Resolution</span>
+              <span class="text-gray-500">分辨率</span>
               <span class="text-gray-200" x-text="activeProbeAsset.width + ' × ' + activeProbeAsset.height"></span>
             </div>
           </template>
           <template x-if="activeProbeAsset.frame_rate">
             <div class="flex justify-between py-1 border-b border-gray-800">
-              <span class="text-gray-500">Frame Rate</span>
+              <span class="text-gray-500">帧率</span>
               <span class="text-gray-200" x-text="activeProbeAsset.frame_rate + ' FPS'"></span>
             </div>
           </template>
           <template x-if="activeProbeAsset.sample_rate">
             <div class="flex justify-between py-1 border-b border-gray-800">
-              <span class="text-gray-500">Sample Rate</span>
+              <span class="text-gray-500">采样率</span>
               <span class="text-gray-200" x-text="activeProbeAsset.sample_rate + ' Hz'"></span>
             </div>
           </template>
           <template x-if="activeProbeAsset.channels">
             <div class="flex justify-between py-1 border-b border-gray-800">
-              <span class="text-gray-500">Channels</span>
+              <span class="text-gray-500">声道</span>
               <span class="text-gray-200" x-text="activeProbeAsset.channels + ' Channels'"></span>
             </div>
           </template>
           <div class="flex justify-between py-1">
-            <span class="text-gray-500">Size</span>
+            <span class="text-gray-500">大小</span>
             <span class="text-gray-200" x-text="activeProbeAsset.file_size ? (activeProbeAsset.file_size / (1024 * 1024)).toFixed(2) + ' MB' : '—'"></span>
           </div>
           <div class="mt-3 flex justify-end">
-            <button type="button" class="px-3 py-1.5 rounded-lg text-xs text-gray-300 bg-gray-900 border border-gray-800 hover:border-indigo-500 transition" @click="closeProbeModal()">Close</button>
+            <button type="button" class="px-3 py-1.5 rounded-lg text-xs text-gray-300 bg-gray-900 border border-gray-800 hover:border-indigo-500 transition" @click="closeProbeModal()">关闭</button>
           </div>
         </div>
         </template>

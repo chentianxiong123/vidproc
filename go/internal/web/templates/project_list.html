@@ -2,9 +2,9 @@
 <div class="h-full flex flex-col">
   <!-- 视口顶栏（对齐 CanvasViewport 顶部工具区） -->
   <div class="h-10 border-b border-gray-800 px-3 bg-gray-950/80 flex items-center justify-between flex-shrink-0">
-    <span class="text-xs font-semibold text-gray-300">Projects</span>
+    <span class="text-xs font-semibold text-gray-300">项目</span>
     <div class="flex items-center gap-2">
-      <a href="/api/projects" target="_blank" class="text-[11px] text-gray-400 hover:text-indigo-400 transition" title="Open JSON API docs">API API</a>
+      <a href="/api/projects" target="_blank" class="text-[11px] text-gray-400 hover:text-indigo-400 transition" title="打开 JSON API 文档">API 文档</a>
       <span class="text-[11px] text-gray-600">{{len .Projects}} 个</span>
     </div>
   </div>
@@ -16,8 +16,8 @@
       <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gray-900 border border-gray-800 flex items-center justify-center">
         <svg class="w-8 h-8 text-gray-600" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polygon points="14 2 14 8 20 8"/></svg>
       </div>
-      <p class="text-sm font-medium text-gray-300">No projects yet</p>
-      <p class="text-xs mt-1 text-gray-500">Create your first video project below</p>
+      <p class="text-sm font-medium text-gray-300">暂无项目</p>
+      <p class="text-xs mt-1 text-gray-500">在下方创建你的第一个视频项目</p>
     </div>
     {{else}}
     <!-- Projects网格（对齐 vidonex 媒体网格视觉） -->
@@ -32,7 +32,7 @@
             <button class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <span class="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-indigo-500 text-white text-xs font-medium shadow-lg">
                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8v4l2 2"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/></svg>
-                Open
+                打开
               </span>
             </button>
           </div>
@@ -55,16 +55,16 @@
     </div>
     {{end}}
 
-    <!-- 新建Projects(弹窗触发按钮,对齐 vidonex NewProjectModal) -->
+    <!-- 新建项目(弹窗触发按钮,对齐 vidonex NewProjectModal) -->
     <div class="mt-6">
       <button type="button" @click="window.dispatchEvent(new CustomEvent('new-project-open'))"
               class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-medium transition shadow-lg shadow-indigo-500/20">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
-        新建Projects
+        新建项目
       </button>
     </div>
 
-    <!-- 新建Projects弹窗(对齐 vidonex NewProjectModal:预设网格 + fps) -->
+    <!-- 新建项目弹窗(对齐 vidonex NewProjectModal:预设网格 + fps) -->
     <div x-data="newProjectModalComponent()" x-show="open" x-cloak
          class="fixed inset-0 z-[90] flex items-center justify-center p-4"
          style="background:rgba(0,0,0,.6);backdrop-filter:blur(2px)"
@@ -72,16 +72,16 @@
       <div class="w-full max-w-lg rounded-xl bg-gray-950 border border-gray-800 shadow-2xl p-5 text-gray-200">
         <h3 class="text-sm font-semibold flex items-center gap-2 mb-4">
           <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
-          新建Projects
+          新建项目
         </h3>
         <!-- Projects名 -->
         <div class="mb-4">
-          <label class="block text-[11px] text-gray-500 mb-1">Project Name</label>
+          <label class="block text-[11px] text-gray-500 mb-1">项目名称</label>
           <input type="text" x-model="name" class="w-full bg-gray-900 border border-gray-800 rounded px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-indigo-500">
         </div>
         <!-- Canvas Preset网格(对齐 vidonex aspect ratio presets) -->
         <div class="mb-4">
-          <label class="block text-[11px] text-gray-500 mb-2">Canvas Preset</label>
+          <label class="block text-[11px] text-gray-500 mb-2">画布预设</label>
           <div class="grid grid-cols-2 gap-2">
             <template x-for="p in presets" :key="p.id">
               <button type="button" @click="applyPreset(p)"
@@ -99,19 +99,19 @@
         <!-- 宽高自定义(对齐 vidonex:预设点击后仍可手动编辑 Width/Height) -->
         <div class="mb-4 grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-[11px] text-gray-500 mb-1">Width (px)</label>
+            <label class="block text-[11px] text-gray-500 mb-1">宽度（像素）</label>
             <input type="number" min="16" max="7680" step="2" x-model.number="width"
                    class="w-full bg-gray-900 border border-gray-800 rounded px-2.5 py-1.5 text-xs font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
           </div>
           <div>
-            <label class="block text-[11px] text-gray-500 mb-1">Height (px)</label>
+            <label class="block text-[11px] text-gray-500 mb-1">高度（像素）</label>
             <input type="number" min="16" max="4320" step="2" x-model.number="height"
                    class="w-full bg-gray-900 border border-gray-800 rounded px-2.5 py-1.5 text-xs font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
           </div>
         </div>
         <!-- fps -->
         <div class="mb-4">
-          <label class="block text-[11px] text-gray-500 mb-1">Frame Rate</label>
+          <label class="block text-[11px] text-gray-500 mb-1">帧率</label>
           <div class="flex gap-2">
             <template x-for="f in fpsOptions" :key="f.value">
               <button type="button" @click="fps = f.value"
@@ -123,10 +123,10 @@
         </div>
         <p x-show="error" class="text-[11px] text-red-400 mb-2" x-text="error"></p>
         <div class="flex justify-end gap-2">
-          <button type="button" @click="open = false" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-gray-900 transition">Cancel</button>
+          <button type="button" @click="open = false" class="px-3 py-1.5 rounded-lg text-xs text-gray-400 hover:bg-gray-900 transition">取消</button>
           <button type="button" @click="create()" :disabled="creating || !name.trim()"
                   class="px-4 py-1.5 rounded-lg text-xs font-medium bg-indigo-500 hover:bg-indigo-400 text-white transition disabled:opacity-50"
-                  x-text="creating ? 'Creating...' : 'Create Project'"></button>
+                  x-text="creating ? '创建中…' : '创建项目'"></button>
         </div>
       </div>
     </div>
