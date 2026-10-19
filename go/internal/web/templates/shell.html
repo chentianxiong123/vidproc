@@ -33,7 +33,7 @@
         <span id="project-name" class="text-sm font-medium text-gray-200 truncate max-w-[110px] md:max-w-[180px]"></span>
         <span class="text-xs text-gray-500 items-center gap-1 hidden sm:flex">
           <svg class="w-3 h-3 text-emerald-500" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13l4 4L19 7"/></svg>
-          已保存
+          All changes saved
         </span>
       </div>
     </div>
@@ -93,62 +93,34 @@
                    title="Click to rename (Enter/blur saves)">
             <span x-show="saving" class="text-xs text-indigo-400 animate-pulse items-center gap-1 hidden sm:flex">
               <svg class="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
-              保存中…
+              Saving...
             </span>
             <span x-show="!saving && saved" class="text-xs text-gray-500 items-center gap-1 hidden sm:flex">
               <svg class="w-3 h-3 text-emerald-500" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13l4 4L19 7"/></svg>
-              已保存
+              All changes saved
             </span>
-            <span class="text-[10px] font-mono text-gray-500 flex-shrink-0 hidden sm:inline">#{{.Project.ID}}</span>
           </div>
 
-          <!-- 左中:导出/图/spec/快捷键/命令面板/关于(对齐参考物理位置 x151-526) -->
-          <div class="flex items-center gap-1">
-            <button type="button" @click="window.renderModal().openFor({{.Project.ID}})"
-                    class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-medium hover:opacity-90 shadow-md shadow-indigo-500/20 transition flex items-center gap-1.5"
-                    title="Render & Export">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span class="hidden sm:inline">Export</span>
-            </button>
-            <button type="button" @click="window.dispatchEvent(new CustomEvent('graph-open'))"
-                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs"
-                    title="View Filtergraph">
-              <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M4 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM20 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM12 3v4M12 11v4M6 7v8m12-8v2a2 2 0 0 1-2 2h-8"/></svg>
-              <span class="hidden sm:inline">Graph</span>
-            </button>
-            <button type="button" @click="window.dispatchEvent(new CustomEvent('spec-open'))"
-                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs"
-                    title="Edit project.yaml (spec)">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polygon points="14 2 14 8 20 8"/></svg>
-              <span class="hidden sm:inline">spec</span>
-            </button>
-            <button type="button" onclick="window.vp.openShortcuts()" title="Keyboard Shortcuts (Ctrl+/)"
-                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4m0 4h.01" stroke-linecap="round"/></svg>
-            </button>
-            <button type="button" onclick="window.vp.openPalette()" title="Command Palette (Ctrl+K)"
-                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round"/></svg>
-            </button>
-            <button type="button" onclick="window.vp.openAbout()" title="About vidproc (version / diagnostics)"
-                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v.01M12 11v6" stroke-linecap="round"/></svg>
-            </button>
-          </div>
+          <!-- 中:撤销/重做 + 宽高比 + 设置(对齐参考 AppHeader Center 区) -->
+          <div class="flex items-center gap-2">
+            <!-- 撤销/重做(参考式灰底圆角组) -->
+            <div class="flex items-center bg-gray-900 rounded-lg p-0.5 border border-gray-800">
+              <button type="button" @click="window.vp.timelineEditorOf && window.vp.timelineEditorOf.undo()"
+                      class="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Undo (Ctrl+Z)">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <button type="button" @click="window.vp.timelineEditorOf && window.vp.timelineEditorOf.redo()"
+                      class="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Redo (Ctrl+Shift+Z)">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
 
-          <!-- 右:比例/设置/撤销/重做(对齐参考物理位置 x659-891) -->
-          <div class="flex items-center gap-1">
-            <button type="button" @click="window.dispatchEvent(new CustomEvent('project-settings-open', { detail: { tl: (window.vp && window.vp.timelineEditorOf && window.vp.timelineEditorOf.tl) || null } }))"
-                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs"
-                    title="Project Settings (P)">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .33 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.33 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .33-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.33-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.33h.01a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.33 1.87v.01a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span class="hidden sm:inline">Settings</span>
-            </button>
+            <!-- 宽高比预设下拉(对齐参考 AppHeader:aspectRatio (WxH)) -->
             <div class="relative" x-data="{ open: false }" @click.away="open = false">
               <button type="button" @click="open = !open"
                       class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs font-mono text-gray-200 hover:border-indigo-500 transition">
                 <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg>
-                <span class="hidden sm:inline" x-text="(tl ? (tl.width + '×' + tl.height) : '1920×1080')"></span>
+                <span class="hidden sm:inline" x-text="(tl ? (tl.width + ':' + tl.height + ' (' + tl.width + 'x' + tl.height + ')') : '16:9 (1920x1080)')"></span>
                 <svg class="w-2.5 h-2.5 text-gray-500" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 6 6-6z"/></svg>
               </button>
               <div x-show="open" x-cloak class="absolute top-9 left-0 z-40 w-56 rounded-lg bg-gray-900 border border-gray-800 shadow-2xl py-1">
@@ -165,13 +137,62 @@
                 </template>
               </div>
             </div>
-            <button type="button" @click="window.vp.timelineEditorOf && window.vp.timelineEditorOf.undo()"
-                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Undo (Ctrl+Z)">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+
+            <!-- 设置(对齐参考 AppHeader settings gear) -->
+            <button type="button" @click="window.dispatchEvent(new CustomEvent('project-settings-open', { detail: { tl: (window.vp && window.vp.timelineEditorOf && window.vp.timelineEditorOf.tl) || null } }))"
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs"
+                    title="Project Settings (P)">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .33 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.33 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .33-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.33-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.33h.01a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.33 1.87v.01a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="hidden sm:inline">Settings</span>
             </button>
-            <button type="button" @click="window.vp.timelineEditorOf && window.vp.timelineEditorOf.redo()"
-                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Redo (Ctrl+Shift+Z)">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <!-- 右:命令/快捷键/图/导出/关于(对齐参考 AppHeader Right 区) -->
+          <div class="flex items-center gap-2">
+            <!-- Commands(命令面板,对齐参考 ⌘K) -->
+            <button type="button" onclick="window.vp.openPalette()" title="Command Palette (Ctrl+K)"
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
+              <span class="hidden xl:inline font-medium">Commands</span>
+              <kbd class="hidden sm:inline font-mono text-[10px] px-1 rounded border border-gray-700 text-gray-500">Ctrl+K</kbd>
+            </button>
+
+            <!-- Shortcuts(快捷键表) -->
+            <button type="button" onclick="window.vp.openShortcuts()" title="Keyboard Shortcuts (? / Ctrl+/)"
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 9l3 3-3 3M13 15h4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="hidden md:inline font-medium">Shortcuts</span>
+              <kbd class="hidden lg:inline font-mono text-[10px] px-1 rounded border border-gray-700 text-gray-500">?</kbd>
+            </button>
+
+            <!-- Filtergraph(滤镜流程图) -->
+            <button type="button" @click="window.dispatchEvent(new CustomEvent('graph-open'))"
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs"
+                    title="View Filtergraph">
+              <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M4 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM20 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM12 3v4M12 11v4M6 7v8m12-8v2a2 2 0 0 1-2 2h-8"/></svg>
+              <span class="hidden sm:inline font-medium">Graph</span>
+            </button>
+
+            <!-- spec(编辑 project.yaml,我方扩展) -->
+            <button type="button" @click="window.dispatchEvent(new CustomEvent('spec-open'))"
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs"
+                    title="Edit project.yaml (spec)">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polygon points="14 2 14 8 20 8"/></svg>
+              <span class="hidden sm:inline font-medium">spec</span>
+            </button>
+
+            <!-- Render & Export -->
+            <button type="button" @click="window.renderModal().openFor({{.Project.ID}})"
+                    class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-semibold hover:opacity-90 shadow-md shadow-indigo-500/20 transition flex items-center gap-1.5"
+                    title="Render & Export">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Export
+            </button>
+
+            <!-- About -->
+            <button type="button" onclick="window.vp.openAbout()" title="About vidproc (version / diagnostics)"
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v.01M12 11v6" stroke-linecap="round"/></svg>
+              <span class="hidden lg:inline font-medium">About</span>
             </button>
           </div>
         </div>

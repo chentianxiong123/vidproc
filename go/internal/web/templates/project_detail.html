@@ -106,14 +106,6 @@
             <div x-show="showGuide['b']" class="absolute left-0 right-0 bottom-0 h-1 bg-indigo-400 z-[9990] pointer-events-none shadow-[0_0_10px_rgba(129,140,248,0.9)]"></div>
           </div>
         </div>
-        <!-- 空态提示 -->
-        <div x-show="!previewSrc && !loading && !previewErr" class="text-gray-600 text-xs text-center p-6 pointer-events-none">
-          <p class="mb-1">Click the timeline below to move the playhead</p>
-          <p class="text-[10px]">or press Space to play</p>
-        </div>
-        <div x-show="previewErr" class="text-red-400 text-xs text-center p-6 pointer-events-none">
-          No video clip at this time (empty canvas area)
-        </div>
         <!-- 缩放状态胶囊(对齐 vidonex floating zoom pill) -->
         <div x-show="!vz().isFit" class="absolute top-2 right-2 z-30 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-900/80 backdrop-blur border border-gray-700/60 shadow-lg text-xs font-mono text-gray-300">
           <span x-text="vz().display"></span>
