@@ -123,89 +123,49 @@
         </div>
       </div>
 
-      <!-- 播放工具条(对齐 vidonex PlaybackToolbar 真实结构:左=缩放组+时间码,中=传输,右=音量/循环) -->
+      <!-- 播放工具条(对齐 vidonex PlaybackToolbar RTL 渲染实测:左=[全屏][分隔][缩放:放大/Fit/缩小][分隔][LR表][音量:滑杆/静音][循环] 中=传输 右=时间码[总时长//当前]) -->
       <div class="h-12 bg-gray-950/80 border-t border-gray-800 flex items-center justify-between px-4 select-none relative z-20">
-        <!-- 左:缩放组(全屏/放大/适配/缩小)+ 时间码(参考物理位置:最左) -->
-        <div class="flex items-center gap-1 flex-shrink-0">
-          <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="全屏"
-                  @click="toggleFullscreen()">
+        <!-- 左:全屏 + 缩放组 + LR 表 + 音量 + 循环 -->
+        <div class="flex items-center gap-2.5 flex-shrink-0">
+          <!-- 全屏(参考 RTL 渲染最左,icon w-4) -->
+          <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="全屏" @click="toggleFullscreen()">
             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="放大" @click="vz().zoomIn()">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
-          </button>
-          <!-- 缩放预设下拉(对齐 vidonex zoomMenuItems:Fit/25/50/75/100/150/200%) -->
-          <div class="relative">
-            <button type="button" @click="zoomMenu.open = !zoomMenu.open"
-                    class="px-1.5 py-0.5 text-[11px] font-mono font-medium rounded border border-gray-800 bg-gray-900/80 text-gray-300 hover:text-white hover:border-gray-700 transition flex items-center gap-1"
-                    title="缩放预览">
-              <span x-text="vz().display"></span>
-              <svg class="w-3 h-3 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div class="h-4 w-px bg-gray-800"></div>
+          <!-- 缩放组:放大 / Fit / 缩小(对齐参考 zoom controls) -->
+          <div class="flex items-center gap-0.5">
+            <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="放大" @click="vz().zoomIn()">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
             </button>
-            <div x-show="zoomMenu.open" x-cloak
-                 class="absolute left-0 top-full mt-1 w-28 py-1 rounded-lg bg-gray-900 border border-gray-800 shadow-2xl z-50">
-              <template x-for="p in vz().ZOOM_PRESETS" :key="p.label">
-                <button type="button" class="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] font-mono hover:bg-gray-800 transition"
-                        :class="zoomMenuItemClass(p)"
-                        @click="vz().setZoom(p.value, true); zoomMenu.open = false">
-                  <span x-text="p.label"></span>
-                  <svg x-show="zoomMenuItemClass(p) === 'text-indigo-400'" class="w-3 h-3 ml-auto" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2l-3.5-3.5L4 14.2l5 5 11-11-1.5-1.5z"/></svg>
-                </button>
-              </template>
+            <!-- 缩放预设下拉(对齐 vidonex zoomMenuItems:Fit/25/50/75/100/150/200%) -->
+            <div class="relative">
+              <button type="button" @click="zoomMenu.open = !zoomMenu.open"
+                      class="px-1.5 py-0.5 text-[11px] font-mono font-medium rounded border border-gray-800 bg-gray-900/80 text-gray-300 hover:text-white hover:border-gray-700 transition flex items-center gap-1"
+                      title="缩放预览">
+                <span x-text="vz().display"></span>
+                <svg class="w-3 h-3 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <div x-show="zoomMenu.open" x-cloak
+                   class="absolute left-0 top-full mt-1 w-28 py-1 rounded-lg bg-gray-900 border border-gray-800 shadow-2xl z-50">
+                <template x-for="p in vz().ZOOM_PRESETS" :key="p.label">
+                  <button type="button" class="w-full flex items-center gap-2 px-3 py-1.5 text-left text-[11px] font-mono hover:bg-gray-800 transition"
+                          :class="zoomMenuItemClass(p)"
+                          @click="vz().setZoom(p.value, true); zoomMenu.open = false">
+                    <span x-text="p.label"></span>
+                    <svg x-show="zoomMenuItemClass(p) === 'text-indigo-400'" class="w-3 h-3 ml-auto" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2l-3.5-3.5L4 14.2l5 5 11-11-1.5-1.5z"/></svg>
+                  </button>
+                </template>
+              </div>
             </div>
-          </div>
-          <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="缩小" @click="vz().zoomOut()">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" stroke-linecap="round"/></svg>
-          </button>
-          <div class="h-4 w-px bg-gray-800 mx-2"></div>
-          <div class="flex items-center gap-2 font-mono text-xs text-gray-300">
-            <span class="px-2 py-1 bg-gray-900 rounded border border-gray-800 text-indigo-400 font-semibold" x-text="tc"></span>
-            <span class="text-gray-600">/</span>
-            <span class="text-gray-500" x-text="tcDur"></span>
-          </div>
-        </div>
-        <!-- 右:音量/循环 + 音频表(参考物理顺序:音量在前、循环后) -->
-        <div class="flex items-center gap-2.5">
-          <div class="flex items-center gap-1.5">
-            <button type="button" class="text-gray-400 hover:text-gray-200 transition" @click="pb().isMuted = !pb().isMuted" title="静音">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"
-                   x-show="pb().isMuted || pb().volume === 0"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1zM16 8l5 8M21 8l-5 8"/></svg>
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"
-                   x-show="!pb().isMuted && pb().volume > 0"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1zM14 8a5 5 0 0 1 0 8M17.5 6a9 9 0 0 1 0 12"/></svg>
+            <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="缩小" @click="vz().zoomOut()">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" stroke-linecap="round"/></svg>
             </button>
-            <input type="range" min="0" max="1" step="0.05" x-model.number="pb().volume"
-                   class="w-14 h-1 bg-gray-800 rounded appearance-none accent-indigo-500 cursor-pointer">
           </div>
-          <button type="button" class="p-1 rounded transition" @click="pb().isLooping = !pb().isLooping"
-                  :class="pb().isLooping ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-500 hover:text-gray-300'" title="循环">
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 13v1a4 4 0 0 1-4 4H3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-        <!-- 传输控制(参考物理顺序:音量→循环→跳尾→下一帧→播放→上一帧→跳首) -->
-        <div class="flex items-center gap-1">
-          <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="到结尾" @click="pb().jumpToEnd()">
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 5v14l9-7zM19 5h2v14h-2z"/></svg>
-          </button>
-          <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="下一帧" @click="pb().stepFrame(1, fps)">
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9 5v14l8-7z"/></svg>
-          </button>
-          <button type="button" @click="pb().togglePlay()"
-                  class="w-9 h-9 rounded-full flex items-center justify-center bg-gradient-to-r from-indigo-500 to-purple-600 shadow-md shadow-indigo-500/20 text-white hover:opacity-90 transition mx-1"
-                  title="播放/暂停">
-            <svg class="w-4 h-4" x-show="!pb().isPlaying" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-            <svg class="w-4 h-4" x-show="pb().isPlaying" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
-          </button>
-          <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="上一帧" @click="pb().stepFrame(-1, fps)">
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M15 5v14l-8-7z"/></svg>
-          </button>
-          <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="回到开头" @click="pb().jumpToStart()">
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M19 5v14l-9-7zM5 5h2v14H5z"/></svg>
-          </button>
-        </div>
-                    <!-- 音频峰值表(对齐 vidonex AudioPeakMeter:播放时 L/R 水平表 + dB 数值 + 峰值保持 tick) -->
+          <div class="h-4 w-px bg-gray-800"></div>
+          <!-- LR 峰值表(对齐参考 AudioPeakMeter:L/R 表 + dB 值,播放时活动) -->
           <div x-data="audioMeter()" title="音频电平"
                class="flex items-center gap-1.5 px-2 py-0.5 bg-gray-900/90 rounded border border-gray-800 text-[10px] font-mono select-none">
-            <!-- L/R 双水平表 -->
-            <div class="flex flex-col gap-1 justify-center">
+            <div class="flex flex-col gap-0.5 justify-center">
               <div class="flex items-center gap-1">
                 <span class="text-[10px] text-gray-500 font-bold w-2">L</span>
                 <div class="relative w-16 h-1.5 bg-gray-950 rounded-sm overflow-hidden">
@@ -225,9 +185,53 @@
                 </div>
               </div>
             </div>
-            <!-- dBFS 数值 -->
             <span class="w-11 text-right text-[10px] font-semibold tabular-nums" :class="dbColorClass()" x-text="displayDbText()"></span>
           </div>
+          <!-- 音量:滑杆 + 静音(参考:滑杆在前、静音在后) -->
+          <div class="flex items-center gap-1.5">
+            <input type="range" min="0" max="1" step="0.05" x-model.number="pb().volume"
+                   class="w-14 h-1 bg-gray-800 rounded appearance-none accent-indigo-500 cursor-pointer">
+            <button type="button" class="text-gray-400 hover:text-gray-200 transition" @click="pb().isMuted = !pb().isMuted" title="静音">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"
+                   x-show="pb().isMuted || pb().volume === 0"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1zM16 8l5 8M21 8l-5 8"/></svg>
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"
+                   x-show="!pb().isMuted && pb().volume > 0"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1zM14 8a5 5 0 0 1 0 8M17.5 6a9 9 0 0 1 0 12"/></svg>
+            </button>
+          </div>
+          <!-- 循环 -->
+          <button type="button" class="p-1 rounded transition" @click="pb().isLooping = !pb().isLooping"
+                  :class="pb().isLooping ? 'text-indigo-400 bg-indigo-500/10' : 'text-gray-500 hover:text-gray-300'" title="循环">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 13v1a4 4 0 0 1-4 4H3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+
+        <!-- 中:传输控制(对齐参考:跳尾→下一帧→播放(w-9 h-9 渐变圆)→上一帧→跳首) -->
+        <div class="flex items-center gap-1">
+          <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="到结尾" @click="pb().jumpToEnd()">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M5 5v14l9-7zM19 5h2v14h-2z"/></svg>
+          </button>
+          <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="下一帧" @click="pb().stepFrame(1, fps)">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9 5v14l8-7z"/></svg>
+          </button>
+          <button type="button" @click="pb().togglePlay()"
+                  class="w-9 h-9 rounded-full flex items-center justify-center bg-gradient-to-r from-indigo-500 to-purple-600 shadow-md shadow-indigo-500/20 text-white hover:opacity-90 transition mx-1"
+                  title="播放/暂停">
+            <svg class="w-4 h-4" x-show="!pb().isPlaying" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="w-4 h-4" x-show="pb().isPlaying" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+          </button>
+          <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="上一帧" @click="pb().stepFrame(-1, fps)">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M15 5v14l-8-7z"/></svg>
+          </button>
+          <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="回到开头" @click="pb().jumpToStart()">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M19 5v14l-9-7zM5 5h2v14H5z"/></svg>
+          </button>
+        </div>
+
+        <!-- 右:时间码(对齐参考:总时长在前 / 当前时间胶囊在后;px-4 贴右缘) -->
+        <div class="flex items-center gap-2 font-mono text-xs text-gray-300 flex-shrink-0">
+          <span class="text-gray-500" x-text="tcDur"></span>
+          <span class="text-gray-600">/</span>
+          <span class="px-2 py-1 bg-gray-900 rounded border border-gray-800 text-indigo-400 font-semibold" x-text="tc"></span>
         </div>
       </div>
     </div>
