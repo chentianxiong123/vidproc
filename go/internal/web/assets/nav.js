@@ -1523,11 +1523,11 @@
         return 'other';
       },
       ASSET_CATEGORIES: [
-        { id: 'video', label: '视频', color: 'text-indigo-400', badge: 'bg-indigo-500/15 text-indigo-300' },
-        { id: 'audio', label: '音频', color: 'text-emerald-400', badge: 'bg-emerald-500/15 text-emerald-300' },
-        { id: 'image', label: '图片', color: 'text-amber-400', badge: 'bg-amber-500/15 text-amber-300' },
-        { id: 'subtitle', label: '字幕', color: 'text-violet-400', badge: 'bg-violet-500/15 text-violet-300' },
-        { id: 'other', label: '其他', color: 'text-gray-400', badge: 'bg-gray-700/30 text-gray-400' },
+        { id: 'video', label: '视频', color: 'text-indigo-400', icon: 'M8 5v14l11-7z', badge: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' },
+        { id: 'audio', label: '音频', color: 'text-emerald-400', icon: 'M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z', badge: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' },
+        { id: 'image', label: '图片', color: 'text-amber-400', icon: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm2 2v10h12V7H6zm2 2h8v2H8V9zm0 4h5v2H8v-2z', badge: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' },
+        { id: 'subtitle', label: '字幕', color: 'text-violet-400', icon: 'M7 3h10l4 4v14H3V7zm2 2v12h10V8h-3V5H9zM7 11h10v2H7v-2zm0 4h7v2H7v-2z', badge: 'bg-violet-500/20 text-violet-300 border border-violet-500/30' },
+        { id: 'other', label: '其他', color: 'text-gray-400', icon: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v14h14V5H5zm3 3h8v2H8V8zm0 4h8v2H8v-2zm0 4h5v2H8v-2z', badge: 'bg-gray-700/30 text-gray-400 border border-gray-600/40' },
       ],
       // 分类分组(仅显示非空分类)
       categorized() {

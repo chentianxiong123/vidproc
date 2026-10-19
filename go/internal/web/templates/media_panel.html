@@ -53,17 +53,17 @@
   <!-- 打开项目 → 媒体库模式 -->
   <template x-if="pid">
     <div class="flex flex-col min-h-0 flex-1">
-      <!-- 搜索过滤栏(对齐 vidonex fast search filter) -->
+      <!-- 搜索过滤栏(对齐 vidonex fast search filter:放大镜绝对定位入框,pl-7) -->
       <div class="p-2 border-b border-gray-800/60 flex items-center gap-1.5 bg-gray-950/20 flex-shrink-0">
-        <svg class="w-3.5 h-3.5 text-gray-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
         <div class="relative flex-1">
+          <svg class="w-3.5 h-3.5 text-gray-500 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke-linecap="round"/></svg>
           <input type="text" x-model="query" placeholder="过滤素材…"
-                 class="w-full bg-gray-900/60 border border-gray-800 rounded px-2 py-1 text-[11px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500">
+                 class="w-full bg-gray-900/90 border border-gray-800 rounded-md pl-7 pr-7 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors">
           <!-- 搜索清除按钮(对齐 vidonex:query 非空时显示 ×) -->
           <button type="button" x-show="query" @click="query = ''"
-                  class="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded text-gray-500 hover:text-gray-200 transition"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-500 hover:text-gray-200 transition"
                   title="清除搜索">
-            <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg>
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg>
           </button>
         </div>
 
@@ -88,17 +88,18 @@
         <div x-show="assets.length > 0 && filtered.length > 0 && viewMode === 'tree'" class="space-y-1.5">
           <template x-for="cat in activeCategories()" :key="cat.id">
             <div class="rounded-lg border border-gray-800/60 bg-gray-950/40 overflow-hidden">
-              <!-- 分类头(点击折叠) -->
+              <!-- 分类头(对齐参考 RTL 渲染:徽章在左、标题+icon+chevron 在右) -->
               <div class="flex items-center justify-between px-2.5 py-1.5 hover:bg-gray-800/50 cursor-pointer select-none transition-colors group"
                    @click="toggleCategory(cat.id)">
+                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded-full" :class="cat.badge"
+                      x-text="categorized()[cat.id].length"></span>
                 <div class="flex items-center gap-1.5 min-w-0">
+                  <span class="text-xs font-semibold tracking-wide truncate" :class="cat.color" x-text="cat.label"></span>
+                  <svg class="w-3.5 h-3.5 flex-shrink-0" :class="cat.color" viewBox="0 0 24 24" fill="currentColor"><path :d="cat.icon"/></svg>
                   <svg class="w-3.5 h-3.5 text-gray-500 transition-transform duration-200"
                        :class="expanded[cat.id] ? 'rotate-90 text-gray-300' : ''"
                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  <span class="text-xs font-semibold tracking-wide truncate" :class="cat.color" x-text="cat.label"></span>
                 </div>
-                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded-full" :class="cat.badge"
-                      x-text="categorized()[cat.id].length"></span>
               </div>
               <!-- 分类子项 -->
               <div x-show="expanded[cat.id]" class="px-1 pb-1 pt-0.5 space-y-0.5">
@@ -106,8 +107,22 @@
                   <div class="group/item flex items-center justify-between px-2 py-1 rounded-md text-xs hover:bg-gray-800/80 border border-transparent hover:border-gray-700/60 cursor-grab active:cursor-grabbing transition-all duration-150"
                        :draggable="true" @dragstart="onDragStart($event, a)"
                        :title="a.file_name + ' · ' + (a.duration_seconds ? a.duration_seconds.toFixed(2) + 's' : '') + ' · ' + a.width + '×' + a.height">
-                    <!-- 缩略图/图标 + 文件名 -->
-                    <div class="flex items-center gap-2 min-w-0 flex-1 pointer-events-none">
+                    <!-- 左:操作 + 时长(对齐参考 RTL:操作按钮在左、时长其次) -->
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                      <div class="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                        <button type="button" @click="removeAsset(a)" class="p-1 rounded hover:bg-red-950/80 text-gray-400 hover:text-red-400 transition" title="删除素材">
+                          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 14H7z" stroke-linejoin="round"/><path d="M9 4h6l1 3H8z" stroke-linejoin="round"/></svg>
+                        </button>
+                        <button type="button" @click="openProbeModal(a)" class="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200 transition" title="素材详情">
+                          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 12v4" stroke-linecap="round"/></svg>
+                        </button>
+                      </div>
+                      <span x-show="a.duration_seconds > 0" class="text-[10px] font-mono text-gray-500 group-hover/item:text-gray-400"
+                            x-text="Math.floor(a.duration_seconds / 60) + ':' + String(Math.floor(a.duration_seconds % 60)).padStart(2, '0')"></span>
+                    </div>
+                    <!-- 右:文件名 + 缩略图(对齐参考 RTL:文件名在左、缩略图最右) -->
+                    <div class="flex items-center gap-2 min-w-0 flex-1 pointer-events-none justify-end">
+                      <span class="truncate text-[11px] font-medium text-gray-200 group-hover/item:text-white" x-text="a.file_name"></span>
                       <div class="w-5 h-5 rounded overflow-hidden flex-shrink-0 bg-gray-900 border border-gray-800 flex items-center justify-center">
                         <template x-if="a.thumbnail_url && a.file_type !== 'audio'">
                           <img :src="a.thumbnail_url" class="w-full h-full object-cover">
@@ -115,20 +130,6 @@
                         <template x-if="a.file_type === 'audio' || !a.thumbnail_url">
                           <svg class="w-3 h-3 text-emerald-400" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z"/></svg>
                         </template>
-                      </div>
-                      <span class="truncate text-[11px] font-medium text-gray-200" x-text="a.file_name"></span>
-                    </div>
-                    <!-- 元数据 + 操作 -->
-                    <div class="flex items-center gap-1.5 flex-shrink-0">
-                      <span x-show="a.duration_seconds > 0" class="text-[10px] font-mono text-gray-500"
-                            x-text="Math.floor(a.duration_seconds / 60) + ':' + String(Math.floor(a.duration_seconds % 60)).padStart(2, '0')"></span>
-                      <div class="flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                        <button type="button" @click="openProbeModal(a)" class="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-gray-200 transition" title="素材详情">
-                          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M12 12v4" stroke-linecap="round"/></svg>
-                        </button>
-                        <button type="button" @click="removeAsset(a)" class="p-1 rounded hover:bg-red-950/80 text-gray-400 hover:text-red-400 transition" title="删除素材">
-                          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 14H7z" stroke-linejoin="round"/><path d="M9 4h6l1 3H8z" stroke-linejoin="round"/></svg>
-                        </button>
                       </div>
                     </div>
                   </div>
