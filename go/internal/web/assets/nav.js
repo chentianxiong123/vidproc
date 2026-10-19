@@ -245,6 +245,9 @@
           this.updateTrackWidth();
           // 历史栈底 = 加载态(undo 恢复到操作前态)
           this.pushHistory();
+          // 默认选中第一条轨道 → 检查器显示 Track Properties + Ducking(对齐参考加载态)
+          const firstTr = this.tl && this.tl.tracks && this.tl.tracks[0];
+          if (firstTr) this.selectTrack(firstTr);
           // 视口 DOM 合成层(gizmo/波形)绑定同一 tl 引用 —— 编辑一致落库
           window.dispatchEvent(new CustomEvent('timeline-loaded', { detail: { tl: this.tl, pid: this.pid } }));
         } catch (e) {

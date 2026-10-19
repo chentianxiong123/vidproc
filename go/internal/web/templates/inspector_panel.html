@@ -3,20 +3,23 @@
     editor.editClip() 300ms debounce autosave。未选中显示空态。 */}}
 <div class="h-full flex flex-col bg-gray-950 select-none overflow-hidden"
      x-data="clipInspector()">
-  <!-- Header -->
+  <!-- Header(对齐 vidonex:clip → 检查器;track → Track Properties;无 → 检查器) -->
   <div class="h-10 border-b border-gray-800 px-4 flex items-center justify-between flex-shrink-0">
-    <span class="text-xs font-semibold text-gray-200 tracking-wide uppercase">检查器</span>
-    <span x-show="clip || track" class="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20"
-          x-text="clip ? clip.id : (track ? track.id : '')"></span>
+    <span class="text-xs font-semibold text-gray-200 tracking-wide uppercase"
+          x-text="clip ? '检查器' : (track ? '轨道属性' : '检查器')"></span>
+    <span x-show="clip" class="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20"
+          x-text="clip ? clip.id : ''"></span>
   </div>
 
-  <!-- Body -->
-  <div class="flex-1 overflow-y-auto p-4 space-y-5">
-    <!-- 空态 -->
-    <div x-show="!clip && !track" class="h-full flex flex-col items-center justify-center text-center text-gray-500 gap-2">
-      <svg class="w-8 h-8 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke-linecap="round"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
-      <p class="text-xs">从时间轴选择一个 clip 或轨道编辑属性</p>
-    </div>
+  <!-- Body(对齐参考:无 space-y —— 子面板内部自带间距;x-if template 残留会吃 space-y margin) -->
+  <div class="flex-1 overflow-y-auto p-4">
+    <!-- 空态(对齐参考 v-if:无选中时整块移除,否则 space-y 加 20px margin) -->
+    <template x-if="!clip && !track">
+      <div class="h-full flex flex-col items-center justify-center text-center text-gray-500 gap-2">
+        <svg class="w-8 h-8 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke-linecap="round"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+        <p class="text-xs">从时间轴选择一个 clip 或轨道编辑属性</p>
+      </div>
+    </template>
 
     <template x-if="clip">
       <div>
@@ -429,8 +432,16 @@
             <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">音频闪避</h4>
             <div class="flex items-center justify-between">
               <span class="font-medium text-gray-300">启用闪避</span>
-              <input type="checkbox" x-model="cfg.ducking.enabled" @change="toggleDucking()"
-                     class="w-4 h-4 rounded accent-indigo-500 cursor-pointer">
+              <!-- 对齐 vidonex USwitch:36×20 圆角胶囊 + 16px 圆钮 -->
+              <button type="button" role="switch" :aria-checked="cfg.ducking.enabled"
+                      @click="cfg.ducking.enabled = !cfg.ducking.enabled; toggleDucking()"
+                      class="inline-flex items-center shrink-0 rounded-full border transition-colors flex-shrink-0 focus:outline-none"
+                      :class="cfg.ducking.enabled ? 'bg-indigo-500 border-indigo-500' : 'bg-gray-900 border-gray-700'"
+                      style="width:36px;height:20px">
+                <span class="pointer-events-none rounded-full bg-white shadow transition-transform duration-200"
+                      style="width:16px;height:16px"
+                      :style="cfg.ducking.enabled ? 'transform:translateX(18px)' : 'transform:translateX(1px)'"></span>
+              </button>
             </div>
             <template x-if="cfg.ducking.enabled">
               <div class="space-y-3 pt-2 border-t border-gray-800">
