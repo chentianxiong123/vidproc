@@ -269,9 +269,8 @@
         }
       },
 
-      // ============ 播放头拖拽 scrub(对齐 vidonex TimelineRuler playhead 拖动)============
-      // pointerdown 在播放头/标尺上按下 → 捕获指针 → move 持续 seek,up 释放。
-      // 坐标:48 = 轨道头列宽度(左-48 相对时间轴工作区),x/pps 反算秒。
+      // ============ 播放头拖拽 scrub(对齐 vidonex TimelinePlayhead startScrubbing:delta 模式)============
+      // mousedown 记录 startX + initialTime,之后 deltaX/pps 增量算秒 —— 不依赖任何容器坐标,天然跟手。
       beginScrub(e) {
         if (e.button !== 0) return;
         e.preventDefault();
@@ -280,6 +279,8 @@
         // 拖动即暂停自动播放(播放头已由 pointer 接管)
         const pb = window.vp && window.vp.playback;
         if (pb && pb.isPlaying) pb.pause();
+        this._scrubStartX = e.clientX;
+        this._scrubInitT = this.playhead;
         this._scrubMove = (ev) => this.onScrubMove(ev);
         this._scrubEnd = () => this.onScrubEnd();
         window.addEventListener('pointermove', this._scrubMove);
@@ -289,17 +290,8 @@
       },
       onScrubMove(e) {
         if (!this.scrubbing) return;
-        // 基准:时间轴滚动容器(与 seek($event) 同坐标)。播放头挂在轨道区,
-        // 其 offsetParent 链上第一个 overflow-auto 容器即基准。48 = 轨道头列宽。
-        let el = e.target;
-        const root = this.$el;
-        while (el && el !== root && !(el.classList && (el.classList.contains('overflow-auto') || el.classList.contains('overflow-x-auto') || el.classList.contains('overflow-y-auto')))) {
-          el = el.parentElement;
-        }
-        if (!el || el === root) el = root;
-        const rect = el.getBoundingClientRect();
-        const x = e.clientX - rect.left - 64; // 减轨道头列宽
-        let t = Math.max(0, x / this.pps);
+        const deltaX = e.clientX - this._scrubStartX;
+        let t = Math.max(0, this._scrubInitT + deltaX / this.pps);
         // 磁吸吸附(对齐上游 useSnapping:吸附 0/播放头/clip 起止,阈值 6px;Snap OFF 忽略)
         if (this.snapEnabled()) t = this.snapScrub(t);
         this.setPlayhead(t, { source: 'timeline' });
@@ -907,11 +899,19 @@
         this.selectedId = this.selectedId === clip.id ? null : clip.id;
       },
 
-      // 标尺("/ 轨道点击 → 定位播放头(对齐 vidonex Ruler click)
+      // 标尺点击/拖动 → 定位播放头(对齐 vidonex Ruler handleRulerClick:mousedown seek + move 连续 seek)
       seek(e) {
         const rect = e.currentTarget.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        this.setPlayhead(Math.max(0, x / this.pps), { source: 'timeline' });
+        const onMove = (ev) => {
+          this.setPlayhead(Math.max(0, (ev.clientX - rect.left) / this.pps), { source: 'timeline' });
+        };
+        const onUp = () => {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onUp);
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        onMove(e);
       },
 // 标尺动态刻度(对齐上游 TimelineRuler timeMarks:pps<30→5s,<60→2s,否则 1s)
       rulerMarks() {
