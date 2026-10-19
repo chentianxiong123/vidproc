@@ -176,20 +176,20 @@
           </div>
         </div>
         <div class="flex-1 min-h-0 flex overflow-hidden">
-          <!-- Media Library（对齐 PanelsMediaLibrary;可折叠,折叠后 34px 窄条） -->
-          <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('media') + 'px'">
-            {{template "media_panel.html" .}}
-            <button type="button" @click="togglePane('media')" :title="mediaFolded ? '展开媒体库' : '折叠媒体库'"
+          <!-- Inspector（对齐参考左侧栏=轨道属性/检查器;可折叠,折叠后 34px 窄条） -->
+          <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('inspector') + 'px'">
+            {{template "inspector_panel.html" .}}
+            <button type="button" @click="togglePane('inspector')" :title="inspectorFolded ? '展开检查器' : '折叠检查器'"
                     class="absolute top-2 z-30 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
-                    :class="mediaFolded ? 'inset-x-0 flex justify-center' : 'right-2'">
+                    :class="inspectorFolded ? 'inset-x-0 flex justify-center' : 'right-2'">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                   :class="mediaFolded ? '' : 'rotate-180'"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                   :class="inspectorFolded ? '' : 'rotate-180'"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </aside>
           <!-- 拖拽把手（水平;折叠态禁止拖动,展开才能调宽） -->
           <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center"
-               :class="mediaFolded ? 'opacity-20 pointer-events-none' : ''"
-               @mousedown="dragCol('media')" @dblclick="resetPane('media')" title="双击复位">
+               :class="inspectorFolded ? 'opacity-20 pointer-events-none' : ''"
+               @mousedown="dragCol('inspector')" @dblclick="resetPane('inspector')" title="双击复位">
             <div class="h-8 w-0.5 rounded-full bg-gray-600/70 group-hover:bg-indigo-200"></div>
           </div>
           <!-- Viewport Preview（对齐 ViewportCanvasViewport） -->
@@ -200,18 +200,18 @@
           </main>
           <!-- 拖拽把手（水平;同上） -->
           <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center"
-               :class="inspectorFolded ? 'opacity-20 pointer-events-none' : ''"
-               @mousedown="dragCol('inspector')" @dblclick="resetPane('inspector')" title="双击复位">
+               :class="mediaFolded ? 'opacity-20 pointer-events-none' : ''"
+               @mousedown="dragCol('media')" @dblclick="resetPane('media')" title="双击复位">
             <div class="h-8 w-0.5 rounded-full bg-gray-600/70 group-hover:bg-indigo-200"></div>
           </div>
-          <!-- Inspector（对齐 PanelsInspectorPanel;可折叠） -->
-          <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('inspector') + 'px'">
-            {{template "inspector_panel.html" .}}
-            <button type="button" @click="togglePane('inspector')" :title="inspectorFolded ? '展开检查器' : '折叠检查器'"
+          <!-- Media Library（对齐参考右侧栏=Media;可折叠） -->
+          <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('media') + 'px'">
+            {{template "media_panel.html" .}}
+            <button type="button" @click="togglePane('media')" :title="mediaFolded ? '展开媒体库' : '折叠媒体库'"
                     class="absolute top-2 z-30 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
-                    :class="inspectorFolded ? 'inset-x-0 flex justify-center' : 'left-2'">
+                    :class="mediaFolded ? 'inset-x-0 flex justify-center' : 'left-2'">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                   :class="inspectorFolded ? 'rotate-180' : ''"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                   :class="mediaFolded ? '' : 'rotate-180'"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </aside>
         </div>
@@ -667,8 +667,8 @@
     // 可拖拽分栏布局（对齐 vidonex USplitter 行为；状态存 localStorage）
     function studioLayout() {
       return {
-        mediaW: 357,
-        inspectorW: 286,
+        mediaW: 286,
+        inspectorW: 357,
         timelineH: 241,
         mediaFolded: false,
         inspectorFolded: false,
@@ -717,8 +717,8 @@
           }
         },
         resetPane(side) { // 双击把手复位默认宽度/高度
-          if (side === 'media') { this.mediaW = 357; this.mediaFolded = false; }
-          else if (side === 'inspector') { this.inspectorW = 286; this.inspectorFolded = false; }
+          if (side === 'media') { this.mediaW = 286; this.mediaFolded = false; }
+          else if (side === 'inspector') { this.inspectorW = 357; this.inspectorFolded = false; }
           else if (side === 'timeline') { this.timelineH = 241; this.timelineFolded = false; }
           this.clampAll();
           this.save();

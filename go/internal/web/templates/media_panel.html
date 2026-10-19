@@ -1,6 +1,6 @@
 {{/* 媒体库面板(对齐 vidonex PanelsMediaLibrary):
     双模式 —— 未打开项目 = 项目列表;已打开 = 项目媒体库(上传/搜索/拖拽入时间轴)。 */}}
-<div class="h-full w-full flex flex-col bg-gray-950 border-r border-gray-800 select-none relative transition-colors"
+<div class="h-full w-full flex flex-col bg-gray-900/60 select-none relative transition-colors"
      :class="isDraggingOver ? 'bg-indigo-950/20 ring-2 ring-inset ring-indigo-500/40' : ''"
      x-data="mediaLibrary({{if .Project}}{{.Project.ID}}{{else}}null{{end}})"
      @dragover.prevent="isDraggingOver = true"
@@ -17,27 +17,17 @@
           x-text="dragGhostAsset ? dragGhostAsset.file_type : ''"></span>
   </div>
   <!-- Header:folder 图标 + 标题 + 计数徽章;右上 = 视图切换 + 上传(对齐 vidonex MediaLibrary header) -->
-  <div class="p-2.5 border-b border-gray-800 flex items-center justify-between gap-2 bg-gray-950/40 flex-shrink-0">
-    <div class="flex items-center gap-1.5 min-w-0">
-      <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-      <template x-if="!pid">
-        <span class="text-xs font-semibold tracking-wider text-gray-300 truncate">媒体库</span>
-      </template>
-      <template x-if="pid">
-        <span class="text-xs font-semibold tracking-wider text-gray-300 truncate">媒体库</span>
-      </template>
-      <span class="text-[10px] font-mono px-1.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700/60 flex-shrink-0"
-            x-text="pid ? assets.length : {{len .Projects}}"></span>
-    </div>
+  <div class="p-2.5 border-b border-gray-800 flex items-center justify-between gap-2 bg-gray-900/40 flex-shrink-0">
+    <!-- 左:添加文件按钮 + 视图切换(对齐参考 MediaLibrary 标题行:按钮靠左,库名徽章靠右) -->
     <div class="flex items-center gap-1.5 flex-shrink-0" x-show="pid">
-      <!-- 上传按钮(参考物理位置:最左;对齐 vidonex UButton xs primary soft) -->
-      <label class="flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 text-[11px] cursor-pointer transition flex-shrink-0"
+      <!-- 添加文件(对齐参考绿色胶囊按钮) -->
+      <label class="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-[11px] font-medium cursor-pointer transition flex-shrink-0"
              :class="uploading ? 'opacity-50 pointer-events-none' : ''">
-        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-        <span x-text="uploading ? '上传中…' : '上传素材'"></span>
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14m-7-7h14"/></svg>
+        <span x-text="uploading ? '上传中…' : '添加文件'"></span>
         <input x-ref="fileInput" type="file" class="hidden" multiple @change="uploadFiles($event)">
       </label>
-      <!-- 视图切换:网格 → 树(参考物理顺序:网格中、树右;对齐 vidonex viewMode switcher) -->
+      <!-- 视图切换:网格 → 树 -->
       <div class="flex items-center bg-gray-900 border border-gray-800 rounded p-0.5">
         <button type="button" @click="viewMode = 'grid'"
                 class="p-1 rounded text-xs transition-colors" :class="viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
@@ -50,6 +40,13 @@
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h6M4 12h6M4 18h6M14 6h6M14 12h6M14 18h6" stroke-linecap="round"/></svg>
         </button>
       </div>
+    </div>
+    <!-- 右:库名 + 计数徽章(对齐参考 x1154+ 标题右侧) -->
+    <div class="flex items-center gap-1.5 min-w-0">
+      <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <span class="text-xs font-semibold tracking-wider text-gray-300 truncate">媒体库</span>
+      <span class="text-[10px] font-mono px-1.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700/60 flex-shrink-0"
+            x-text="pid ? assets.length : {{len .Projects}}"></span>
     </div>
   </div>
 
