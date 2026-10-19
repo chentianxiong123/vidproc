@@ -7,7 +7,7 @@
     <div x-ref="viewportPanel" class="absolute inset-0 flex flex-col">
       <!-- 舞台容器:Space/中键拖拽平移(对齐 vidonex handleStageMouseDown→startPan);flex-1 自适应,
            播放工具条完整落在面板内,不与时间轴重叠 -->
-      <div class="relative flex-1 min-h-0 bg-[#05070c] overflow-hidden flex items-center justify-center select-none pointer-events-auto"
+      <div class="flex-1 flex items-center justify-center p-3 relative overflow-hidden cursor-default select-none pointer-events-auto min-h-0"
            :class="isSpacePressed ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'"
            @wheel.prevent="onWheel($event)" @dblclick="resetViewportZoom()"
            @mousedown="handleStageMouseDown($event)">

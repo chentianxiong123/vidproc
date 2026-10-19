@@ -15,7 +15,7 @@
   <div class="flex-1 overflow-y-auto p-4">
     <!-- 空态(对齐参考 v-if:无选中时整块移除,否则 space-y 加 20px margin) -->
     <template x-if="!clip && !track">
-      <div class="h-full flex flex-col items-center justify-center text-center text-gray-500 gap-2">
+      <div class="h-full flex flex-col items-center justify-center text-center text-gray-500 gap-2 py-16">
         <svg class="w-8 h-8 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke-linecap="round"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
         <p class="text-xs">Select a track or clip on the timeline to inspect and edit its properties.</p>
       </div>

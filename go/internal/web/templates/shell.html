@@ -38,17 +38,8 @@
       </div>
     </div>
 
-    <!-- Center: Quick Presets（社区预设，对齐 vidonex presetMenu） -->
+    <!-- Center: Undo/Redo + 宽高比 + 设置(对齐 vidonex AppHeader Center 区) -->
     <div class="items-center gap-2 hidden md:flex">
-      <a href="/" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300 hover:border-indigo-500 transition"
-         hx-get="/" hx-select="#main" hx-target="#main" hx-swap="innerHTML" hx-push-url="true">
-        <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-        项目
-      </a>
-      <a href="/api/projects" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300 hover:border-indigo-500 transition">
-        <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M4 5h16v2H4zm2 4h12v2H6zm0 4h14v2H6zm0 4h10v2H6z"/></svg>
-        API
-      </a>
     </div>
 
     <!-- Right: Studio 状态 -->
@@ -198,55 +189,41 @@
         </div>
         <div class="flex-1 min-h-0 flex overflow-hidden">
 <!-- Media Library（对齐参考英文 LTR:左侧栏=Media;可折叠） -->
-          <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('media') + 'px'">
+          <aside class="h-full w-full flex flex-col overflow-hidden" :style="'width:' + displayW('media') + 'px'">
             {{template "media_panel.html" .}}
-            <button type="button" @click="togglePane('media')" :title="mediaFolded ? 'Expand Media Library' : 'Collapse Media Library'"
-                    class="absolute top-2 z-30 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
-                    :class="mediaFolded ? 'inset-x-0 flex justify-center' : 'right-2'">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                   :class="mediaFolded ? '' : 'rotate-180'"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
           </aside>
           <!-- 拖拽把手（水平;折叠态禁止拖动,展开才能调宽） -->
           <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center"
-               :class="inspectorFolded ? 'opacity-20 pointer-events-none' : ''"
                @mousedown="dragCol('inspector')" @dblclick="resetPane('inspector')" title="Double-click to reset">
             <div class="h-8 w-0.5 rounded-full bg-gray-600/70 group-hover:bg-indigo-200"></div>
           </div>
           <!-- Viewport Preview（对齐 ViewportCanvasViewport） -->
-          <main class="h-full flex flex-col overflow-hidden flex-1 min-w-0">
-            <div id="main" class="flex-1 min-h-0 overflow-y-auto">
+          <main class="h-full w-full flex flex-col overflow-hidden">
+            <div id="main" class="h-full flex flex-col bg-gray-950/90 relative overflow-hidden select-none">
               {{.Content}}
             </div>
           </main>
           <!-- 拖拽把手（水平;同上） -->
           <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center"
-               :class="mediaFolded ? 'opacity-20 pointer-events-none' : ''"
                @mousedown="dragCol('media')" @dblclick="resetPane('media')" title="Double-click to reset">
             <div class="h-8 w-0.5 rounded-full bg-gray-600/70 group-hover:bg-indigo-200"></div>
           </div>
           <!-- Inspector（对齐参考英文 LTR:右侧栏=检查器;可折叠,折叠后 34px 窄条） -->
-          <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('inspector') + 'px'">
+          <aside class="h-full w-full flex flex-col overflow-hidden" :style="'width:' + displayW('inspector') + 'px'">
             {{template "inspector_panel.html" .}}
-            <button type="button" @click="togglePane('inspector')" :title="inspectorFolded ? 'Expand Inspector' : 'Collapse Inspector'"
-                    class="absolute top-2 z-30 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
-                    :class="inspectorFolded ? 'inset-x-0 flex justify-center' : 'left-2'">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                   :class="inspectorFolded ? '' : 'rotate-180'"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
           </aside>
         </div>
           
 
     <!-- 垂直拖拽把手（时间轴高度;折叠态禁止拖动） -->
     <div class="h-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-row-resize z-30 flex-shrink-0"
-         :class="timelineFolded ? 'opacity-0 pointer-events-none' : ''"
          @mousedown="dragRow()" @dblclick="resetPane('timeline')" title="Double-click to reset">
       <div class="w-8 h-0.5 rounded-full bg-gray-600/70 mx-auto mt-0.5"></div>
     </div>
-    <div class="flex flex-col flex-shrink-0 border-t border-gray-800 bg-gray-950"
+    <section class="h-full w-full flex flex-col overflow-hidden z-10"
          x-data="timelineEditor({{if .Project}}{{.Project.ID}}{{else}}null{{end}})"
          :style="'height:' + (displayW('timeline') + 40) + 'px'">
+      <div class="h-full flex flex-col bg-gray-950 select-none overflow-hidden">
       <div class="h-10 border-b border-gray-800 px-3 bg-gray-950/80 flex items-center justify-between z-20 flex-shrink-0">
         <div class="flex items-center gap-1.5">
           <!-- 轨道菜单(对齐 vidonex addTrack:video/overlay/audio/waveform/subtitle) -->
@@ -313,84 +290,62 @@
           </button>
         </div>
         <div class="flex items-center gap-1">
-          <!-- 播放头时间（对齐 vidonex 标尺时间戳） -->
-          <span class="text-[10px] font-mono text-indigo-300 w-24 text-right" x-text="fmt(playhead)"></span>
-          <div class="h-4 w-px bg-gray-800 mx-1"></div>
           <!-- 快捷键帮助(对齐 vidonex ? 按钮 → KeyboardShortcutsModal) -->
-          <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Shortcuts (? / Ctrl+/)"
+          <button type="button" class="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Keyboard Shortcuts (?)"
                   @click="window.dispatchEvent(new CustomEvent('app-modals-open', { detail: { view: 'shortcuts' } }))">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h4M7 13h2" stroke-linecap="round"/><path d="M15 9v6M13 12h4" stroke-linecap="round"/></svg>
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.1 1-1.1 1.8v.5" stroke-linecap="round"/><path d="M12 17h.01" stroke-linecap="round"/></svg>
           </button>
           <div class="h-4 w-px bg-gray-800 mx-1"></div>
-          <!-- Zoom 控件(对齐参考:缩小/放大按钮,无滑条) -->
+          <!-- Zoom 控件(对齐参考:- 读数 +,读数=pps 值) -->
           <div class="flex items-center gap-1">
-            <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="Zoom Out" @click="zoom = Math.max(0.25, zoom * 0.8)">
-              <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" stroke-linecap="round"/></svg>
+            <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="Zoom Out (−)" @click="pps = Math.max(15, pps * 0.8)">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" stroke-linecap="round"/></svg>
             </button>
-            <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="Zoom In" @click="zoom = Math.min(4, zoom * 1.25)">
-              <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+            <span class="font-mono text-[11px] text-gray-500 w-10 text-center" x-text="Math.round(pps) + 'px'"></span>
+            <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="Zoom In (+)" @click="pps = Math.min(200, pps * 1.25)">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
             </button>
           </div>
-          <div class="h-4 w-px bg-gray-800 mx-1"></div>
         </div>
       </div>
       <div class="flex-1 min-h-0 relative flex flex-col">
         {{template "timeline_panel.html" .}}
       </div>
-      <button type="button" @click="togglePane('timeline')" :title="timelineFolded ? 'Expand Timeline' : 'Collapse Timeline'"
-              class="absolute right-2 z-40 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
-              :style="'bottom:' + (timelineFolded ? 42 : 34) + 'px'">
-        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             :class="timelineFolded ? '' : 'rotate-180'"><path d="M6 15l6-6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-    </div>
+      </div>
+    </section>
     </div>
     {{else}}
     {{/* 列表页保留原绝对布局 */}}
         <!-- 上部工作区：水平三栏（媒体库 | 视口 | 检查器），对齐 vidonex horizontal splitter -->
         <div class="absolute inset-0 flex" :style="'bottom:' + displayW('timeline') + 'px'">
           <!-- Media Library（对齐 PanelsMediaLibrary;可折叠,折叠后 34px 窄条） -->
-          <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('media') + 'px'">
+          <aside class="h-full w-full flex flex-col overflow-hidden" :style="'width:' + displayW('media') + 'px'">
             {{template "media_panel.html" .}}
-            <button type="button" @click="togglePane('media')" :title="mediaFolded ? 'Expand Media Library' : 'Collapse Media Library'"
-                    class="absolute top-2 z-30 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
-                    :class="mediaFolded ? 'inset-x-0 flex justify-center' : 'right-2'">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                   :class="mediaFolded ? '' : 'rotate-180'"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
           </aside>
           <!-- 拖拽把手（水平;折叠态禁止拖动,展开才能调宽） -->
           <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center"
-               :class="mediaFolded ? 'opacity-20 pointer-events-none' : ''"
                @mousedown="dragCol('media')" @dblclick="resetPane('media')" title="Double-click to reset">
             <div class="h-8 w-0.5 rounded-full bg-gray-600/70 group-hover:bg-indigo-200"></div>
           </div>
           <!-- Viewport Preview（对齐 ViewportCanvasViewport） -->
-          <main class="h-full flex flex-col overflow-hidden flex-1 min-w-0">
-            <div id="main" class="flex-1 min-h-0 overflow-y-auto">
+          <main class="h-full w-full flex flex-col overflow-hidden">
+            <div id="main" class="h-full flex flex-col bg-gray-950/90 relative overflow-hidden select-none">
               {{.Content}}
             </div>
           </main>
           <!-- 拖拽把手（水平;同上） -->
           <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center"
-               :class="inspectorFolded ? 'opacity-20 pointer-events-none' : ''"
                @mousedown="dragCol('inspector')" @dblclick="resetPane('inspector')" title="Double-click to reset">
             <div class="h-8 w-0.5 rounded-full bg-gray-600/70 group-hover:bg-indigo-200"></div>
           </div>
           <!-- Inspector（对齐 PanelsInspectorPanel;可折叠） -->
-          <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('inspector') + 'px'">
+          <aside class="h-full w-full flex flex-col overflow-hidden" :style="'width:' + displayW('inspector') + 'px'">
             {{template "inspector_panel.html" .}}
-            <button type="button" @click="togglePane('inspector')" :title="inspectorFolded ? 'Expand Inspector' : 'Collapse Inspector'"
-                    class="absolute top-2 z-30 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
-                    :class="inspectorFolded ? 'inset-x-0 flex justify-center' : 'left-2'">
-              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                   :class="inspectorFolded ? 'rotate-180' : ''"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </button>
           </aside>
         </div>
 
         <!-- 底部时间轴:工具栏(独立 h-8,对齐 vidonex 工具栏在时间轴容器外)+ 容器(标尺贴容器顶,即 y=0 起点) -->
-        <div class="absolute inset-x-0 bottom-0 border-t border-gray-800 bg-gray-950 flex flex-col"
+        <section class="absolute inset-x-0 bottom-0 border-t border-gray-800 bg-gray-950 flex flex-col overflow-hidden"
              x-data="timelineEditor({{if .Project}}{{.Project.ID}}{{else}}null{{end}})"
              :style="'height:' + (displayW('timeline') + 32) + 'px'">
           <div class="h-8 border-b border-gray-800 px-3 bg-gray-950/80 flex items-center justify-between z-20 flex-shrink-0">
@@ -459,41 +414,31 @@
               </button>
             </div>
             <div class="flex items-center gap-1">
-              <!-- 播放头时间（对齐 vidonex 标尺时间戳） -->
-              <span class="text-[10px] font-mono text-indigo-300 w-24 text-right" x-text="fmt(playhead)"></span>
-              <div class="h-4 w-px bg-gray-800 mx-1"></div>
               <!-- 快捷键帮助(对齐 vidonex ? 按钮 → KeyboardShortcutsModal) -->
-              <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Shortcuts (? / Ctrl+/)"
+              <button type="button" class="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Keyboard Shortcuts (?)"
                       @click="window.dispatchEvent(new CustomEvent('app-modals-open', { detail: { view: 'shortcuts' } }))">
-                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h4M7 13h2" stroke-linecap="round"/><path d="M15 9v6M13 12h4" stroke-linecap="round"/></svg>
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.1 1-1.1 1.8v.5" stroke-linecap="round"/><path d="M12 17h.01" stroke-linecap="round"/></svg>
               </button>
               <div class="h-4 w-px bg-gray-800 mx-1"></div>
-              <!-- Zoom 控件(对齐参考:缩小/放大按钮,无滑条) -->
+              <!-- Zoom 控件(对齐参考:- 读数 +,读数=pps 值) -->
               <div class="flex items-center gap-1">
-                <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="Zoom Out" @click="zoom = Math.max(0.25, zoom * 0.8)">
-                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" stroke-linecap="round"/></svg>
+                <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="Zoom Out (−)" @click="pps = Math.max(15, pps * 0.8)">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" stroke-linecap="round"/></svg>
                 </button>
-                <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="Zoom In" @click="zoom = Math.min(4, zoom * 1.25)">
-                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+                <span class="font-mono text-[11px] text-gray-500 w-10 text-center" x-text="Math.round(pps) + 'px'"></span>
+                <button type="button" class="p-1 rounded text-gray-400 hover:text-gray-200 hover:bg-gray-900 transition" title="Zoom In (+)" @click="pps = Math.min(200, pps * 1.25)">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
                 </button>
               </div>
-              <div class="h-4 w-px bg-gray-800 mx-1"></div>
             </div>
           </div>
           <div class="flex-1 min-h-0 relative flex flex-col">
             {{template "timeline_panel.html" .}}
           </div>
-          <button type="button" @click="togglePane('timeline')" :title="timelineFolded ? 'Expand Timeline' : 'Collapse Timeline'"
-                  class="absolute right-2 z-40 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
-                  :style="'bottom:' + (timelineFolded ? 42 : 34) + 'px'">
-            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 :class="timelineFolded ? '' : 'rotate-180'"><path d="M6 15l6-6 6 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-        </div>
+        </section>
 
         <!-- 垂直拖拽把手（时间轴高度;折叠态禁止拖动） -->
         <div class="absolute bottom-0 inset-x-0 h-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-row-resize z-30"
-             :class="timelineFolded ? 'opacity-0 pointer-events-none' : ''"
              :style="'bottom:6px'" @mousedown="dragRow()" @dblclick="resetPane('timeline')" title="Double-click to reset">
           <div class="w-8 h-0.5 rounded-full bg-gray-600/70 mx-auto mt-0.5"></div>
         </div>
@@ -693,22 +638,12 @@
         mediaW: 286,
         inspectorW: 357,
         timelineH: 241,
-        mediaFolded: false,
-        inspectorFolded: false,
-        timelineFolded: false,
         min: { media: 180, inspector: 220, timeline: 120 },
         max: { media: 0.4, inspector: 0.4, timeline: 0.7 }, // 视口比例上限(响应式钳制)
-        // 显示尺寸:折叠时媒体库/检查器收成 34px 窄条,时间轴收成工具栏高度
         displayW(side) {
-          if (side === 'media') return this.mediaFolded ? 34 : this.mediaW;
-          if (side === 'inspector') return this.inspectorFolded ? 34 : this.inspectorW;
-          return this.timelineFolded ? 0 : this.timelineH;
-        },
-        togglePane(side) {
-          if (side === 'media') this.mediaFolded = !this.mediaFolded;
-          else if (side === 'inspector') this.inspectorFolded = !this.inspectorFolded;
-          else this.timelineFolded = !this.timelineFolded;
-          this.save();
+          if (side === 'media') return this.mediaW;
+          if (side === 'inspector') return this.inspectorW;
+          return this.timelineH;
         },
         clampAll() {
           const vw = window.innerWidth, vh = window.innerHeight;
@@ -717,15 +652,12 @@
           this.timelineH = Math.min(Math.max(this.timelineH, this.min.timeline), vh * this.max.timeline);
         },
         save() {
-          localStorage.setItem('vidproc-layout', JSON.stringify({ mediaW: this.mediaW, inspectorW: this.inspectorW, timelineH: this.timelineH, mediaFolded: this.mediaFolded, inspectorFolded: this.inspectorFolded, timelineFolded: this.timelineFolded }));
+          localStorage.setItem('vidproc-layout', JSON.stringify({ mediaW: this.mediaW, inspectorW: this.inspectorW, timelineH: this.timelineH }));
         },
         initLayout() {
           const skin = JSON.parse(localStorage.getItem('vidproc-layout') || 'null');
           if (skin) {
             this.mediaW = skin.mediaW; this.inspectorW = skin.inspectorW; this.timelineH = skin.timelineH;
-            if (skin.mediaFolded !== undefined) this.mediaFolded = skin.mediaFolded;
-            if (skin.inspectorFolded !== undefined) this.inspectorFolded = skin.inspectorFolded;
-            if (skin.timelineFolded !== undefined) this.timelineFolded = skin.timelineFolded;
           } else {
             // 首次打开:小窗口默认收窄侧栏,画布优先(人类 studio 习惯)
             const vw = window.innerWidth;
@@ -740,17 +672,15 @@
           }
         },
         resetPane(side) { // 双击把手复位默认宽度/高度
-          if (side === 'media') { this.mediaW = 286; this.mediaFolded = false; }
-          else if (side === 'inspector') { this.inspectorW = 357; this.inspectorFolded = false; }
-          else if (side === 'timeline') { this.timelineH = 241; this.timelineFolded = false; }
+          if (side === 'media') { this.mediaW = 286; }
+          else if (side === 'inspector') { this.inspectorW = 357; }
+          else if (side === 'timeline') { this.timelineH = 241; }
           this.clampAll();
           this.save();
         },
         dragCol(side) {
           const target = this;
           const root = document.getElementById('studio-root');
-          if (side === 'media') this.mediaFolded = false;
-          if (side === 'inspector') this.inspectorFolded = false;
           const onMove = (e) => {
             if (!root) return;
             const rect = root.getBoundingClientRect();

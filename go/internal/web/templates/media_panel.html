@@ -1,6 +1,6 @@
 {{/* 媒体库面板(对齐 vidonex PanelsMediaLibrary):
     双模式 —— 未打开项目 = 项目列表;已打开 = 项目媒体库(上传/搜索/拖拽入时间轴)。 */}}
-<div class="h-full w-full flex flex-col bg-gray-900/60 select-none relative transition-colors"
+<div class="h-full flex flex-col bg-gray-900/60 select-none relative transition-colors"
      :class="isDraggingOver ? 'bg-indigo-950/20 ring-2 ring-inset ring-indigo-500/40' : ''"
      x-data="mediaLibrary({{if .Project}}{{.Project.ID}}{{else}}null{{end}})"
      @dragover.prevent="isDraggingOver = true"
@@ -16,36 +16,36 @@
     <span class="text-[10px] bg-indigo-500/30 text-indigo-200 px-1.5 py-0.5 rounded-full font-mono uppercase tracking-wider"
           x-text="dragGhostAsset ? dragGhostAsset.file_type : ''"></span>
   </div>
-  <!-- Header:folder 图标 + 标题 + 计数徽章;右上 = 视图切换 + 上传(对齐 vidonex MediaLibrary header) -->
-  <div class="p-2.5 border-b border-gray-800 flex items-center justify-between gap-2 bg-gray-900/40 flex-shrink-0">
+  <!-- Header:folder 图标 + 标题 + 计数徽章;右上 = 视图切换 + Add File(对齐 vidonex MediaLibrary header) -->
+  <div class="p-2.5 border-b border-gray-800 flex items-center justify-between gap-2 bg-gray-950/40 flex-shrink-0">
     <!-- 左:库名 + 计数徽章(对齐参考英文 LTR:folder+Media Library+徽章在左) -->
     <div class="flex items-center gap-1.5 min-w-0">
       <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-      <span class="text-xs font-semibold tracking-wider text-gray-300 truncate">Media Library</span>
-      <span class="text-[10px] font-mono px-1.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700/60 flex-shrink-0"
+      <span class="font-semibold text-xs tracking-wider uppercase text-gray-300 truncate">Media Library</span>
+      <span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-gray-800 text-gray-400 border border-gray-700/60 flex-shrink-0"
             x-text="pid ? assets.length : {{len .Projects}}"></span>
     </div>
-    <!-- 右:Add Media按钮 + 视图切换(对齐参考英文 LTR:Add Media 在右) -->
-    <div class="flex items-center gap-1.5 flex-shrink-0" x-show="pid">
-      <label class="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 text-[11px] font-medium cursor-pointer transition flex-shrink-0"
-             :class="uploading ? 'opacity-50 pointer-events-none' : ''">
-        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14m-7-7h14"/></svg>
-        <span x-text="uploading ? 'Uploading…' : 'Add Media'"></span>
-        <input x-ref="fileInput" type="file" class="hidden" multiple @change="uploadFiles($event)">
-      </label>
-      <!-- 视图切换:网格 → 树 -->
+    <!-- 右:视图切换(树 active 在前)+ Add File primary 按钮(对齐参考顺序与样式) -->
+    <div class="flex items-center gap-1 flex-shrink-0" x-show="pid">
       <div class="flex items-center bg-gray-900 border border-gray-800 rounded p-0.5">
-        <button type="button" @click="viewMode = 'grid'"
-                class="p-1 rounded text-xs transition-colors" :class="viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
-                title="Grid View">
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        </button>
         <button type="button" @click="viewMode = 'tree'"
                 class="p-1 rounded text-xs transition-colors" :class="viewMode === 'tree' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
-                title="Tree View">
+                title="Tree View (Compact)">
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h6M4 12h6M4 18h6M14 6h6M14 12h6M14 18h6" stroke-linecap="round"/></svg>
         </button>
+        <button type="button" @click="viewMode = 'grid'"
+                class="p-1 rounded text-xs transition-colors" :class="viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'"
+                title="Tiles">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </button>
       </div>
+      <button type="button" @click="$refs.fileInput.click()"
+              class="rounded-md font-medium inline-flex items-center disabled:cursor-not-allowed disabled:opacity-75 transition-colors px-2 py-1 text-xs gap-1 text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/15 active:bg-indigo-500/15"
+              :disabled="uploading ? true : null" title="Add File">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
+        <span x-text="uploading ? 'Uploading…' : 'Add File'"></span>
+        <input x-ref="fileInput" type="file" class="hidden" multiple @change="uploadFiles($event)">
+      </button>
     </div>
   </div>
 
