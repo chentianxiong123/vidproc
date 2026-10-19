@@ -114,7 +114,7 @@
     panX: 0,
     panY: 0,
     ZOOM_PRESETS: [
-      { label: '适配', value: 1.0, isFit: true },
+      { label: 'Fit', value: 1.0, isFit: true },
       { label: '25%', value: 0.25 },
       { label: '50%', value: 0.5 },
       { label: '75%', value: 0.75 },
@@ -123,7 +123,7 @@
       { label: '200%', value: 2.0 },
     ],
     get isFit() { return this.zoom === 1.0 && this.panX === 0 && this.panY === 0; },
-    get display() { return this.isFit ? '适配' : `${Math.round(this.zoom * 100)}%`; },
+    get display() { return this.isFit ? 'Fit' : `${Math.round(this.zoom * 100)}%`; },
     setZoom(v, resetPan = false) {
       this.zoom = Math.min(5, Math.max(0.1, Number(v)));
       if (resetPan) { this.panX = 0; this.panY = 0; }
@@ -142,11 +142,11 @@
       wrap.style.cssText = 'background:rgba(0,0,0,.6);backdrop-filter:blur(2px)';
       wrap.innerHTML = `
         <div class="w-80 rounded-xl bg-gray-900 border border-gray-800 shadow-2xl p-5 text-gray-200">
-          <h3 class="text-sm font-semibold mb-2">${opts.title || '确认'}</h3>
+          <h3 class="text-sm font-semibold mb-2">${opts.title || 'Confirm'}</h3>
           <p class="text-xs text-gray-400 mb-4">${opts.message || ''}</p>
           <div class="flex justify-end gap-2">
-            <button class="px-3 py-1.5 rounded-lg text-xs text-gray-300 hover:bg-gray-800 transition" data-act="cancel">${opts.cancelText || '取消'}</button>
-            <button class="px-3 py-1.5 rounded-lg text-xs font-medium transition ${opts.isDanger ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-indigo-500 hover:bg-indigo-400 text-white'}" data-act="ok">${opts.confirmText || '确定'}</button>
+            <button class="px-3 py-1.5 rounded-lg text-xs text-gray-300 hover:bg-gray-800 transition" data-act="cancel">${opts.cancelText || 'Cancel'}</button>
+            <button class="px-3 py-1.5 rounded-lg text-xs font-medium transition ${opts.isDanger ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-indigo-500 hover:bg-indigo-400 text-white'}" data-act="ok">${opts.confirmText || 'OK'}</button>
           </div>
         </div>`;
       const done = (v) => { wrap.remove(); resolve(v); };
@@ -251,7 +251,7 @@
           // 视口 DOM 合成层(gizmo/波形)绑定同一 tl 引用 —— 编辑一致落库
           window.dispatchEvent(new CustomEvent('timeline-loaded', { detail: { tl: this.tl, pid: this.pid } }));
         } catch (e) {
-          this.error = '时间轴加载失败: ' + e.message;
+          this.error = 'Timeline load failed: ' + e.message;
         } finally {
           this.loading = false;
         }
@@ -686,17 +686,17 @@
       // 转场类型库(精简 8 类,对齐上游目录子集)
       transitionTypes() {
         return [
-          { value: 'dissolve', label: '交叉溶解', cat: 'fades' },
-          { value: 'fade', label: '淡入淡出', cat: 'fades' },
-          { value: 'fadeblack', label: '黑场淡入', cat: 'fades' },
-          { value: 'wipeleft', label: '左擦除', cat: 'wipes' },
-          { value: 'wiperight', label: '右擦除', cat: 'wipes' },
-          { value: 'slideleft', label: '左滑入', cat: 'slides' },
-          { value: 'slideright', label: '右滑入', cat: 'slides' },
-          { value: 'smoothleft', label: '平滑左移', cat: 'slides' },
-          { value: 'smoothright', label: '平滑右移', cat: 'slides' },
-          { value: 'zoomin', label: '缩放进入', cat: 'zooms' },
-          { value: 'circleopen', label: '圆形展开', cat: 'shapes' },
+          { value: 'dissolve', label: 'Cross Dissolve', cat: 'fades' },
+          { value: 'fade', label: 'Fade', cat: 'fades' },
+          { value: 'fadeblack', label: 'Fade to Black', cat: 'fades' },
+          { value: 'wipeleft', label: 'Wipe Left', cat: 'wipes' },
+          { value: 'wiperight', label: 'Wipe Right', cat: 'wipes' },
+          { value: 'slideleft', label: 'Slide Left', cat: 'slides' },
+          { value: 'slideright', label: 'Slide Right', cat: 'slides' },
+          { value: 'smoothleft', label: 'Smooth Left', cat: 'slides' },
+          { value: 'smoothright', label: 'Smooth Right', cat: 'slides' },
+          { value: 'zoomin', label: 'Zoom In', cat: 'zooms' },
+          { value: 'circleopen', label: 'Circle Open', cat: 'shapes' },
         ];
       },
       transitionTypeLabel(type) {
@@ -992,10 +992,10 @@
         const self = this;
         this.select(m.clip);
         window.vp.confirm({
-          title: '删除片段',
+          title: 'Delete Clip',
           message: `删除 ${m.clip.id}?`,
-          confirmText: '删除',
-          cancelText: '取消',
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
           isDanger: true,
         }).then((ok) => { if (ok) self.deleteSelected(); });
       },
@@ -1050,10 +1050,10 @@
         if (!track || !this.tl) return;
         const self = this;
         window.vp.confirm({
-          title: '删除轨道',
-          message: `删除轨道 ${track.id}?其所有 clip 将一并移除。`,
-          confirmText: '删除',
-          cancelText: '取消',
+          title: 'Delete Track',
+          message: `Delete track ${track.id}? All its clips will be removed.`,
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
           isDanger: true,
         }).then((ok) => {
           if (!ok) return;
@@ -1246,7 +1246,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ spec_yaml: spec }),
         })
-          .then((r) => (r.ok ? cb && cb() : cb && cb(new Error('保存失败 ' + r.status))))
+          .then((r) => (r.ok ? cb && cb() : cb && cb(new Error('Save failed ' + r.status))))
           .catch((e) => { cb && cb(e); });
       },
 
@@ -1526,11 +1526,11 @@
         return 'other';
       },
       ASSET_CATEGORIES: [
-        { id: 'video', label: '视频', color: 'text-indigo-400', icon: 'M8 5v14l11-7z', badge: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' },
-        { id: 'audio', label: '音频', color: 'text-emerald-400', icon: 'M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z', badge: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' },
-        { id: 'image', label: '图片', color: 'text-amber-400', icon: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm2 2v10h12V7H6zm2 2h8v2H8V9zm0 4h5v2H8v-2z', badge: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' },
-        { id: 'subtitle', label: '字幕', color: 'text-violet-400', icon: 'M7 3h10l4 4v14H3V7zm2 2v12h10V8h-3V5H9zM7 11h10v2H7v-2zm0 4h7v2H7v-2z', badge: 'bg-violet-500/20 text-violet-300 border border-violet-500/30' },
-        { id: 'other', label: '其他', color: 'text-gray-400', icon: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v14h14V5H5zm3 3h8v2H8V8zm0 4h8v2H8v-2zm0 4h5v2H8v-2z', badge: 'bg-gray-700/30 text-gray-400 border border-gray-600/40' },
+        { id: 'video', label: 'Videos', color: 'text-indigo-400', icon: 'M8 5v14l11-7z', badge: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' },
+        { id: 'audio', label: 'Audio', color: 'text-emerald-400', icon: 'M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z', badge: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' },
+        { id: 'image', label: 'Images', color: 'text-amber-400', icon: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm2 2v10h12V7H6zm2 2h8v2H8V9zm0 4h5v2H8v-2z', badge: 'bg-amber-500/20 text-amber-300 border border-amber-500/30' },
+        { id: 'subtitle', label: 'Subtitles', color: 'text-violet-400', icon: 'M7 3h10l4 4v14H3V7zm2 2v12h10V8h-3V5H9zM7 11h10v2H7v-2zm0 4h7v2H7v-2z', badge: 'bg-violet-500/20 text-violet-300 border border-violet-500/30' },
+        { id: 'other', label: 'Other', color: 'text-gray-400', icon: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v14h14V5H5zm3 3h8v2H8V8zm0 4h8v2H8v-2zm0 4h5v2H8v-2z', badge: 'bg-gray-700/30 text-gray-400 border border-gray-600/40' },
       ],
       // 分类分组(仅显示非空分类)
       categorized() {
@@ -1588,10 +1588,10 @@
       },
       async removeAsset(a) {
         const ok = await window.vp.confirm({
-          title: '删除素材',
+          title: 'Delete Asset',
           message: `确定删除 "${a.file_name}"？(磁盘文件一并移除)`,
-          confirmText: '删除',
-          cancelText: '取消',
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
           isDanger: true,
         });
         if (!ok) return;
@@ -2128,43 +2128,43 @@
   // 全局 doc keydown 在此处理(Ctrl+K / Ctrl+/ / Esc),避免每组件重复监听。
   // 对齐 vidonex CommandPaletteModal 分组:Timeline Editing / Tracks / Aspect Ratios / Playback & Viewport / Project & Modals
   const COMMAND_GROUPS = [
-    { id: 'editing', label: '时间轴编辑' },
-    { id: 'tracks', label: '轨道管理' },
-    { id: 'aspect', label: '画布比例' },
-    { id: 'playback', label: '播放与视口' },
-    { id: 'project', label: '项目与模态' },
-    { id: 'about', label: '关于与更新' },
+    { id: 'editing', label: 'Timeline Editing' },
+    { id: 'tracks', label: 'Track Management' },
+    { id: 'aspect', label: 'Canvas Ratio' },
+    { id: 'playback', label: 'Playback & Viewport' },
+    { id: 'project', label: 'Project & Modals' },
+    { id: 'about', label: 'About & Updates' },
   ];
   const APP_COMMANDS = [
     // —— 时间轴编辑 ——
-    { id: 'split', group: 'editing', name: '分割选中片段', desc: '在播放头处切开', keys: 'S', icon: 'M6 4v16l8-8zM14 12l4-8v16z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.split(); } },
-    { id: 'duplicate', group: 'editing', name: '复制选中片段', desc: '复制到当前轨道末尾', keys: 'Ctrl+D', icon: 'M4 4h12v12H4zM16 8h4v12H8v-4', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.duplicateClip(); } },
-    { id: 'delete', group: 'editing', name: '删除选中片段', desc: '从时间轴移除', keys: 'Del', icon: 'M6 7h12l-1 14H7zM9 4h6l1 3H8z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.deleteSelected(); } },
-    { id: 'undo', group: 'editing', name: '撤销', desc: '回退上一步编辑', keys: 'Ctrl+Z', icon: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.undo(); } },
-    { id: 'redo', group: 'editing', name: '重做', desc: '恢复撤销的编辑', keys: 'Ctrl+Shift+Z', icon: 'M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.redo(); } },
-    { id: 'toggle-snap', group: 'editing', name: '磁吸开关', desc: '吸附对齐(开/关)', keys: 'N', icon: 'M13 2L3 14h7l-1 8 10-12h-7z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.toggleSnap(); } },
+    { id: 'split', group: 'editing', name: 'Split Selected Clip', desc: 'Cut at playhead', keys: 'S', icon: 'M6 4v16l8-8zM14 12l4-8v16z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.split(); } },
+    { id: 'duplicate', group: 'editing', name: 'Duplicate Selected Clip', desc: 'Duplicate to end of track', keys: 'Ctrl+D', icon: 'M4 4h12v12H4zM16 8h4v12H8v-4', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.duplicateClip(); } },
+    { id: 'delete', group: 'editing', name: 'Delete Selected Clip', desc: 'Remove from timeline', keys: 'Del', icon: 'M6 7h12l-1 14H7zM9 4h6l1 3H8z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.deleteSelected(); } },
+    { id: 'undo', group: 'editing', name: 'Undo', desc: 'Undo last edit', keys: 'Ctrl+Z', icon: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.undo(); } },
+    { id: 'redo', group: 'editing', name: 'Redo', desc: 'Redo undone edit', keys: 'Ctrl+Shift+Z', icon: 'M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.redo(); } },
+    { id: 'toggle-snap', group: 'editing', name: 'Snap Toggle', desc: 'Snap alignment (on/off)', keys: 'N', icon: 'M13 2L3 14h7l-1 8 10-12h-7z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.toggleSnap(); } },
     // —— 轨道管理(对齐上游 addTrack video/audio/waveform)——
-    { id: 'add-video-track', group: 'tracks', name: '添加视频轨道', desc: '顶部新建覆盖视频轨', keys: '', icon: 'M8 5v14l11-7z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.addTrack('video'); } },
-    { id: 'add-audio-track', group: 'tracks', name: '添加音频轨道', desc: '新建背景音乐 / 配音轨', keys: '', icon: 'M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.addTrack('audio'); } },
-    { id: 'add-waveform-track', group: 'tracks', name: '添加波形轨道', desc: '动画波形可视化轨', keys: '', icon: 'M4 18v-6M9 18V6m5 12v-9m5 9V9', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.addTrack('waveform'); } },
+    { id: 'add-video-track', group: 'tracks', name: 'Add Video Track', desc: 'Add overlay video track on top', keys: '', icon: 'M8 5v14l11-7z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.addTrack('video'); } },
+    { id: 'add-audio-track', group: 'tracks', name: 'Add Audio Track', desc: 'Add BGM / voiceover track', keys: '', icon: 'M3 10v4a1 1 0 0 0 1 1h3l4 4V5L7 9H4a1 1 0 0 0-1 1z', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.addTrack('audio'); } },
+    { id: 'add-waveform-track', group: 'tracks', name: 'Add Waveform Track', desc: 'Animated waveform visualizer track', keys: '', icon: 'M4 18v-6M9 18V6m5 12v-9m5 9V9', run: () => { const ed = window.vp.timelineEditorOf; if (ed) ed.addTrack('waveform'); } },
     // —— 画布比例(对齐上游 setAspectRatio 4 预设)——
-    { id: 'aspect-16-9', group: 'aspect', name: '16:9 横屏', desc: '1920×1080 · YouTube/网页', keys: '', icon: 'M3 6h18v12H3z', run: () => applyAspect(1920, 1080) },
-    { id: 'aspect-9-16', group: 'aspect', name: '9:16 竖屏', desc: '1080×1920 · 抖音/短视频', keys: '', icon: 'M8 3h8v18H8z', run: () => applyAspect(1080, 1920) },
-    { id: 'aspect-1-1', group: 'aspect', name: '1:1 方形', desc: '1080×1080 · 社交卡片', keys: '', icon: 'M4 4h16v16H4z', run: () => applyAspect(1080, 1080) },
-    { id: 'aspect-21-9', group: 'aspect', name: '21:9 超宽', desc: '2560×1080 · 影院宽银幕', keys: '', icon: 'M2 6h20v12H2z', run: () => applyAspect(2560, 1080) },
+    { id: 'aspect-16-9', group: 'aspect', name: '16:9 Landscape', desc: '1920x1080 · YouTube/Web', keys: '', icon: 'M3 6h18v12H3z', run: () => applyAspect(1920, 1080) },
+    { id: 'aspect-9-16', group: 'aspect', name: '9:16 Portrait', desc: '1080x1920 · Shorts', keys: '', icon: 'M8 3h8v18H8z', run: () => applyAspect(1080, 1920) },
+    { id: 'aspect-1-1', group: 'aspect', name: '1:1 Square', desc: '1080x1080 · Social Card', keys: '', icon: 'M4 4h16v16H4z', run: () => applyAspect(1080, 1080) },
+    { id: 'aspect-21-9', group: 'aspect', name: '21:9 Ultra-Wide', desc: '2560x1080 · Cinema', keys: '', icon: 'M2 6h20v12H2z', run: () => applyAspect(2560, 1080) },
     // —— 播放与视口 ——
-    { id: 'toggle-play', group: 'playback', name: '播放 / 暂停', desc: '切换传输状态', keys: 'Space', icon: 'M8 5v14l11-7z', run: () => { const pb = window.vp && window.vp.playback; if (pb) pb.togglePlay(); } },
-    { id: 'jump-start', group: 'playback', name: '跳到开头', desc: '播放头归零', keys: 'Home', icon: 'M19 5v14l-9-7zM5 5h2v14H5z', run: () => { const pb = window.vp && window.vp.playback; if (pb) pb.jumpToStart(); } },
-    { id: 'jump-end', group: 'playback', name: '跳到结尾', desc: '播放头到内容末端', keys: 'End', icon: 'M5 5v14l9-7zM19 5h2v14h-2z', run: () => { const pb = window.vp && window.vp.playback; if (pb) pb.jumpToEnd(); } },
-    { id: 'fit-viewport', group: 'playback', name: '视口适配', desc: '重置画布缩放与平移', keys: 'Shift+Z', icon: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', run: () => { const pv = window.vp.projectViewOf; if (pv) pv.resetViewportZoom(); } },
+    { id: 'toggle-play', group: 'playback', name: 'Play / Pause', desc: 'Toggle transport', keys: 'Space', icon: 'M8 5v14l11-7z', run: () => { const pb = window.vp && window.vp.playback; if (pb) pb.togglePlay(); } },
+    { id: 'jump-start', group: 'playback', name: 'Jump to Start', desc: 'Playhead to zero', keys: 'Home', icon: 'M19 5v14l-9-7zM5 5h2v14H5z', run: () => { const pb = window.vp && window.vp.playback; if (pb) pb.jumpToStart(); } },
+    { id: 'jump-end', group: 'playback', name: 'Jump to End', desc: 'Playhead to content end', keys: 'End', icon: 'M5 5v14l9-7zM19 5h2v14h-2z', run: () => { const pb = window.vp && window.vp.playback; if (pb) pb.jumpToEnd(); } },
+    { id: 'fit-viewport', group: 'playback', name: 'Fit Viewport', desc: 'Reset canvas zoom & pan', keys: 'Shift+Z', icon: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5', run: () => { const pv = window.vp.projectViewOf; if (pv) pv.resetViewportZoom(); } },
     // —— 项目与模态 ——
-    { id: 'render', group: 'project', name: '渲染导出…', desc: 'FFmpeg 编码 / GPU / 质量', keys: 'Ctrl+E', icon: 'M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2', run: () => { const m = window.renderModal(); m.openFor(window.vp.currentProjectId, (window.vp.projectViewOf || {}).output || ''); } },
-    { id: 'new-project', group: 'project', name: '新建项目…', desc: '创建新的视频项目', keys: '', icon: 'M12 5v14M5 12h14', run: () => window.dispatchEvent(new CustomEvent('new-project-open')) },
-    { id: 'settings', group: 'project', name: '项目设置…', desc: '画布尺寸 / 背景色 / 帧率', keys: 'P', icon: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8 4a8 8 0 0 1-.1 1.4l2 1.5-2 3.5-2.4-.9a8 8 0 0 1-2.4 1.4L14.8 22h-4l-.3-2.6a8 8 0 0 1-2.4-1.4l-2.4.9-2-3.5 2-1.5A8 8 0 0 1 5.6 12a8 8 0 0 1 .1-1.4l-2-1.5 2-3.5 2.4.9a8 8 0 0 1 2.4-1.4L10.8 2h4l.3 2.6a8 8 0 0 1 2.4 1.4l2.4-.9 2 3.5-2 1.5a8 8 0 0 1 .1 1.4z', run: () => window.dispatchEvent(new CustomEvent('project-settings-open', { detail: { tl: (window.vp.timelineEditorOf || {}).tl } })) },
-    { id: 'graph', group: 'project', name: '图可视化…', desc: 'FFmpeg 滤镜流程图', keys: '', icon: 'M4 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm16 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-8-7a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0 10a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM7 10l3-3m4 0l3 3M7 11v6m10-4v4', run: () => window.dispatchEvent(new CustomEvent('graph-open')) },
-    { id: 'shortcuts', group: 'project', name: '键盘快捷键…', desc: '查看完整快捷键表', keys: 'Ctrl+/', icon: 'M12 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM7 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm10 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z', run: () => {} },
+    { id: 'render', group: 'project', name: 'Render & Export...', desc: 'FFmpeg encode / GPU / quality', keys: 'Ctrl+E', icon: 'M12 16V4m0 0l-4 4m4-4l4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2', run: () => { const m = window.renderModal(); m.openFor(window.vp.currentProjectId, (window.vp.projectViewOf || {}).output || ''); } },
+    { id: 'new-project', group: 'project', name: 'New Project...', desc: 'Create a new video project', keys: '', icon: 'M12 5v14M5 12h14', run: () => window.dispatchEvent(new CustomEvent('new-project-open')) },
+    { id: 'settings', group: 'project', name: 'Project Settings...', desc: 'Canvas size / background / fps', keys: 'P', icon: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8 4a8 8 0 0 1-.1 1.4l2 1.5-2 3.5-2.4-.9a8 8 0 0 1-2.4 1.4L14.8 22h-4l-.3-2.6a8 8 0 0 1-2.4-1.4l-2.4.9-2-3.5 2-1.5A8 8 0 0 1 5.6 12a8 8 0 0 1 .1-1.4l-2-1.5 2-3.5 2.4.9a8 8 0 0 1 2.4-1.4L10.8 2h4l.3 2.6a8 8 0 0 1 2.4 1.4l2.4-.9 2 3.5-2 1.5a8 8 0 0 1 .1 1.4z', run: () => window.dispatchEvent(new CustomEvent('project-settings-open', { detail: { tl: (window.vp.timelineEditorOf || {}).tl } })) },
+    { id: 'graph', group: 'project', name: 'View Filtergraph...', desc: 'FFmpeg filtergraph', keys: '', icon: 'M4 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm16 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm-8-7a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm0 10a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM7 10l3-3m4 0l3 3M7 11v6m10-4v4', run: () => window.dispatchEvent(new CustomEvent('graph-open')) },
+    { id: 'shortcuts', group: 'project', name: 'Keyboard Shortcuts...', desc: 'View full shortcut list', keys: 'Ctrl+/', icon: 'M12 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM7 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm10 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z', run: () => {} },
     // —— 关于与更新 ——
-    { id: 'about', group: 'about', name: '关于 vidproc…', desc: '版本 / 系统诊断 / 更新', keys: '', icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z', run: () => {} },
+    { id: 'about', group: 'about', name: 'About vidproc...', desc: 'Version / diagnostics / updates', keys: '', icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z', run: () => {} },
   ];
   // 画布比例:写回 tl + 落库(对齐上游 setAspectRatio → projectStore)
   function applyAspect(w, h) {
@@ -2173,18 +2173,18 @@
     ed.saveSettings({ width: w, height: h, fps: ed.tl.fps || 30, background_color: ed.tl.background_color || 'black' });
   }
   const APP_SHORTCUTS = [
-    { keys: 'Space', desc: '播放 / 暂停' },
-    { keys: '← / →', desc: '上一帧 / 下一帧' },
-    { keys: 'Home / End', desc: '跳到开头 / 结尾' },
-    { keys: 'S', desc: '在播放头分割选中片段' },
-    { keys: 'Delete / Backspace', desc: '删除选中片段' },
-    { keys: 'Ctrl+D', desc: '复制选中片段' },
-    { keys: 'Ctrl+Z / Ctrl+Shift+Z', desc: '撤销 / 重做' },
-    { keys: 'N', desc: '磁吸开关' },
-    { keys: 'P', desc: '项目设置 (画布/背景/帧率)' },
-    { keys: 'Ctrl+K', desc: '命令面板' },
-    { keys: 'Ctrl+/', desc: '快捷键列表' },
-    { keys: 'Esc', desc: '关闭弹窗 / 返回' },
+    { keys: 'Space', desc: 'Play / Pause' },
+    { keys: '← / →', desc: 'Previous / Next Frame' },
+    { keys: 'Home / End', desc: 'Jump to Start / End' },
+    { keys: 'S', desc: 'Split selected clip at playhead' },
+    { keys: 'Delete / Backspace', desc: 'Delete Selected Clip' },
+    { keys: 'Ctrl+D', desc: 'Duplicate Selected Clip' },
+    { keys: 'Ctrl+Z / Ctrl+Shift+Z', desc: 'Undo / Redo' },
+    { keys: 'N', desc: 'Snap Toggle' },
+    { keys: 'P', desc: 'Project Settings (canvas/bg/fps)' },
+    { keys: 'Ctrl+K', desc: 'Command Palette' },
+    { keys: 'Ctrl+/', desc: 'Shortcuts List' },
+    { keys: 'Esc', desc: 'Close modal / back' },
   ];
   let _appModals = null;
   window.appModals = function () {
@@ -2198,14 +2198,14 @@
       shortcutQuery: '',
       palIdx: 0, // 命令面板键盘导航高亮
       version: '0.1.0',
-      architecture: 'htmx + Alpine + Go / vidonex 兼容 spec',
+      architecture: 'htmx + Alpine + Go / vidonex-compatible spec',
       // 系统诊断(对齐 vidonex AboutModal:OS/Arch/Cores/GPU/FFmpeg)
       sys: {
         os: typeof navigator !== 'undefined' ? navigator.userAgent.replace(/\(([^)]*)\).*/, '$1') : '',
         arch: (navigator.userAgent.match(/(x86_64|arm64|aarch64)/i) || [''])[0] || 'x64',
         cores: (navigator.hardwareConcurrency || '—') + '',
         gpu: '',
-        ffmpeg: '检测中…',
+        ffmpeg: 'Detecting...',
       },
       sysLoaded: false,
       init() {
@@ -2229,7 +2229,7 @@
           // FFmpeg 探测(/api/sysinfo)
           fetch('/api/sysinfo').then((r) => (r.ok ? r.json() : null)).then((j) => {
             if (j && j.ffmpeg) this.sys.ffmpeg = j.ffmpeg;
-          }).catch(() => { this.sys.ffmpeg = '不可用'; });
+          }).catch(() => { this.sys.ffmpeg = 'Unavailable'; });
         }, 300);
         document.addEventListener('keydown', (e) => {
           // 输入框内不劫持
@@ -2292,9 +2292,9 @@
       // 快捷键分类(概览:播放/编辑/视图/其他)
       shortcutGroups() {
         const cats = [
-          { label: '播放控制', re: /播放|帧|开头|结尾|暂停|关闭/ },
-          { label: '时间轴编辑', re: /分割|复制|删除|撤销|重做|磁吸/ },
-          { label: '视口与弹窗', re: /设置|命令|快捷键|列表/ },
+          { label: 'Playback', re: /play|frame|start|end|pause|close/i },
+          { label: 'Timeline Editing', re: /split|duplicate|delete|undo|redo|snap/i },
+          { label: 'Viewport & Modals', re: /settings|palette|shortcuts|list/i },
         ];
         const rest = [];
         const out = cats.map((c) => ({ label: c.label, items: [] }));
@@ -2303,7 +2303,7 @@
           const group = hit >= 0 ? out[hit] : null;
           if (group) group.items.push(s); else rest.push(s);
         }
-        if (rest.length) out.push({ label: '其他', items: rest });
+        if (rest.length) out.push({ label: 'Other', items: rest });
         return out.filter((g) => g.items.length > 0);
       },
     };
@@ -2392,11 +2392,11 @@
   // 对齐 vidonex ProjectSettings:画布尺寸/背景色/fps → timelineEditor.saveSettings。
   // 单例 + 事件总线(与 renderModal 一致,Alpine 响应式代理见 init 注释)。
   const BG_COLORS = [
-    { id: 'black', name: '黑' },
-    { id: 'white', name: '白' },
-    { id: 'green', name: '绿幕' },
-    { id: 'blue', name: '蓝幕' },
-    { id: 'transparent', name: '透明' },
+    { id: 'black', name: 'Black' },
+    { id: 'white', name: 'White' },
+    { id: 'green', name: 'Green Screen' },
+    { id: 'blue', name: 'Blue Screen' },
+    { id: 'transparent', name: 'Transparent' },
   ];
   // 站内 htmx 导航(#main swap)会重复渲染 x-data 元素;Alpine 向每个 data 对象注入
   // $nextTick 等 magic——共享单例被二次初始化会 Cannot redefine property:$nextTick。
@@ -2460,22 +2460,22 @@
   // 单例:检查器侧按钮(无 x-data 作用域)直接控制 open。
   const RENDER_FORMATS = [
     { id: 'mp4', name: 'MP4 (H.264/AAC)', ext: 'mp4' },
-    { id: 'mov', name: 'MOV (ProRes 兼容)', ext: 'mov' },
+    { id: 'mov', name: 'MOV (ProRes compatible)', ext: 'mov' },
     { id: 'webm', name: 'WebM (VP9/Opus)', ext: 'webm' },
   ];
   const RENDER_GPUS = [
-    { id: 'auto', name: '自动 (按项目规格)' },
-    { id: 'none', name: 'CPU 编码 (libx264)' },
-    { id: 'nvenc', name: 'NVIDIA NVENC 硬件加速' },
+    { id: 'auto', name: 'Auto (project spec)' },
+    { id: 'none', name: 'CPU encode (libx264)' },
+    { id: 'nvenc', name: 'NVIDIA NVENC hardware' },
   ];
   const RENDER_PRESETS = [
-    { id: '', name: '项目默认' },
-    { id: 'tiktok', name: '抖音 9:16' },
-    { id: 'instagram_reels', name: 'Instagram 短片' },
-    { id: 'instagram_square', name: 'Instagram 方形' },
+    { id: '', name: 'Project Default' },
+    { id: 'tiktok', name: 'Shorts 9:16' },
+    { id: 'instagram_reels', name: 'Instagram Reels' },
+    { id: 'instagram_square', name: 'Instagram Square' },
     { id: 'youtube_1080', name: 'YouTube 1080p' },
     { id: 'youtube_4k', name: 'YouTube 4K' },
-    { id: 'web_fast', name: '网络快速 720p' },
+    { id: 'web_fast', name: 'Fast web 720p' },
   ];
   // 站内 htmx 导航(#main swap)会重复渲染 x-data 元素;共享单例被二次初始化会
   // Cannot redefine property:$nextTick(Alpine 向 data 对象注入 magic,见上游 #2107)。
@@ -2539,7 +2539,7 @@
           if (!this.open) return;
           const d = e.detail || {};
           this.status = 'failed';
-          this.error = d.error || '渲染失败';
+          this.error = d.error || 'Render failed';
           this.errorOpen = false;
         };
         window.addEventListener('render-fail', this._h['render-fail']);
@@ -2637,17 +2637,17 @@
   // 对齐 vidonex NewProjectModal:名称 + 5 画布预设(16:9/4K/9:16/1:1/21:9)
   // + fps 选择。创建 = 前端生成 spec(带画布) → POST /api/projects。
   const ASPECT_PRESETS = [
-    { id: 'youtube_16_9', name: '16:9 横屏 (1080p)', width: 1920, height: 1080, icon: 'M21 7H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1zM7 10h2v4H7z' },
-    { id: 'youtube_4k', name: '16:9 4K 超高清 (3840×2160)', width: 3840, height: 2160, icon: 'M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z' },
-    { id: 'tiktok_9_16', name: '9:16 竖屏 (抖音/短视频)', width: 1080, height: 1920, icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.5 11.6l-5 3a1 1 0 0 1-1.5-.9V8.3a1 1 0 0 1 1.5-.9l5 3a1 1 0 0 1 0 1.7z' },
-    { id: 'instagram_square', name: '1:1 方形 (Instagram)', width: 1080, height: 1080, icon: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm14 7a5 5 0 1 1-10 0 5 5 0 0 1 10 0zM17 6h2v2h-2z' },
-    { id: 'cinema_wide', name: '21:9 超宽影院', width: 2560, height: 1080, icon: 'M4 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm3 4h10v4H7z' },
+    { id: 'youtube_16_9', name: '16:9 Landscape (1080p)', width: 1920, height: 1080, icon: 'M21 7H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1zM7 10h2v4H7z' },
+    { id: 'youtube_4k', name: '16:9 4K Ultra HD (3840x2160)', width: 3840, height: 2160, icon: 'M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5z' },
+    { id: 'tiktok_9_16', name: '9:16 Portrait (Shorts)', width: 1080, height: 1920, icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.5 11.6l-5 3a1 1 0 0 1-1.5-.9V8.3a1 1 0 0 1 1.5-.9l5 3a1 1 0 0 1 0 1.7z' },
+    { id: 'instagram_square', name: '1:1 Square (Instagram)', width: 1080, height: 1080, icon: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm14 7a5 5 0 1 1-10 0 5 5 0 0 1 10 0zM17 6h2v2h-2z' },
+    { id: 'cinema_wide', name: '21:9 Ultra-Wide Cinema', width: 2560, height: 1080, icon: 'M4 6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm3 4h10v4H7z' },
   ];
   const FPS_OPTIONS = [
-    { label: '24 FPS (电影)', value: 24 },
-    { label: '25 FPS (PAL 制式)', value: 25 },
-    { label: '30 FPS (网络)', value: 30 },
-    { label: '60 FPS (游戏)', value: 60 },
+    { label: '24 FPS (Film)', value: 24 },
+    { label: '25 FPS (PAL)', value: 25 },
+    { label: '30 FPS (Web)', value: 30 },
+    { label: '60 FPS (Gameplay)', value: 60 },
   ];
   // 站内 htmx 导航(#main swap)会重复渲染 x-data 元素;共享单例被二次初始化会
   // Cannot redefine property:$nextTick。newProjectModalComponent 供 x-data(每次 new +
@@ -2660,7 +2660,7 @@
     }
     const inst = {
       open: false,
-      name: '未命名项目',
+      name: 'Untitled Project',
       presetId: 'youtube_16_9',
       width: 1920,
       height: 1080,
@@ -2723,7 +2723,7 @@
 
     fetch(`/api/projects/${pid}/render`, { method: 'POST' })
       .then((r) => {
-        if (!r.ok) throw new Error('启动失败 ' + r.status);
+        if (!r.ok) throw new Error('Startup failed ' + r.status);
         return r.json();
       })
       .then((job) => {
@@ -2736,7 +2736,7 @@
                 clearInterval(timer);
                 el.disabled = false;
                 if (bar) { bar.style.width = '0%'; }
-                if (pct) { pct.textContent = '渲染失败'; }
+                if (pct) { pct.textContent = 'Render failed'; }
                 window.dispatchEvent(new CustomEvent('render-finished', { detail: { ok: false, job: j } }));
                 return;
               }
@@ -3185,7 +3185,7 @@
           body: JSON.stringify({ name }),
         })
           .then((r) => {
-            if (!r.ok) throw new Error('保存失败 ' + r.status);
+            if (!r.ok) throw new Error('Save failed ' + r.status);
             self.projectName = name;
             self.renameDraft = name;
             self.saved = true;
@@ -3475,7 +3475,7 @@
           body: JSON.stringify(params || {}),
         })
           .then((r) => {
-            if (!r.ok) throw new Error('启动失败 ' + r.status);
+            if (!r.ok) throw new Error('Startup failed ' + r.status);
             return r.json();
           })
           .then((job) => this.poll(job.id))
@@ -3562,8 +3562,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ spec_yaml: this.spec, output_path: this.output }),
         })
-          .then((r) => { if (!r.ok) throw new Error('保存失败 ' + r.status); self.saved = true; setTimeout(() => { location.reload(); }, 600); })
-          .catch((e) => { alert('保存失败: ' + e.message); })
+          .then((r) => { if (!r.ok) throw new Error('Save failed ' + r.status); self.saved = true; setTimeout(() => { location.reload(); }, 600); })
+          .catch((e) => { alert('Save failed: ' + e.message); })
           .finally(() => { self.saving = false; });
       },
     };
@@ -3600,14 +3600,14 @@
       },
       close() { this.open = false; },
       reload() {
-        if (!this.pid) { this.error = '无项目'; return; }
+        if (!this.pid) { this.error = 'No project'; return; }
         this.loading = true;
         this.error = '';
         this.code = '';
         this.svgHtml = '';
         fetch(`/api/projects/${this.pid}/spec/graph?format=mermaid`)
           .then((r) => {
-            if (!r.ok) { throw new Error('请求失败 ' + r.status); }
+            if (!r.ok) { throw new Error('Request failed: ' + r.status); }
             return r.text();
           })
           .then((text) => {

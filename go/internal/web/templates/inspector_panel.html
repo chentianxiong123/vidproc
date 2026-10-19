@@ -6,7 +6,7 @@
   <!-- Header(对齐 vidonex:clip → 检查器;track → Track Properties;无 → 检查器) -->
   <div class="h-10 border-b border-gray-800 px-4 flex items-center justify-between flex-shrink-0">
     <span class="text-xs font-semibold text-gray-200 tracking-wide uppercase"
-          x-text="clip ? '检查器' : (track ? '轨道属性' : '检查器')"></span>
+          x-text="clip ? 'Properties Inspector' : (track ? 'Track Properties' : 'Properties Inspector')"></span>
     <span x-show="clip" class="text-[10px] font-mono text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20"
           x-text="clip ? clip.id : ''"></span>
   </div>
@@ -17,190 +17,190 @@
     <template x-if="!clip && !track">
       <div class="h-full flex flex-col items-center justify-center text-center text-gray-500 gap-2">
         <svg class="w-8 h-8 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke-linecap="round"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
-        <p class="text-xs">从时间轴选择一个 clip 或轨道编辑属性</p>
+        <p class="text-xs">Select a track or clip on the timeline to inspect and edit its properties.</p>
       </div>
     </template>
 
     <template x-if="clip">
       <div>
-        <!-- 时序 & 时长(对齐 vidonex Timing & Duration section) -->
+        <!-- Timing & Duration & 时长(对齐 vidonex Timing & Duration section) -->
         <div class="space-y-3">
-          <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">时序</h4>
+          <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">Timing & Duration</h4>
           <div class="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <label class="block text-gray-500 mb-1">起点 (s)</label>
+              <label class="block text-gray-500 mb-1">Start Time (s)</label>
               <input type="number" min="0" step="0.1" x-model.number="clip.start"
                      @change="commit('Update Start')"
                      class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
             </div>
             <div>
-              <label class="block text-gray-500 mb-1">时长 (s)</label>
+              <label class="block text-gray-500 mb-1">Duration (s)</label>
               <input type="number" min="0.1" step="0.1" x-model.number="clip.duration"
                      @change="commit('Update Duration')"
                      class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
             </div>
             <div>
-              <label class="block text-gray-500 mb-1">修剪 (s)</label>
+              <label class="block text-gray-500 mb-1">Trim (s)</label>
               <input type="number" min="0" step="0.1" x-model.number="clip.trim"
                      @change="commit('Update Trim')"
                      class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
             </div>
             <div>
-              <label class="block text-gray-500 mb-1">速度 (x)</label>
+              <label class="block text-gray-500 mb-1">Speed (x)</label>
               <input type="number" min="0.1" step="0.1" x-model.number="clip.speed"
                      @change="commit('Update Speed')"
                      class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
             </div>
           </div>
           <!-- 源文件 -->
-          <div class="text-[10px] text-gray-500 font-mono truncate px-1" x-text="clip.source" title="源文件路径"></div>
+          <div class="text-[10px] text-gray-500 font-mono truncate px-1" x-text="clip.source" title="Source"></div>
         </div>
 
-        <!-- 变换(视频/overlay clip) -->
+        <!-- Transform & Position(视频/overlay clip) -->
         <template x-if="trackKind === 'video' || trackKind === 'overlay'">
           <div class="space-y-3 pt-3 border-t border-gray-800/80">
-            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">变换</h4>
-            <!-- 位置 X/Y -->
+            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">Transform & Position</h4>
+            <!-- Position X/Y -->
             <div class="grid grid-cols-2 gap-3 text-xs">
               <div>
-                <label class="block text-gray-500 mb-1">位置 X</label>
+                <label class="block text-gray-500 mb-1">Position X</label>
                 <input type="number" x-model.number="posX" @change="commit('Update Position')"
                        class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
               </div>
               <div>
-                <label class="block text-gray-500 mb-1">位置 Y</label>
+                <label class="block text-gray-500 mb-1">Position Y</label>
                 <input type="number" x-model.number="posY" @change="commit('Update Position')"
                        class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 font-mono text-gray-200 focus:outline-none focus:border-indigo-500">
               </div>
             </div>
             <!-- 对齐 -->
             <div class="text-xs">
-              <label class="block text-gray-500 mb-1">对齐方式</label>
+              <label class="block text-gray-500 mb-1">Anchor Alignment</label>
               <select x-model="clip.position.alignment" @change="commit('Update Alignment')"
                       class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 text-gray-200 focus:outline-none focus:border-indigo-500">
-                <option value="center">居中</option>
-                <option value="top-left">左上</option>
-                <option value="top-right">右上</option>
-                <option value="bottom-left">左下</option>
-                <option value="bottom-right">右下</option>
+                <option value="center">Center</option>
+                <option value="top-left">Top Left</option>
+                <option value="top-right">Top Right</option>
+                <option value="bottom-left">Bottom Left</option>
+                <option value="bottom-right">Bottom Right</option>
               </select>
             </div>
-            <!-- 缩放 & 旋转 -->
+            <!-- Scale (%) & Rotation (deg) -->
             <div class="grid grid-cols-2 gap-3 text-xs">
               <div>
-                <div class="flex justify-between text-gray-500 mb-1"><span>缩放</span><span class="font-mono text-gray-300" x-text="(clip.scale ?? 1).toFixed(2) + 'x'"></span></div>
+                <div class="flex justify-between text-gray-500 mb-1"><span>Scale (%)</span><span class="font-mono text-gray-300" x-text="(clip.scale ?? 1).toFixed(2) + 'x'"></span></div>
                 <input type="range" min="0.1" max="3" step="0.05" x-model.number="clip.scale" @input="commit('Update Scale')"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
               </div>
               <div>
-                <div class="flex justify-between text-gray-500 mb-1"><span>旋转</span><span class="font-mono text-gray-300" x-text="(clip.rotation ?? 0) + '°'"></span></div>
+                <div class="flex justify-between text-gray-500 mb-1"><span>Rotation (deg)</span><span class="font-mono text-gray-300" x-text="(clip.rotation ?? 0) + '°'"></span></div>
                 <input type="range" min="-180" max="180" step="1" x-model.number="clip.rotation" @input="commit('Update Rotation')"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
               </div>
             </div>
-            <!-- 不透明度 & 混合模式 -->
+            <!-- Opacity (%) & Blend Mode -->
             <div class="text-xs">
-              <div class="flex justify-between text-gray-500 mb-1"><span>不透明度</span><span class="font-mono text-gray-300" x-text="Math.round((clip.opacity ?? 1) * 100) + '%'"></span></div>
+              <div class="flex justify-between text-gray-500 mb-1"><span>Opacity (%)</span><span class="font-mono text-gray-300" x-text="Math.round((clip.opacity ?? 1) * 100) + '%'"></span></div>
               <input type="range" min="0" max="1" step="0.05" x-model.number="clip.opacity" @input="commit('Update Opacity')"
                      class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
             </div>
             <div class="text-xs">
-              <label class="block text-gray-500 mb-1">混合模式</label>
+              <label class="block text-gray-500 mb-1">Blend Mode</label>
               <select x-model="clip.blend_mode" @change="commit('Update Blend Mode')"
                       class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1.5 text-gray-200 focus:outline-none focus:border-indigo-500">
-                <option value="normal">正常</option>
-                <option value="multiply">正片叠底</option>
-                <option value="screen">滤色</option>
-                <option value="overlay">叠加</option>
-                <option value="add">加亮</option>
-                <option value="darken">变暗</option>
-                <option value="lighten">变亮</option>
-                <option value="difference">差值</option>
-                <option value="hardlight">强光</option>
-                <option value="softlight">柔光</option>
+                <option value="normal">Normal</option>
+                <option value="multiply">Multiply</option>
+                <option value="screen">Screen</option>
+                <option value="overlay">Overlay</option>
+                <option value="add">Add</option>
+                <option value="darken">Darken</option>
+                <option value="lighten">Lighten</option>
+                <option value="difference">Difference</option>
+                <option value="hardlight">Hard Light</option>
+                <option value="softlight">Soft Light</option>
               </select>
             </div>
           </div>
         </template>
 
-        <!-- 音频音量(音频/视频 clip) -->
+        <!-- Audio ControlsVolume (%)(Audio Controls/视频 clip) -->
         <template x-if="trackKind === 'audio' || trackKind === 'video'">
           <div class="space-y-3 pt-3 border-t border-gray-800/80">
-            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">音频</h4>
+            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">Audio Controls</h4>
             <div class="text-xs">
-              <div class="flex justify-between text-gray-500 mb-1"><span>音量</span><span class="font-mono text-gray-300" x-text="Math.round((clip.volume ?? 1) * 100) + '%'"></span></div>
+              <div class="flex justify-between text-gray-500 mb-1"><span>Volume (%)</span><span class="font-mono text-gray-300" x-text="Math.round((clip.volume ?? 1) * 100) + '%'"></span></div>
               <input type="range" min="0" max="2" step="0.05" x-model.number="clip.volume" @input="commit('Update Volume')"
                      class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
             </div>
           </div>
         </template>
 
-        <!-- ============ 颜色与光照调整(ColorAdjustmentInspector:Basic Tone 8 + Temp/Tint + Blur/Sharpen)============ -->
+        <!-- ============ Color & Light Adjustments(ColorAdjustmentInspector:Basic Tone 8 + Temp/Tint + Blur/Sharpen)============ -->
         <template x-if="trackKind === 'video' || trackKind === 'overlay'">
           <div class="space-y-3 pt-3 border-t border-gray-800/80">
             <div class="flex items-center justify-between">
-              <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">颜色与光照调整</h4>
-              <button @click="resetColorGrading()" class="text-[10px] text-indigo-300 hover:text-indigo-200">重置</button>
+              <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">Color & Light Adjustments</h4>
+              <button @click="resetColorGrading()" class="text-[10px] text-indigo-300 hover:text-indigo-200">Reset</button>
             </div>
-            <!-- Basic Tone 8 字段(前三:亮度/对比度/饱和度 = 中性 100;伽马 100;后四双极 0)-->
+            <!-- Basic Tone 8 字段(前三:Brightness/Contrast/Saturation = 中性 100;Gamma 100;后四双极 0)-->
             <div class="space-y-3">
-              <!-- 亮度 brightness:spec 0.0 中性,UI 0 中心(spec=-0.5..0.5 → UI -100..100) -->
+              <!-- Brightness brightness:spec 0.0 中性,UI 0 中心(spec=-0.5..0.5 → UI -100..100) -->
               <div>
                 <div class="flex justify-between text-gray-500 text-[11px] mb-1">
-                  <span>亮度</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.brightness"></span>
+                  <span>Brightness</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.brightness"></span>
                 </div>
                 <input type="range" min="-100" max="100" step="1" x-model.number="cfg.color_grading.brightness" @input="commitColorGrading()"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
               </div>
-              <!-- 对比度 contrast:spec 1.0 中性,UI 0 中心(spec=0.4..1.8 → UI -100..100) -->
+              <!-- Contrast contrast:spec 1.0 中性,UI 0 中心(spec=0.4..1.8 → UI -100..100) -->
               <div>
                 <div class="flex justify-between text-gray-500 text-[11px] mb-1">
-                  <span>对比度</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.contrast"></span>
+                  <span>Contrast</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.contrast"></span>
                 </div>
                 <input type="range" min="-100" max="100" step="1" x-model.number="cfg.color_grading.contrast" @input="commitColorGrading()"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
               </div>
-              <!-- 饱和度 saturation -->
+              <!-- Saturation saturation -->
               <div>
                 <div class="flex justify-between text-gray-500 text-[11px] mb-1">
-                  <span>饱和度</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.saturation"></span>
+                  <span>Saturation</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.saturation"></span>
                 </div>
                 <input type="range" min="-100" max="100" step="1" x-model.number="cfg.color_grading.saturation" @input="commitColorGrading()"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
               </div>
-              <!-- 伽马 gamma -->
+              <!-- Gamma gamma -->
               <div>
                 <div class="flex justify-between text-gray-500 text-[11px] mb-1">
-                  <span>伽马</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.gamma"></span>
+                  <span>Gamma</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.gamma"></span>
                 </div>
                 <input type="range" min="-100" max="100" step="1" x-model.number="cfg.color_grading.gamma" @input="commitColorGrading()"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
               </div>
-              <!-- 高光/阴影/白/黑:双极 -->
+              <!-- Highlights/Shadows/白/黑:双极 -->
               <div>
                 <div class="flex justify-between text-gray-500 text-[11px] mb-1">
-                  <span>高光</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.highlights"></span>
+                  <span>Highlights</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.highlights"></span>
                 </div>
                 <input type="range" min="-100" max="100" step="1" x-model.number="cfg.color_grading.highlights" @input="commitColorGrading()"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
               </div>
               <div>
                 <div class="flex justify-between text-gray-500 text-[11px] mb-1">
-                  <span>阴影</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.shadows"></span>
+                  <span>Shadows</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.shadows"></span>
                 </div>
                 <input type="range" min="-100" max="100" step="1" x-model.number="cfg.color_grading.shadows" @input="commitColorGrading()"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
               </div>
               <div>
                 <div class="flex justify-between text-gray-500 text-[11px] mb-1">
-                  <span>白色</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.whites"></span>
+                  <span>Whites</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.whites"></span>
                 </div>
                 <input type="range" min="-100" max="100" step="1" x-model.number="cfg.color_grading.whites" @input="commitColorGrading()"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
               </div>
               <div>
                 <div class="flex justify-between text-gray-500 text-[11px] mb-1">
-                  <span>黑色</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.blacks"></span>
+                  <span>Blacks</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.blacks"></span>
                 </div>
                 <input type="range" min="-100" max="100" step="1" x-model.number="cfg.color_grading.blacks" @input="commitColorGrading()"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
@@ -210,14 +210,14 @@
             <div class="space-y-3">
               <div>
                 <div class="flex justify-between text-gray-500 text-[11px] mb-1">
-                  <span>色温</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.temperature"></span>
+                  <span>Temperature</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.temperature"></span>
                 </div>
                 <input type="range" min="-100" max="100" step="1" x-model.number="cfg.color_grading.temperature" @input="commitColorGrading()"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
               </div>
               <div>
                 <div class="flex justify-between text-gray-500 text-[11px] mb-1">
-                  <span>色调</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.tint"></span>
+                  <span>Tint</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.tint"></span>
                 </div>
                 <input type="range" min="-100" max="100" step="1" x-model.number="cfg.color_grading.tint" @input="commitColorGrading()"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
@@ -227,14 +227,14 @@
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <div class="flex justify-between text-gray-500 text-[11px] mb-1">
-                  <span>模糊</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.blur"></span>
+                  <span>Blur</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.blur"></span>
                 </div>
                 <input type="range" min="0" max="100" step="1" x-model.number="cfg.color_grading.blur" @input="commitColorGrading()"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
               </div>
               <div>
                 <div class="flex justify-between text-gray-500 text-[11px] mb-1">
-                  <span>锐化</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.sharpen"></span>
+                  <span>Sharpen</span><span class="font-mono text-gray-300" x-text="cfg.color_grading.sharpen"></span>
                 </div>
                 <input type="range" min="0" max="100" step="1" x-model.number="cfg.color_grading.sharpen" @input="commitColorGrading()"
                        class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
@@ -243,20 +243,20 @@
           </div>
         </template>
 
-        <!-- ============ 色度键抠像(ChromaKeyInspector)============ -->
+        <!-- ============ Chroma Key(ChromaKeyInspector)============ -->
         <template x-if="trackKind === 'video' || trackKind === 'overlay'">
           <div class="space-y-4 pt-3 border-t border-gray-800/80 text-xs">
-            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">色度键抠像</h4>
+            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">Chroma Key</h4>
             <div class="flex items-center justify-between">
-              <span class="font-medium text-gray-300">启用</span>
+              <span class="font-medium text-gray-300">Enabled</span>
               <input type="checkbox" x-model="cfg.chroma_key.enabled" @change="toggleChromaKey()"
                      class="w-4 h-4 rounded accent-indigo-500 cursor-pointer">
             </div>
             <template x-if="cfg.chroma_key.enabled">
               <div class="space-y-3 pt-2 border-t border-gray-800">
-                <!-- 键色 -->
+                <!-- Key Color -->
                 <div>
-                  <label class="block text-gray-400 mb-1">键色</label>
+                  <label class="block text-gray-400 mb-1">Key Color</label>
                   <div class="flex items-center gap-2">
                     <input type="color" x-model="cfg.chroma_key.color" @input="commitChromaKey()"
                            class="w-8 h-8 rounded border border-gray-700 bg-transparent cursor-pointer">
@@ -264,25 +264,25 @@
                            class="flex-1 bg-gray-950 border border-gray-800 rounded px-2 py-1 font-mono text-gray-300 focus:outline-none focus:border-indigo-500">
                   </div>
                 </div>
-                <!-- 相似度 0.01-1.0 -->
+                <!-- Similarity 0.01-1.0 -->
                 <div>
                   <div class="flex justify-between text-gray-400 mb-1">
-                    <span>相似度</span><span class="font-mono text-gray-300" x-text="cfg.chroma_key.similarity"></span>
+                    <span>Similarity</span><span class="font-mono text-gray-300" x-text="cfg.chroma_key.similarity"></span>
                   </div>
                   <input type="range" min="0.01" max="1.0" step="0.01" x-model.number="cfg.chroma_key.similarity" @input="commitChromaKey()"
                          class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
                 </div>
-                <!-- 边沿混合 0.0-0.5 -->
+                <!-- Edge Blend 0.0-0.5 -->
                 <div>
                   <div class="flex justify-between text-gray-400 mb-1">
-                    <span>边沿混合</span><span class="font-mono text-gray-300" x-text="cfg.chroma_key.blend"></span>
+                    <span>Edge Blend</span><span class="font-mono text-gray-300" x-text="cfg.chroma_key.blend"></span>
                   </div>
                   <input type="range" min="0.0" max="0.5" step="0.01" x-model.number="cfg.chroma_key.blend" @input="commitChromaKey()"
                          class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
                 </div>
                 <!-- 去边(despill) -->
                 <div class="flex items-center justify-between pt-1">
-                  <span class="text-gray-400">去边 (Despill)</span>
+                  <span class="text-gray-400">Despill</span>
                   <input type="checkbox" x-model="cfg.chroma_key.despill" @change="commitChromaKey()"
                          class="w-4 h-4 rounded accent-indigo-500 cursor-pointer">
                 </div>
@@ -291,12 +291,12 @@
           </div>
         </template>
 
-        <!-- ============ 运动动画 Ken Burns(KeyframeInspector + CurveEditor)============ -->
+        <!-- ============ Ken Burns Motion Ken Burns(KeyframeInspector + CurveEditor)============ -->
         <template x-if="trackKind === 'video' || trackKind === 'overlay'">
           <div class="space-y-4 pt-3 border-t border-gray-800/80 text-xs">
-            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">运动动画</h4>
+            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">Ken Burns Motion</h4>
             <div class="flex items-center justify-between">
-              <span class="font-medium text-gray-300">启用 Ken Burns</span>
+              <span class="font-medium text-gray-300">Enabled Ken Burns</span>
               <input type="checkbox" x-model="cfg.ken_burns.enabled" @change="toggleKenBurns()"
                      class="w-4 h-4 rounded accent-indigo-500 cursor-pointer">
             </div>
@@ -304,31 +304,31 @@
               <div class="space-y-3 pt-2 border-t border-gray-800">
                 <div class="grid grid-cols-2 gap-3">
                   <div>
-                    <label class="block text-gray-400 mb-1">起始缩放</label>
+                    <label class="block text-gray-400 mb-1">Start Scale</label>
                     <input type="number" step="0.05" min="0.1" max="5.0" x-model.number="cfg.ken_burns.start_scale" @change="commitKenBurns()"
                            class="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1 font-mono text-gray-300 focus:outline-none focus:border-indigo-500">
                   </div>
                   <div>
-                    <label class="block text-gray-400 mb-1">结束缩放</label>
+                    <label class="block text-gray-400 mb-1">End Scale</label>
                     <input type="number" step="0.05" min="0.1" max="5.0" x-model.number="cfg.ken_burns.end_scale" @change="commitKenBurns()"
                            class="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1 font-mono text-gray-300 focus:outline-none focus:border-indigo-500">
                   </div>
                 </div>
                 <div>
-                  <label class="block text-gray-400 mb-1">缓动曲线</label>
+                  <label class="block text-gray-400 mb-1">Easing Curve</label>
                   <select x-model="cfg.ken_burns.easing" @change="commitKenBurns()"
                           class="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-indigo-500">
-                    <option value="linear">线性</option>
-                    <option value="easeInQuad">二次缓入</option>
-                    <option value="easeOutQuad">二次缓出</option>
-                    <option value="easeInOutQuad">二次缓入缓出</option>
-                    <option value="easeInOutCubic">三次缓入缓出</option>
+                    <option value="linear">Linear</option>
+                    <option value="easeInQuad">Ease In Quad</option>
+                    <option value="easeOutQuad">Ease Out Quad</option>
+                    <option value="easeInOutQuad">Ease Out Quad</option>
+                    <option value="easeInOutCubic">Ease In Out Cubic</option>
                   </select>
                 </div>
-                <!-- CurveEditor:canvas 静态画缓动曲线 + 播放扫点 -->
+                <!-- CurveEditor:canvas 静态画Easing Curve + 播放扫点 -->
                 <div class="space-y-2 select-none">
                   <div class="flex items-center justify-between text-[11px] text-gray-400">
-                    <span>缓动曲线预览</span>
+                    <span>Curve Preview</span>
                     <span class="font-mono text-indigo-400 text-[10px]" x-text="cfg.ken_burns.easing"></span>
                   </div>
                   <div class="relative w-full h-28 bg-gray-950 rounded-lg border border-gray-800/80 p-2 overflow-hidden">
@@ -345,19 +345,19 @@
             </template>
           </div>
         </template>
-      <!-- ============ 字幕 (SubtitleInspector:waveform 轨 clip) ============ -->
+      <!-- ============ Subtitles (SubtitleInspector:waveform 轨 clip) ============ -->
         <template x-if="trackKind === 'subtitle'">
           <div class="space-y-4 pt-3 border-t border-gray-800/80 text-xs">
-            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">字幕</h4>
+            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">Subtitles</h4>
             <!-- 字体样式 -->
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-gray-400 mb-1">字号</label>
+                <label class="block text-gray-400 mb-1">Font Size</label>
                 <input type="number" min="12" max="120" step="1" x-model.number="cfg.subtitles.font_size" @change="commitSubtitles()"
                        class="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1 font-mono text-gray-300 focus:outline-none focus:border-indigo-500">
               </div>
               <div>
-                <label class="block text-gray-400 mb-1">字体颜色</label>
+                <label class="block text-gray-400 mb-1">Font Color</label>
                 <div class="flex items-center gap-2">
                   <input type="color" x-model="cfg.subtitles.font_color" @input="commitSubtitles()"
                          class="w-7 h-7 rounded border border-gray-700 bg-transparent cursor-pointer">
@@ -369,12 +369,12 @@
             <!-- 描边 -->
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-gray-400 mb-1">描边宽度</label>
+                <label class="block text-gray-400 mb-1">Outline Width</label>
                 <input type="number" min="0" max="10" step="1" x-model.number="cfg.subtitles.outline_width" @change="commitSubtitles()"
                        class="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1 font-mono text-gray-300 focus:outline-none focus:border-indigo-500">
               </div>
               <div>
-                <label class="block text-gray-400 mb-1">描边颜色</label>
+                <label class="block text-gray-400 mb-1">Outline Color</label>
                 <div class="flex items-center gap-2">
                   <input type="color" x-model="cfg.subtitles.outline_color" @input="commitSubtitles()"
                          class="w-7 h-7 rounded border border-gray-700 bg-transparent cursor-pointer">
@@ -383,17 +383,17 @@
                 </div>
               </div>
             </div>
-            <!-- 背景框 -->
+            <!-- Background Box -->
             <div class="flex items-center justify-between">
-              <span class="text-gray-400">背景框</span>
+              <span class="text-gray-400">Background Box</span>
               <input type="checkbox" x-model="cfg.subtitles.box" @change="commitSubtitles()"
                      class="w-4 h-4 rounded accent-indigo-500 cursor-pointer">
             </div>
             <!-- Cue 列表 -->
             <div class="pt-1 border-t border-gray-800/80">
               <div class="flex items-center justify-between mb-2">
-                <h5 class="text-[11px] font-medium text-gray-400 uppercase tracking-wider">字幕条目</h5>
-                <button @click="addCue()" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 border border-indigo-500/30">+ 添加</button>
+                <h5 class="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Subtitle Cues</h5>
+                <button @click="addCue()" class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 border border-indigo-500/30">+ Add</button>
               </div>
               <div class="max-h-48 overflow-y-auto space-y-2">
                 <template x-for="(cue, idx) in cfg.subtitles.cues" :key="idx">
@@ -405,21 +405,21 @@
                       <input type="number" step="0.1" min="0" x-model.number="cue.end" @change="commitSubtitles()"
                              class="w-14 bg-gray-950 border border-gray-800 rounded px-1.5 py-0.5 font-mono text-[10px] text-gray-300 focus:outline-none focus:border-indigo-500">
                       <button @click="removeCue(idx)" class="ml-auto p-1 text-gray-500 hover:text-red-400 transition"
-                              title="删除这条字幕">
+                              title="Delete Cue">
                         <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                       </button>
                     </div>
-                    <input type="text" x-model="cue.text" @change="commitSubtitles()" placeholder="字幕文本…"
+                    <input type="text" x-model="cue.text" @change="commitSubtitles()" placeholder="Subtitle text..."
                            class="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[10px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-indigo-500">
                   </div>
                 </template>
-                <div x-show="!cfg.subtitles.cues.length" class="text-center text-gray-600 text-[10px] py-3">暂无字幕条目</div>
+                <div x-show="!cfg.subtitles.cues.length" class="text-center text-gray-600 text-[10px] py-3">No subtitle cues yet</div>
               </div>
             </div>
           </div>
         </template>
 
-        <!-- ============ 波形可视化 (WaveformInspector:waveform 轨 clip,单实例见 body 底部) ============ -->
+        <!-- ============ Waveform Visualizer (WaveformInspector:waveform 轨 clip,单实例见 body 底部) ============ -->
       </div>
     </template>
 
@@ -429,9 +429,9 @@
         <!-- DuckingInspector(非 waveform 轨) -->
         <template x-if="track.kind !== 'waveform'">
           <div class="space-y-4 text-xs">
-            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">音频闪避</h4>
+            <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">Sidechain Audio Ducking</h4>
             <div class="flex items-center justify-between">
-              <span class="font-medium text-gray-300">启用闪避</span>
+              <span class="font-medium text-gray-300">Auto Audio Ducking</span>
               <!-- 对齐 vidonex USwitch:36×20 圆角胶囊 + 16px 圆钮 -->
               <button type="button" role="switch" :aria-checked="cfg.ducking.enabled"
                       @click="cfg.ducking.enabled = !cfg.ducking.enabled; toggleDucking()"
@@ -447,42 +447,42 @@
               <div class="space-y-3 pt-2 border-t border-gray-800">
                 <!-- 目标轨道 -->
                 <div>
-                  <label class="block text-gray-400 mb-1">目标旁链轨道</label>
+                  <label class="block text-gray-400 mb-1">Target Voiceover Track</label>
                   <select x-model="cfg.ducking.target_track" @change="commitDucking()"
                           class="w-full bg-gray-950 border border-gray-800 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-indigo-500">
                     <template x-for="t in voiceTracks()" :key="t.id">
-                      <option :value="t.id" x-text="({video:'视频',audio:'音频',overlay:'叠加',subtitle:'字幕',waveform:'波形'})[t.kind] + ' (' + t.id + ')'"></option>
+                      <option :value="t.id" x-text="({video:'Video',audio:'Audio',overlay:'Overlay',subtitle:'Subtitles',waveform:'Waveform'})[t.kind] + ' (' + t.id + ')'"></option>
                     </template>
                   </select>
                 </div>
-                <!-- 阈值 -60..-5 dB -->
+                <!-- Threshold -60..-5 dB -->
                 <div>
                   <div class="flex justify-between text-gray-400 mb-1">
-                    <span>阈值</span><span class="font-mono text-gray-300" x-text="cfg.ducking.threshold + ' dB'"></span>
+                    <span>Threshold</span><span class="font-mono text-gray-300" x-text="cfg.ducking.threshold + ' dB'"></span>
                   </div>
                   <input type="range" min="-60" max="-5" step="1" x-model.number="cfg.ducking.threshold" @input="commitDucking()"
                          class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
                 </div>
-                <!-- 衰减量 -40..-6 dB -->
+                <!-- Duck Amount -40..-6 dB -->
                 <div>
                   <div class="flex justify-between text-gray-400 mb-1">
-                    <span>衰减量</span><span class="font-mono text-gray-300" x-text="cfg.ducking.duck_amount + ' dB'"></span>
+                    <span>Duck Amount</span><span class="font-mono text-gray-300" x-text="cfg.ducking.duck_amount + ' dB'"></span>
                   </div>
                   <input type="range" min="-40" max="-6" step="1" x-model.number="cfg.ducking.duck_amount" @input="commitDucking()"
                          class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
                 </div>
-                <!-- 起音 10..500 ms -->
+                <!-- Attack Time 10..500 ms -->
                 <div>
                   <div class="flex justify-between text-gray-400 mb-1">
-                    <span>起音</span><span class="font-mono text-gray-300" x-text="cfg.ducking.attack_ms + ' ms'"></span>
+                    <span>Attack Time</span><span class="font-mono text-gray-300" x-text="cfg.ducking.attack_ms + ' ms'"></span>
                   </div>
                   <input type="range" min="10" max="500" step="10" x-model.number="cfg.ducking.attack_ms" @input="commitDucking()"
                          class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
                 </div>
-                <!-- 释放 100..3000 ms -->
+                <!-- Release Time 100..3000 ms -->
                 <div>
                   <div class="flex justify-between text-gray-400 mb-1">
-                    <span>释放</span><span class="font-mono text-gray-300" x-text="cfg.ducking.release_ms + ' ms'"></span>
+                    <span>Release Time</span><span class="font-mono text-gray-300" x-text="cfg.ducking.release_ms + ' ms'"></span>
                   </div>
                   <input type="range" min="100" max="3000" step="50" x-model.number="cfg.ducking.release_ms" @input="commitDucking()"
                          class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
@@ -495,16 +495,16 @@
       </div>
     </template>
 
-    <!-- ============ 波形可视化 (WaveformInspector 单实例:clip 或 track 属于 waveform 轨时显示)============ -->
+    <!-- ============ Waveform Visualizer (WaveformInspector 单实例:clip 或 track 属于 waveform 轨时显示)============ -->
     <template x-if="(clip && trackKind === 'waveform') || (track && track.kind === 'waveform')">
       <div class="space-y-4 text-xs">
         <div class="flex items-center justify-between">
-          <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">波形可视化</h4>
-          <button @click="resetWaveform()" class="text-[10px] text-indigo-300 hover:text-indigo-200">重置</button>
+          <h4 class="text-xs font-medium text-gray-400 uppercase tracking-wider">Waveform Visualizer</h4>
+          <button @click="resetWaveform()" class="text-[10px] text-indigo-300 hover:text-indigo-200">Reset</button>
         </div>
         <!-- 模式 5 选 1 -->
         <div>
-          <label class="block text-gray-400 mb-1">波形模式</label>
+          <label class="block text-gray-400 mb-1">Waveform Mode</label>
           <div class="grid grid-cols-5 gap-1">
             <template x-for="m in [['peak_to_peak','Bars'],['spectrum','EQ'],['wave','Wave'],['circular','Radial'],['dots','Dots']]" :key="m[0]">
               <button @click="cfg.waveform.mode = m[0]; commitWaveform()"
@@ -516,7 +516,7 @@
         </div>
         <!-- 预设 4 卡 -->
         <div>
-          <label class="block text-gray-400 mb-1">样式预设</label>
+          <label class="block text-gray-400 mb-1">Presets</label>
           <div class="grid grid-cols-2 gap-2">
             <template x-for="p in [['cyberpunk','霓虹赛博'],['minimal','极简播客'],['retro','示波器'],['glow','径向辉光']]" :key="p[0]">
               <button @click="applyWaveformPreset(p[0])"
@@ -531,14 +531,14 @@
         <!-- 尺寸 -->
         <div>
           <div class="flex justify-between text-gray-400 mb-1">
-            <span>宽度</span><span class="font-mono text-gray-300" x-text="cfg.waveform.width + ' px'"></span>
+            <span>Width</span><span class="font-mono text-gray-300" x-text="cfg.waveform.width + ' px'"></span>
           </div>
           <input type="range" min="150" max="1920" step="10" x-model.number="cfg.waveform.width" @input="commitWaveform()"
                  class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
         </div>
         <div>
           <div class="flex justify-between text-gray-400 mb-1">
-            <span>高度</span><span class="font-mono text-gray-300" x-text="cfg.waveform.height + ' px'"></span>
+            <span>Height</span><span class="font-mono text-gray-300" x-text="cfg.waveform.height + ' px'"></span>
           </div>
           <input type="range" min="40" max="600" step="5" x-model.number="cfg.waveform.height" @input="commitWaveform()"
                  class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
@@ -546,7 +546,7 @@
         <!-- 位置/对齐 -->
         <div>
           <div class="flex justify-between text-gray-400 mb-1">
-            <span>位置 X</span>
+            <span>Position X</span>
             <span class="font-mono" :class="cfg.waveform.position_x !== 0 ? 'text-indigo-400' : 'text-gray-300'" x-text="cfg.waveform.position_x"
                   @dblclick="cfg.waveform.position_x = 0; commitWaveform()"></span>
           </div>
@@ -555,7 +555,7 @@
         </div>
         <div>
           <div class="flex justify-between text-gray-400 mb-1">
-            <span>位置 Y</span>
+            <span>Position Y</span>
             <span class="font-mono" :class="cfg.waveform.position_y !== 0 ? 'text-indigo-400' : 'text-gray-300'" x-text="cfg.waveform.position_y"
                   @dblclick="cfg.waveform.position_y = 0; commitWaveform()"></span>
           </div>
@@ -564,13 +564,13 @@
         </div>
         <div class="flex gap-2">
           <button @click="alignWaveform('center')"
-                  class="flex-1 py-1.5 rounded text-[10px] font-medium bg-gray-900 text-gray-300 border border-gray-800 hover:border-indigo-500/50">居中</button>
+                  class="flex-1 py-1.5 rounded text-[10px] font-medium bg-gray-900 text-gray-300 border border-gray-800 hover:border-indigo-500/50">Center</button>
           <button @click="alignWaveform('lower')"
-                  class="flex-1 py-1.5 rounded text-[10px] font-medium bg-gray-900 text-gray-300 border border-gray-800 hover:border-indigo-500/50">下方 1/3</button>
+                  class="flex-1 py-1.5 rounded text-[10px] font-medium bg-gray-900 text-gray-300 border border-gray-800 hover:border-indigo-500/50">Lower Third</button>
         </div>
-        <!-- 颜色/发光/不透明度 -->
+        <!-- 颜色/Glow/Opacity (%) -->
         <div>
-          <label class="block text-gray-400 mb-1">主色</label>
+          <label class="block text-gray-400 mb-1">Primary Color</label>
           <div class="flex items-center gap-2">
             <input type="color" x-model="cfg.waveform.color" @input="commitWaveform()"
                    class="w-7 h-7 rounded border border-gray-700 bg-transparent cursor-pointer">
@@ -579,7 +579,7 @@
           </div>
         </div>
         <div>
-          <label class="block text-gray-400 mb-1">次要色</label>
+          <label class="block text-gray-400 mb-1">Secondary Color</label>
           <div class="flex items-center gap-2">
             <input type="color" x-model="cfg.waveform.secondary_color" @input="commitWaveform()"
                    class="w-7 h-7 rounded border border-gray-700 bg-transparent cursor-pointer">
@@ -588,7 +588,7 @@
           </div>
         </div>
         <div class="flex items-center justify-between">
-          <span class="text-gray-400">发光</span>
+          <span class="text-gray-400">Glow</span>
           <label class="flex items-center gap-2">
             <input type="checkbox" x-model="cfg.waveform.glow" @change="commitWaveform()"
                    class="w-4 h-4 rounded accent-indigo-500 cursor-pointer">
@@ -600,7 +600,7 @@
         </div>
         <div>
           <div class="flex justify-between text-gray-400 mb-1">
-            <span>不透明度</span><span class="font-mono text-gray-300" x-text="Math.round(cfg.waveform.opacity * 100) + '%'"></span>
+            <span>Opacity (%)</span><span class="font-mono text-gray-300" x-text="Math.round(cfg.waveform.opacity * 100) + '%'"></span>
           </div>
           <input type="range" min="0.1" max="1.0" step="0.05" x-model.number="cfg.waveform.opacity" @input="commitWaveform()"
                  class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
@@ -609,7 +609,7 @@
         <template x-if="['peak_to_peak','spectrum','dots','circular'].includes(cfg.waveform.mode)">
           <div>
             <div class="flex justify-between text-gray-400 mb-1">
-              <span>柱密度</span><span class="font-mono text-gray-300" x-text="cfg.waveform.bar_density"></span>
+              <span>Bar Density</span><span class="font-mono text-gray-300" x-text="cfg.waveform.bar_density"></span>
             </div>
             <input type="range" min="16" max="96" step="4" x-model.number="cfg.waveform.bar_density" @input="commitWaveform()"
                    class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
@@ -618,7 +618,7 @@
         <template x-if="['peak_to_peak','spectrum'].includes(cfg.waveform.mode)">
           <div>
             <div class="flex justify-between text-gray-400 mb-1">
-              <span>柱圆角</span><span class="font-mono text-gray-300" x-text="cfg.waveform.bar_roundness"></span>
+              <span>Bar Roundness</span><span class="font-mono text-gray-300" x-text="cfg.waveform.bar_roundness"></span>
             </div>
             <input type="range" min="0" max="12" step="1" x-model.number="cfg.waveform.bar_roundness" @input="commitWaveform()"
                    class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
@@ -627,13 +627,13 @@
         <template x-if="cfg.waveform.mode === 'wave'">
           <div>
             <div class="flex justify-between text-gray-400 mb-1">
-              <span>线宽</span><span class="font-mono text-gray-300" x-text="cfg.waveform.line_width"></span>
+              <span>Line Width</span><span class="font-mono text-gray-300" x-text="cfg.waveform.line_width"></span>
             </div>
             <input type="range" min="1" max="8" step="1" x-model.number="cfg.waveform.line_width" @input="commitWaveform()"
                    class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-gray-400">区域填充</span>
+            <span class="text-gray-400">Fill Area</span>
             <input type="checkbox" x-model="cfg.waveform.fill_area" @change="commitWaveform()"
                    class="w-4 h-4 rounded accent-indigo-500 cursor-pointer">
           </div>
@@ -641,7 +641,7 @@
         <template x-if="cfg.waveform.mode === 'circular'">
           <div>
             <div class="flex justify-between text-gray-400 mb-1">
-              <span>内径</span><span class="font-mono text-gray-300" x-text="Math.round(cfg.waveform.inner_radius * 100) + '%'"></span>
+              <span>Inner Radius</span><span class="font-mono text-gray-300" x-text="Math.round(cfg.waveform.inner_radius * 100) + '%'"></span>
             </div>
             <input type="range" min="0.2" max="0.75" step="0.05" x-model.number="cfg.waveform.inner_radius" @input="commitWaveform()"
                    class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">

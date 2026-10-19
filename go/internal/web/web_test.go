@@ -99,7 +99,7 @@ func TestTemplatesRenderSmoke(t *testing.T) {
 	if err != nil {
 		t.Fatalf("shell.html 空槽渲染失败: %v", err)
 	}
-	if !strings.Contains(sb.String(), "vidproc studio") {
+	if !strings.Contains(strings.ToLower(sb.String()), "vidproc studio") {
 		t.Fatalf("shell.html 输出缺标题,渲染不完整")
 	}
 }

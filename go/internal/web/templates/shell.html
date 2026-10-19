@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>vidproc 工作室</title>
+  <title>vidproc Studio</title>
   <script src="/assets/tailwind.js"></script>
   <script>tailwind.config = { darkMode: 'class' }</script>
   <link rel="icon" href="/assets/favicon.svg">
@@ -27,7 +27,7 @@
 
       <!-- Project Switcher & Name（项目详情页有编辑；列表页显示当前入口） -->
       <div class="flex items-center gap-1.5 group" id="project-title-area">
-        <a href="/" class="p-1 text-gray-400 hover:text-white transition" title="项目列表">
+        <a href="/" class="p-1 text-gray-400 hover:text-white transition" title="Project List">
           <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
         </a>
         <span id="project-name" class="text-sm font-medium text-gray-200 truncate max-w-[110px] md:max-w-[180px]"></span>
@@ -53,17 +53,17 @@
 
     <!-- Right: Studio 状态 -->
     <div class="flex items-center gap-1">
-      <span class="text-xs text-gray-500 hidden md:inline" title="无损拼接 · 滤镜图 · UDTA 容器元数据">无损拼接</span>
+      <span class="text-xs text-gray-500 hidden md:inline" title="Lossless concat · filtergraph · UDTA metadata">Lossless Concat</span>
       <div class="h-4 w-px bg-gray-800 mx-1 hidden md:block"></div>
-      <button type="button" onclick="window.vp.openShortcuts()" title="快捷键 (Ctrl+/)"
+      <button type="button" onclick="window.vp.openShortcuts()" title="Keyboard Shortcuts (Ctrl+/)"
               class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4m0 4h.01" stroke-linecap="round"/></svg>
       </button>
-      <button type="button" onclick="window.vp.openPalette()" title="命令面板 (Ctrl+K)"
+      <button type="button" onclick="window.vp.openPalette()" title="Command Palette (Ctrl+K)"
               class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round"/></svg>
       </button>
-      <button type="button" onclick="window.vp.openAbout()" title="关于 vidproc (版本 / 系统诊断)"
+      <button type="button" onclick="window.vp.openAbout()" title="About vidproc (version / diagnostics)"
               class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v.01M12 11v6" stroke-linecap="round"/></svg>
       </button>
@@ -84,13 +84,13 @@
         <div class="h-14 border-b border-gray-800 px-4 bg-gray-950/90 backdrop-blur flex items-center justify-between flex-shrink-0 z-30 select-none">
           <!-- 左:返回 + 项目名内联编辑 + 保存指示 -->
           <div class="flex items-center gap-2 min-w-0">
-            <a href="/" class="p-1 text-gray-400 hover:text-white transition flex-shrink-0" title="返回列表">
+            <a href="/" class="p-1 text-gray-400 hover:text-white transition flex-shrink-0" title="Back to List">
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             </a>
             <input type="text" x-model="renameDraft" @focus="startRename()" @blur="commitRename()"
                    @keydown.enter="$event.target.blur()" @keydown.escape="$event.target.blur()"
                    class="bg-transparent hover:bg-gray-900 focus:bg-gray-900 border border-transparent hover:border-gray-700 focus:border-indigo-500 rounded px-2 py-1 text-sm font-medium text-gray-200 focus:outline-none transition max-w-[110px] md:max-w-[180px] truncate"
-                   title="点击重命名(回车/失焦保存)">
+                   title="Click to rename (Enter/blur saves)">
             <span x-show="saving" class="text-xs text-indigo-400 animate-pulse items-center gap-1 hidden sm:flex">
               <svg class="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
               保存中…
@@ -106,31 +106,31 @@
           <div class="flex items-center gap-1">
             <button type="button" @click="window.renderModal().openFor({{.Project.ID}})"
                     class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-xs font-medium hover:opacity-90 shadow-md shadow-indigo-500/20 transition flex items-center gap-1.5"
-                    title="渲染导出">
+                    title="Render & Export">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span class="hidden sm:inline">导出</span>
+              <span class="hidden sm:inline">Export</span>
             </button>
             <button type="button" @click="window.dispatchEvent(new CustomEvent('graph-open'))"
                     class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs"
-                    title="查看滤镜图 (图)">
+                    title="View Filtergraph">
               <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M4 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM20 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM4 15a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM12 3v4M12 11v4M6 7v8m12-8v2a2 2 0 0 1-2 2h-8"/></svg>
-              <span class="hidden sm:inline">图</span>
+              <span class="hidden sm:inline">Graph</span>
             </button>
             <button type="button" @click="window.dispatchEvent(new CustomEvent('spec-open'))"
                     class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs"
-                    title="编辑 project.yaml (spec)">
+                    title="Edit project.yaml (spec)">
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polygon points="14 2 14 8 20 8"/></svg>
               <span class="hidden sm:inline">spec</span>
             </button>
-            <button type="button" onclick="window.vp.openShortcuts()" title="快捷键 (Ctrl+/)"
+            <button type="button" onclick="window.vp.openShortcuts()" title="Keyboard Shortcuts (Ctrl+/)"
                     class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4m0 4h.01" stroke-linecap="round"/></svg>
             </button>
-            <button type="button" onclick="window.vp.openPalette()" title="命令面板 (Ctrl+K)"
+            <button type="button" onclick="window.vp.openPalette()" title="Command Palette (Ctrl+K)"
                     class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10" stroke-linecap="round"/></svg>
             </button>
-            <button type="button" onclick="window.vp.openAbout()" title="关于 vidproc (版本 / 系统诊断)"
+            <button type="button" onclick="window.vp.openAbout()" title="About vidproc (version / diagnostics)"
                     class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v.01M12 11v6" stroke-linecap="round"/></svg>
             </button>
@@ -140,9 +140,9 @@
           <div class="flex items-center gap-1">
             <button type="button" @click="window.dispatchEvent(new CustomEvent('project-settings-open', { detail: { tl: (window.vp && window.vp.timelineEditorOf && window.vp.timelineEditorOf.tl) || null } }))"
                     class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition flex items-center gap-1.5 text-xs"
-                    title="项目设置 (P)">
+                    title="Project Settings (P)">
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .33 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.33 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .33-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.33-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.33h.01a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.33 1.87v.01a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span class="hidden sm:inline">设置</span>
+              <span class="hidden sm:inline">Settings</span>
             </button>
             <div class="relative" x-data="{ open: false }" @click.away="open = false">
               <button type="button" @click="open = !open"
@@ -166,30 +166,30 @@
               </div>
             </div>
             <button type="button" @click="window.vp.timelineEditorOf && window.vp.timelineEditorOf.undo()"
-                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition" title="撤销 (Ctrl+Z)">
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Undo (Ctrl+Z)">
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
             <button type="button" @click="window.vp.timelineEditorOf && window.vp.timelineEditorOf.redo()"
-                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition" title="重做 (Ctrl+Shift+Z)">
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Redo (Ctrl+Shift+Z)">
               <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </div>
         </div>
         <div class="flex-1 min-h-0 flex overflow-hidden">
-          <!-- Inspector（对齐参考左侧栏=轨道属性/检查器;可折叠,折叠后 34px 窄条） -->
-          <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('inspector') + 'px'">
-            {{template "inspector_panel.html" .}}
-            <button type="button" @click="togglePane('inspector')" :title="inspectorFolded ? '展开检查器' : '折叠检查器'"
+<!-- Media Library（对齐参考英文 LTR:左侧栏=Media;可折叠） -->
+          <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('media') + 'px'">
+            {{template "media_panel.html" .}}
+            <button type="button" @click="togglePane('media')" :title="mediaFolded ? 'Expand Media Library' : 'Collapse Media Library'"
                     class="absolute top-2 z-30 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
-                    :class="inspectorFolded ? 'inset-x-0 flex justify-center' : 'right-2'">
+                    :class="mediaFolded ? 'inset-x-0 flex justify-center' : 'right-2'">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                   :class="inspectorFolded ? '' : 'rotate-180'"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                   :class="mediaFolded ? '' : 'rotate-180'"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </aside>
           <!-- 拖拽把手（水平;折叠态禁止拖动,展开才能调宽） -->
           <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center"
                :class="inspectorFolded ? 'opacity-20 pointer-events-none' : ''"
-               @mousedown="dragCol('inspector')" @dblclick="resetPane('inspector')" title="双击复位">
+               @mousedown="dragCol('inspector')" @dblclick="resetPane('inspector')" title="Double-click to reset">
             <div class="h-8 w-0.5 rounded-full bg-gray-600/70 group-hover:bg-indigo-200"></div>
           </div>
           <!-- Viewport Preview（对齐 ViewportCanvasViewport） -->
@@ -201,25 +201,26 @@
           <!-- 拖拽把手（水平;同上） -->
           <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center"
                :class="mediaFolded ? 'opacity-20 pointer-events-none' : ''"
-               @mousedown="dragCol('media')" @dblclick="resetPane('media')" title="双击复位">
+               @mousedown="dragCol('media')" @dblclick="resetPane('media')" title="Double-click to reset">
             <div class="h-8 w-0.5 rounded-full bg-gray-600/70 group-hover:bg-indigo-200"></div>
           </div>
-          <!-- Media Library（对齐参考右侧栏=Media;可折叠） -->
-          <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('media') + 'px'">
-            {{template "media_panel.html" .}}
-            <button type="button" @click="togglePane('media')" :title="mediaFolded ? '展开媒体库' : '折叠媒体库'"
+          <!-- Inspector（对齐参考英文 LTR:右侧栏=检查器;可折叠,折叠后 34px 窄条） -->
+          <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('inspector') + 'px'">
+            {{template "inspector_panel.html" .}}
+            <button type="button" @click="togglePane('inspector')" :title="inspectorFolded ? 'Expand Inspector' : 'Collapse Inspector'"
                     class="absolute top-2 z-30 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
-                    :class="mediaFolded ? 'inset-x-0 flex justify-center' : 'left-2'">
+                    :class="inspectorFolded ? 'inset-x-0 flex justify-center' : 'left-2'">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                   :class="mediaFolded ? '' : 'rotate-180'"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                   :class="inspectorFolded ? '' : 'rotate-180'"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </button>
           </aside>
         </div>
+          
 
     <!-- 垂直拖拽把手（时间轴高度;折叠态禁止拖动） -->
     <div class="h-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-row-resize z-30 flex-shrink-0"
          :class="timelineFolded ? 'opacity-0 pointer-events-none' : ''"
-         @mousedown="dragRow()" @dblclick="resetPane('timeline')" title="双击复位">
+         @mousedown="dragRow()" @dblclick="resetPane('timeline')" title="Double-click to reset">
       <div class="w-8 h-0.5 rounded-full bg-gray-600/70 mx-auto mt-0.5"></div>
     </div>
     <div class="flex flex-col flex-shrink-0 border-t border-gray-800 bg-gray-950"
@@ -232,14 +233,14 @@
             <button type="button" @click="trackMenu = !trackMenu"
                     class="px-2.5 py-1 rounded-md bg-gray-900 border border-gray-700 text-xs text-gray-200 hover:border-indigo-500 transition flex items-center gap-1">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
-              <span>轨道</span>
+              <span class="hidden sm:inline">Add Track</span>
               <svg class="w-2.5 h-2.5 text-gray-500" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 6 6-6z"/></svg>
             </button>
             <div x-show="trackMenu" x-cloak class="absolute top-8 left-0 z-40 w-44 rounded-lg bg-gray-900 border border-gray-800 shadow-2xl py-1">
               <template x-for="k in ['video', 'audio', 'overlay', 'subtitle', 'waveform']" :key="k">
                 <button type="button" class="w-full px-3 py-1.5 text-left text-[11px] text-gray-300 hover:bg-gray-800 transition flex items-center justify-between"
                         @click="addTrack(k); trackMenu = false">
-                  <span x-text="'添加 ' + ({video:'视频', audio:'音频', overlay:'叠加', subtitle:'字幕', waveform:'波形'})[k] + ' 轨道'"></span>
+                  <span x-text="'Add ' + ({video:'Video', audio:'Audio', overlay:'Overlay', subtitle:'Subtitle', waveform:'Waveform'})[k] + ' Track'"></span>
                   <svg class="w-3 h-3 text-gray-600" viewBox="0 0 24 24" fill="currentColor" x-show="k === 'video'"><path d="M12 5v14M5 12h14"/></svg>
                 </button>
               </template>
@@ -247,47 +248,47 @@
               <button type="button" class="w-full px-3 py-1.5 text-left text-[11px] text-gray-300 hover:bg-gray-800 transition flex items-center gap-1.5"
                       :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="duplicateClip(); trackMenu = false">
                 <svg class="w-3 h-3 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/></svg>
-                复制选中 clip
+                Duplicate selected clip
               </button>
             </div>
           </div>
           <div class="h-4 w-px bg-gray-800 mx-1"></div>
-          <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="撤消 (Ctrl+Z)" :class="canUndo() ? '' : 'opacity-40 pointer-events-none'" @click="undo()">
+          <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Undo (Ctrl+Z)" :class="canUndo() ? '' : 'opacity-40 pointer-events-none'" @click="undo()">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14L4 9l5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9h10a6 6 0 0 1 0 12h-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="重做 (Ctrl+Shift+Z)" :class="canRedo() ? '' : 'opacity-40 pointer-events-none'" @click="redo()">
+          <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Redo (Ctrl+Shift+Z)" :class="canRedo() ? '' : 'opacity-40 pointer-events-none'" @click="redo()">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14l5-5-5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 9H10a6 6 0 0 0 0 12h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="h-4 w-px bg-gray-800 mx-1"></div>
           <button type="button" class="px-2 py-1 rounded-md text-xs text-gray-300 hover:text-white hover:bg-gray-900 transition flex items-center gap-1"
-                  title="在播放头处分割 (S)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="split()">
+                  title="Split Clip (S)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="split()">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4v16l8-8zM14 12l4-8v16z"/></svg>
-            <span class="hidden md:inline">分割</span>
+            <span class="hidden md:inline">Split Clip (S)</span>
           </button>
           <button type="button" class="px-2 py-1 rounded-md text-xs text-gray-300 hover:text-white hover:bg-gray-900 transition flex items-center gap-1"
-                  title="复制片段 (Ctrl+D)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="duplicateClip()">
+                  title="Duplicate Clip (Ctrl+D)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="duplicateClip()">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" stroke-linejoin="round"/></svg>
-            <span class="hidden md:inline">复制</span>
+            <span class="hidden md:inline">Duplicate</span>
           </button>
           <!-- 裁剪模式(对齐 vidonex TimelineContainer Crop:广播给视口切 gizmoMode=crop) -->
           <button type="button" class="px-2 py-1 rounded-md text-xs text-gray-300 hover:text-white hover:bg-gray-900 transition flex items-center gap-1"
-                  title="裁剪模式 (视口裁剪工具)"
+                  title="Crop Tool"
                   @click="window.dispatchEvent(new CustomEvent('gizmo-mode', { detail: { mode: 'crop' } }))">
             <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 2v15a2 2 0 0 0 2 2h13M2 7h15a2 2 0 0 1 2 2v13" stroke-linecap="round"/></svg>
-            <span class="hidden md:inline">裁剪</span>
+            <span class="hidden md:inline">Crop Tool</span>
           </button>
           <button type="button" class="px-2 py-1 rounded-md text-xs text-gray-300 hover:text-white hover:bg-gray-900 transition flex items-center gap-1"
-                  title="删除选中 (Del)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="deleteSelected()">
+                  title="Delete Selected (Del)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="deleteSelected()">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 14H7z" stroke-linejoin="round"/><path d="M9 4h6l1 3H8z" stroke-linejoin="round"/></svg>
-            <span class="hidden md:inline">删除</span>
+            <span class="hidden md:inline">Delete</span>
           </button>
           <div class="h-4 w-px bg-gray-800 mx-1"></div>
           <!-- Snap 开关（对齐 vidonex Snap ON/OFF，N 键切换） -->
           <button type="button" data-snap="on" @click="toggleSnap()"
                   class="px-2 py-1 rounded-md transition text-[10px] font-mono font-semibold snap-on"
-                  :class="['']" title="磁吸吸附 (N)">
+                  :class="['']" title="Snap (N)">
             <svg class="w-3 h-3 inline mr-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>
-            <span x-text="snapEnabled() ? '磁吸开' : '磁吸关'"></span>
+            <span x-text="snapEnabled() ? 'Snap ON' : 'Snap OFF'"></span>
           </button>
         </div>
         <div class="flex items-center gap-1">
@@ -295,17 +296,17 @@
           <span class="text-[10px] font-mono text-indigo-300 w-24 text-right" x-text="fmt(playhead)"></span>
           <div class="h-4 w-px bg-gray-800 mx-1"></div>
           <!-- 快捷键帮助(对齐 vidonex ? 按钮 → KeyboardShortcutsModal) -->
-          <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="快捷键 (? / Ctrl+/)"
+          <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Shortcuts (? / Ctrl+/)"
                   @click="window.dispatchEvent(new CustomEvent('app-modals-open', { detail: { view: 'shortcuts' } }))">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h4M7 13h2" stroke-linecap="round"/><path d="M15 9v6M13 12h4" stroke-linecap="round"/></svg>
           </button>
           <div class="h-4 w-px bg-gray-800 mx-1"></div>
           <!-- Zoom 控件(对齐参考:缩小/放大按钮,无滑条) -->
           <div class="flex items-center gap-1">
-            <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="缩小" @click="zoom = Math.max(0.25, zoom * 0.8)">
+            <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="Zoom Out" @click="zoom = Math.max(0.25, zoom * 0.8)">
               <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" stroke-linecap="round"/></svg>
             </button>
-            <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="放大" @click="zoom = Math.min(4, zoom * 1.25)">
+            <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="Zoom In" @click="zoom = Math.min(4, zoom * 1.25)">
               <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
             </button>
           </div>
@@ -315,7 +316,7 @@
       <div class="flex-1 min-h-0 relative flex flex-col">
         {{template "timeline_panel.html" .}}
       </div>
-      <button type="button" @click="togglePane('timeline')" :title="timelineFolded ? '展开时间轴' : '收起时间轴'"
+      <button type="button" @click="togglePane('timeline')" :title="timelineFolded ? 'Expand Timeline' : 'Collapse Timeline'"
               class="absolute right-2 z-40 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
               :style="'bottom:' + (timelineFolded ? 42 : 34) + 'px'">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -330,7 +331,7 @@
           <!-- Media Library（对齐 PanelsMediaLibrary;可折叠,折叠后 34px 窄条） -->
           <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('media') + 'px'">
             {{template "media_panel.html" .}}
-            <button type="button" @click="togglePane('media')" :title="mediaFolded ? '展开媒体库' : '折叠媒体库'"
+            <button type="button" @click="togglePane('media')" :title="mediaFolded ? 'Expand Media Library' : 'Collapse Media Library'"
                     class="absolute top-2 z-30 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
                     :class="mediaFolded ? 'inset-x-0 flex justify-center' : 'right-2'">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -340,7 +341,7 @@
           <!-- 拖拽把手（水平;折叠态禁止拖动,展开才能调宽） -->
           <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center"
                :class="mediaFolded ? 'opacity-20 pointer-events-none' : ''"
-               @mousedown="dragCol('media')" @dblclick="resetPane('media')" title="双击复位">
+               @mousedown="dragCol('media')" @dblclick="resetPane('media')" title="Double-click to reset">
             <div class="h-8 w-0.5 rounded-full bg-gray-600/70 group-hover:bg-indigo-200"></div>
           </div>
           <!-- Viewport Preview（对齐 ViewportCanvasViewport） -->
@@ -352,13 +353,13 @@
           <!-- 拖拽把手（水平;同上） -->
           <div class="w-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-col-resize z-20 flex items-center justify-center"
                :class="inspectorFolded ? 'opacity-20 pointer-events-none' : ''"
-               @mousedown="dragCol('inspector')" @dblclick="resetPane('inspector')" title="双击复位">
+               @mousedown="dragCol('inspector')" @dblclick="resetPane('inspector')" title="Double-click to reset">
             <div class="h-8 w-0.5 rounded-full bg-gray-600/70 group-hover:bg-indigo-200"></div>
           </div>
           <!-- Inspector（对齐 PanelsInspectorPanel;可折叠） -->
           <aside class="h-full flex flex-col overflow-hidden relative flex-shrink-0" :style="'width:' + displayW('inspector') + 'px'">
             {{template "inspector_panel.html" .}}
-            <button type="button" @click="togglePane('inspector')" :title="inspectorFolded ? '展开检查器' : '折叠检查器'"
+            <button type="button" @click="togglePane('inspector')" :title="inspectorFolded ? 'Expand Inspector' : 'Collapse Inspector'"
                     class="absolute top-2 z-30 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
                     :class="inspectorFolded ? 'inset-x-0 flex justify-center' : 'left-2'">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -378,14 +379,14 @@
                 <button type="button" @click="trackMenu = !trackMenu"
                         class="px-2.5 py-1 rounded-md bg-gray-900 border border-gray-700 text-xs text-gray-200 hover:border-indigo-500 transition flex items-center gap-1">
                   <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14M5 12h14"/></svg>
-                  <span>轨道</span>
+                  <span>Track</span>
                   <svg class="w-2.5 h-2.5 text-gray-500" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 6 6-6z"/></svg>
                 </button>
                 <div x-show="trackMenu" x-cloak class="absolute top-8 left-0 z-40 w-44 rounded-lg bg-gray-900 border border-gray-800 shadow-2xl py-1">
                   <template x-for="k in ['video', 'audio', 'overlay', 'subtitle', 'waveform']" :key="k">
                     <button type="button" class="w-full px-3 py-1.5 text-left text-[11px] text-gray-300 hover:bg-gray-800 transition flex items-center justify-between"
                             @click="addTrack(k); trackMenu = false">
-                      <span x-text="'添加 ' + ({video:'视频', audio:'音频', overlay:'叠加', subtitle:'字幕', waveform:'波形'})[k] + ' 轨道'"></span>
+                      <span x-text="'Add ' + ({video:'Video', audio:'Audio', overlay:'Overlay', subtitle:'Subtitle', waveform:'Waveform'})[k] + ' Track'"></span>
                       <svg class="w-3 h-3 text-gray-600" viewBox="0 0 24 24" fill="currentColor" x-show="k === 'video'"><path d="M12 5v14M5 12h14"/></svg>
                     </button>
                   </template>
@@ -393,47 +394,47 @@
                   <button type="button" class="w-full px-3 py-1.5 text-left text-[11px] text-gray-300 hover:bg-gray-800 transition flex items-center gap-1.5"
                           :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="duplicateClip(); trackMenu = false">
                     <svg class="w-3 h-3 text-indigo-400" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/></svg>
-                    复制选中 clip
+                    Duplicate selected clip
                   </button>
                 </div>
               </div>
               <div class="h-4 w-px bg-gray-800 mx-1"></div>
-              <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="撤消 (Ctrl+Z)" :class="canUndo() ? '' : 'opacity-40 pointer-events-none'" @click="undo()">
+              <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Undo (Ctrl+Z)" :class="canUndo() ? '' : 'opacity-40 pointer-events-none'" @click="undo()">
                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14L4 9l5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9h10a6 6 0 0 1 0 12h-3" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </button>
-              <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="重做 (Ctrl+Shift+Z)" :class="canRedo() ? '' : 'opacity-40 pointer-events-none'" @click="redo()">
+              <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Redo (Ctrl+Shift+Z)" :class="canRedo() ? '' : 'opacity-40 pointer-events-none'" @click="redo()">
                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14l5-5-5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 9H10a6 6 0 0 0 0 12h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </button>
               <div class="h-4 w-px bg-gray-800 mx-1"></div>
               <button type="button" class="px-2 py-1 rounded-md text-xs text-gray-300 hover:text-white hover:bg-gray-900 transition flex items-center gap-1"
-                      title="在播放头处分割 (S)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="split()">
+                      title="Split Clip (S)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="split()">
                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4v16l8-8zM14 12l4-8v16z"/></svg>
-                <span class="hidden md:inline">分割</span>
+                <span class="hidden md:inline">Split Clip (S)</span>
               </button>
               <button type="button" class="px-2 py-1 rounded-md text-xs text-gray-300 hover:text-white hover:bg-gray-900 transition flex items-center gap-1"
-                      title="复制片段 (Ctrl+D)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="duplicateClip()">
+                      title="Duplicate Clip (Ctrl+D)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="duplicateClip()">
                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z" stroke-linejoin="round"/></svg>
-                <span class="hidden md:inline">复制</span>
+                <span class="hidden md:inline">Duplicate</span>
               </button>
               <!-- 裁剪模式(对齐 vidonex TimelineContainer Crop:广播给视口切 gizmoMode=crop) -->
               <button type="button" class="px-2 py-1 rounded-md text-xs text-gray-300 hover:text-white hover:bg-gray-900 transition flex items-center gap-1"
-                      title="裁剪模式 (视口裁剪工具)"
+                      title="Crop Tool"
                       @click="window.dispatchEvent(new CustomEvent('gizmo-mode', { detail: { mode: 'crop' } }))">
                 <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 2v15a2 2 0 0 0 2 2h13M2 7h15a2 2 0 0 1 2 2v13" stroke-linecap="round"/></svg>
-                <span class="hidden md:inline">裁剪</span>
+                <span class="hidden md:inline">Crop Tool</span>
               </button>
               <button type="button" class="px-2 py-1 rounded-md text-xs text-gray-300 hover:text-white hover:bg-gray-900 transition flex items-center gap-1"
-                      title="删除选中 (Del)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="deleteSelected()">
+                      title="Delete Selected (Del)" :class="selectedId ? '' : 'opacity-40 cursor-not-allowed'" @click="deleteSelected()">
                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7h12l-1 14H7z" stroke-linejoin="round"/><path d="M9 4h6l1 3H8z" stroke-linejoin="round"/></svg>
-                <span class="hidden md:inline">删除</span>
+                <span class="hidden md:inline">Delete</span>
               </button>
               <div class="h-4 w-px bg-gray-800 mx-1"></div>
               <!-- Snap 开关（对齐 vidonex Snap ON/OFF，N 键切换） -->
               <button type="button" data-snap="on" @click="toggleSnap()"
                       class="px-2 py-1 rounded-md transition text-[10px] font-mono font-semibold snap-on"
-                      :class="['']" title="磁吸吸附 (N)">
+                      :class="['']" title="Snap (N)">
                 <svg class="w-3 h-3 inline mr-0.5" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg>
-                <span x-text="snapEnabled() ? '磁吸开' : '磁吸关'"></span>
+                <span x-text="snapEnabled() ? 'Snap ON' : 'Snap OFF'"></span>
               </button>
             </div>
             <div class="flex items-center gap-1">
@@ -441,17 +442,17 @@
               <span class="text-[10px] font-mono text-indigo-300 w-24 text-right" x-text="fmt(playhead)"></span>
               <div class="h-4 w-px bg-gray-800 mx-1"></div>
               <!-- 快捷键帮助(对齐 vidonex ? 按钮 → KeyboardShortcutsModal) -->
-              <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="快捷键 (? / Ctrl+/)"
+              <button type="button" class="p-1.5 rounded-md text-gray-400 hover:text-white hover:bg-gray-900 transition" title="Shortcuts (? / Ctrl+/)"
                       @click="window.dispatchEvent(new CustomEvent('app-modals-open', { detail: { view: 'shortcuts' } }))">
                 <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h4M7 13h2" stroke-linecap="round"/><path d="M15 9v6M13 12h4" stroke-linecap="round"/></svg>
               </button>
               <div class="h-4 w-px bg-gray-800 mx-1"></div>
               <!-- Zoom 控件(对齐参考:缩小/放大按钮,无滑条) -->
               <div class="flex items-center gap-1">
-                <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="缩小" @click="zoom = Math.max(0.25, zoom * 0.8)">
+                <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="Zoom Out" @click="zoom = Math.max(0.25, zoom * 0.8)">
                   <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" stroke-linecap="round"/></svg>
                 </button>
-                <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="放大" @click="zoom = Math.min(4, zoom * 1.25)">
+                <button type="button" class="p-1 text-gray-400 hover:text-white transition" title="Zoom In" @click="zoom = Math.min(4, zoom * 1.25)">
                   <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
                 </button>
               </div>
@@ -461,7 +462,7 @@
           <div class="flex-1 min-h-0 relative flex flex-col">
             {{template "timeline_panel.html" .}}
           </div>
-          <button type="button" @click="togglePane('timeline')" :title="timelineFolded ? '展开时间轴' : '收起时间轴'"
+          <button type="button" @click="togglePane('timeline')" :title="timelineFolded ? 'Expand Timeline' : 'Collapse Timeline'"
                   class="absolute right-2 z-40 p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition"
                   :style="'bottom:' + (timelineFolded ? 42 : 34) + 'px'">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -472,10 +473,9 @@
         <!-- 垂直拖拽把手（时间轴高度;折叠态禁止拖动） -->
         <div class="absolute bottom-0 inset-x-0 h-1.5 bg-gray-800/80 hover:bg-indigo-500/60 cursor-row-resize z-30"
              :class="timelineFolded ? 'opacity-0 pointer-events-none' : ''"
-             :style="'bottom:6px'" @mousedown="dragRow()" @dblclick="resetPane('timeline')" title="双击复位">
+             :style="'bottom:6px'" @mousedown="dragRow()" @dblclick="resetPane('timeline')" title="Double-click to reset">
           <div class="w-8 h-0.5 rounded-full bg-gray-600/70 mx-auto mt-0.5"></div>
         </div>
-  </div>
     {{end}}
   </div>
 
@@ -503,10 +503,10 @@
 
       <!-- 缩放按钮(对齐参考状态栏:放大在前、缩小在后) -->
       <div class="items-center gap-1 hidden md:flex">
-        <button type="button" class="hover:text-gray-200 transition" title="放大" @click="zoomIn()">
+        <button type="button" class="hover:text-gray-200 transition" title="Zoom In" @click="zoomIn()">
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>
         </button>
-        <button type="button" class="hover:text-gray-200 transition" title="缩小" @click="zoomOut()">
+        <button type="button" class="hover:text-gray-200 transition" title="Zoom Out" @click="zoomOut()">
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" stroke-linecap="round"/></svg>
         </button>
         <span class="font-mono text-gray-500 w-12 text-right hidden lg:inline" x-text="pps + 'px/s'"></span>
@@ -520,7 +520,7 @@
               class="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs transition"
               :class="snapOn ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'text-gray-500 hover:text-gray-300'">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg>
-        <span x-text="snapOn ? '磁吸开' : '磁吸关'" class="hidden sm:inline"></span>
+        <span x-text="snapOn ? 'Snap ON' : 'Snap OFF'" class="hidden sm:inline"></span>
       </button>
 
     </div>
@@ -566,12 +566,12 @@
               </template>
             </div>
           </template>
-          <div x-show="!filteredGroups.length" class="px-3 py-4 text-center text-xs text-gray-600">无匹配命令</div>
+          <div x-show="!filteredGroups.length" class="px-3 py-4 text-center text-xs text-gray-600">No matching commands</div>
         </div>
         <!-- 底部导航提示 -->
         <div class="px-3 py-1.5 border-t border-gray-800 flex items-center gap-3 text-[10px] text-gray-600">
-          <span class="flex items-center gap-1"><kbd class="px-1 rounded border border-gray-800 bg-gray-900">↑</kbd><kbd class="px-1 rounded border border-gray-800 bg-gray-900">↓</kbd> 导航</span>
-          <span class="flex items-center gap-1"><kbd class="px-1 rounded border border-gray-800 bg-gray-900">Enter</kbd> 执行</span>
+          <span class="flex items-center gap-1"><kbd class="px-1 rounded border border-gray-800 bg-gray-900">↑</kbd><kbd class="px-1 rounded border border-gray-800 bg-gray-900">↓</kbd> Navigate</span>
+          <span class="flex items-center gap-1"><kbd class="px-1 rounded border border-gray-800 bg-gray-900">Enter</kbd> Execute</span>
         </div>
       </div>
     </div>
@@ -609,7 +609,7 @@
               </div>
             </div>
           </template>
-          <div x-show="!filteredShortcuts.length" class="text-center text-xs text-gray-600 py-4">无匹配快捷键</div>
+          <div x-show="!filteredShortcuts.length" class="text-center text-xs text-gray-600 py-4">No matching shortcuts</div>
         </div>
         <div class="mt-3 pt-3 border-t border-gray-800 text-[10px] text-gray-600 text-center">
           按 Ctrl+/ 或 Esc 关闭
@@ -626,35 +626,35 @@
         <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
           <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         </div>
-        <h3 class="text-base font-bold text-gray-100">vidproc 工作室</h3>
+        <h3 class="text-base font-bold text-gray-100">vidproc Studio</h3>
         <p class="text-[11px] text-gray-500 mt-0.5" x-text="'v' + version"></p>
         <p class="text-xs text-gray-400 mt-3" x-text="architecture"></p>
-        <p class="text-[10px] text-gray-600 mt-2">vidonex 兼容 project.yaml · htmx + Alpine 事件总线</p>
+        <p class="text-[10px] text-gray-600 mt-2">vidonex-compatible project.yaml · htmx + Alpine event bus</p>
         <!-- 系统诊断(对齐 vidonex AboutModal diagnostics) -->
         <div class="mt-4 rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-left space-y-1.5">
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-gray-500">操作系统</span>
+            <span class="text-gray-500">OS</span>
             <span class="font-mono text-gray-300 truncate ml-3" x-text="sys.os"></span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-gray-500">架构</span>
+            <span class="text-gray-500">Arch</span>
             <span class="font-mono text-gray-300" x-text="sys.arch"></span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-gray-500">CPU 核心</span>
-            <span class="font-mono text-gray-300" x-text="sys.cores + (sys.cores !== '—' ? ' 逻辑核' : '')"></span>
+            <span class="text-gray-500">CPU Cores</span>
+            <span class="font-mono text-gray-300" x-text="sys.cores + (sys.cores !== '—' ? ' logical cores' : '')"></span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-gray-500" title="显卡(WebGL 渲染器)">显卡</span>
-            <span class="font-mono text-gray-300 truncate ml-3 max-w-[180px]" x-text="sys.gpu || '未知'"></span>
+            <span class="text-gray-500" title="GPU (WebGL renderer)">GPU</span>
+            <span class="font-mono text-gray-300 truncate ml-3 max-w-[180px]" x-text="sys.gpu || 'Unknown'"></span>
           </div>
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-gray-500" title="视频编码工具版本">FFmpeg</span>
+            <span class="text-gray-500" title="Video codec tool version">FFmpeg</span>
             <span class="font-mono text-gray-300" x-text="sys.ffmpeg"></span>
           </div>
         </div>
         <div class="mt-4 flex items-center justify-center gap-2">
-          <button type="button" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300 hover:border-indigo-500 transition" @click="view = null">关闭</button>
+          <button type="button" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300 hover:border-indigo-500 transition" @click="view = null">Close</button>
         </div>
       </div>
     </div>
