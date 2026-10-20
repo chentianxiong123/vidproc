@@ -396,11 +396,22 @@
           <span class="truncate font-mono text-gray-200 max-w-[42%]" x-text="transitionModal.toId"></span>
         </div>
 
-        <!-- Type选择(分类分组) -->
+        <!-- Type选择(分类分组,对齐参考 TransitionHandle Category Pills) -->
         <div class="mb-3.5">
           <label class="block text-[11px] text-gray-500 mb-1.5">类型</label>
+          <!-- 分类 pill 行 -->
+          <div class="flex flex-wrap gap-1 mb-2">
+            <template x-for="c in transitionCategories()" :key="c.id">
+              <button type="button" @click="transitionModal.cat = c.id"
+                      class="px-2 py-1 rounded-full border text-[10px] transition"
+                      :class="transitionModal.cat === c.id ? 'border-amber-500 bg-amber-500/15 text-amber-300' : 'border-gray-800 text-gray-500 hover:border-gray-600 hover:text-gray-300'">
+                <span x-text="c.label"></span>
+                <span class="ml-1 font-mono text-[9px] opacity-70" x-text="c.count"></span>
+              </button>
+            </template>
+          </div>
           <div class="grid grid-cols-2 gap-1.5">
-            <template x-for="t in transitionTypes()" :key="t.value">
+            <template x-for="t in filteredTransitionTypes()" :key="t.value">
               <button type="button" @click="transitionModal.type = t.value"
                       class="px-2 py-1.5 rounded-lg border text-[11px] transition text-left"
                       :class="transitionModal.type === t.value ? 'border-amber-500 bg-amber-500/15 text-amber-300' : 'border-gray-800 text-gray-400 hover:border-gray-600'">

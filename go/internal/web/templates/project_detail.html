@@ -20,6 +20,9 @@
                :style="screenStyle">
             <img :src="previewSrc" x-show="previewSrc && !previewErr" alt="Preview Frame"
                  class="w-full h-full object-contain">
+            <!-- 转场视觉合成层(对齐 vidonex useTransitionPreview:窗口内叠加伙伴帧 + CSS 映射) -->
+            <img :src="transPartnerSrc" x-show="transState().active && transPartnerSrc" :style="transStyles"
+                 class="absolute inset-0 w-full h-full object-contain pointer-events-none select-none" alt="">
             <!-- waveform 轨波形层(对齐上游 ViewportWaveformVisualizer:canvas 5 模式) -->
             <template x-for="l in wfLayers()" :key="l.clip.id">
               <div class="absolute pointer-events-auto cursor-move select-none"

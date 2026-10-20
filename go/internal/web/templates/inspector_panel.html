@@ -132,6 +132,21 @@
               <input type="range" min="0" max="2" step="0.05" x-model.number="clip.volume" @input="commit('更新音量')"
                      class="w-full h-1 bg-gray-800 rounded appearance-none accent-indigo-500">
             </div>
+            <!-- 淡入/淡出(对齐 vidonex InspectorPanel fade_in/fade_out 秒) -->
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <div class="flex justify-between text-gray-500 mb-1"><span>淡入（秒）</span></div>
+                <input type="number" min="0" max="30" step="0.1" x-model.number="clip.fade_in"
+                       @change="commit('更新淡入')"
+                       class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-indigo-500">
+              </div>
+              <div>
+                <div class="flex justify-between text-gray-500 mb-1"><span>淡出（秒）</span></div>
+                <input type="number" min="0" max="30" step="0.1" x-model.number="clip.fade_out"
+                       @change="commit('更新淡出')"
+                       class="w-full bg-gray-900 border border-gray-800 rounded px-2 py-1 text-xs text-gray-200 focus:outline-none focus:border-indigo-500">
+              </div>
+            </div>
           </div>
         </template>
 

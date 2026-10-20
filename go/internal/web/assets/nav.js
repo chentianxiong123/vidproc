@@ -185,7 +185,7 @@
       scrubbing: false, // 播放头拖拽中(scrub)
       // 转场设置弹窗(常驻对象,永不 null → 模板引用天然空安全)
       // {open, track, fromClip, toId, type, duration, existed}
-      transitionModal: { open: false, track: null, fromClip: null, toId: null, type: 'dissolve', duration: 0.5, existed: false },
+      transitionModal: { open: false, track: null, fromClip: null, toId: null, type: 'dissolve', duration: 0.5, existed: false, cat: 'all' },
       // 右键上下文菜单(对齐 vidonex ClipItem UContextMenu 四段式;常驻对象避免 null 引用)
       ctxMenu: { open: false, x: 0, y: 0, clip: null, track: null },
       // 拖拽幻影(对齐 vidonex TrackRow ghost:兼容靛蓝/重叠红/不兼容红;常驻对象)
@@ -672,24 +672,78 @@
           type: cur ? cur.type : 'dissolve',
           duration: cur ? Number(cur.duration) || 0.5 : 0.5,
           existed: !!cur,
+          cat: 'all',
         };
       },
       closeTransitionModal() { if (this.transitionModal) this.transitionModal.open = false; },
-      // 转场类型库(精简 8 类,对齐上游目录子集)
+      // 转场类型库(对齐后端 timeline.TransitionType 全集 36 种 + 参考 TransitionHandle 5 类分组)
       transitionTypes() {
         return [
+          { value: 'none', label: '无（硬切）', cat: 'none' },
+          // Fades & Dissolve
           { value: 'dissolve', label: '交叉溶解', cat: 'fades' },
           { value: 'fade', label: '淡入淡出', cat: 'fades' },
           { value: 'fadeblack', label: '淡出至黑', cat: 'fades' },
+          { value: 'fadewhite', label: '闪白', cat: 'fades' },
+          { value: 'fadegrays', label: '去色渐变', cat: 'fades' },
+          { value: 'acrossfade', label: '交叉渐变', cat: 'fades' },
+          // Wipes
           { value: 'wipeleft', label: '左擦除', cat: 'wipes' },
           { value: 'wiperight', label: '右擦除', cat: 'wipes' },
+          { value: 'wipeup', label: '上擦除', cat: 'wipes' },
+          { value: 'wipedown', label: '下擦除', cat: 'wipes' },
+          { value: 'wipetl', label: '左上擦除', cat: 'wipes' },
+          { value: 'wipetr', label: '右上擦除', cat: 'wipes' },
+          { value: 'wipebl', label: '左下擦除', cat: 'wipes' },
+          { value: 'wipebr', label: '右下擦除', cat: 'wipes' },
+          // Slides & Pushes
           { value: 'slideleft', label: '左滑入', cat: 'slides' },
           { value: 'slideright', label: '右滑入', cat: 'slides' },
+          { value: 'slideup', label: '上滑入', cat: 'slides' },
+          { value: 'slidedown', label: '下滑入', cat: 'slides' },
           { value: 'smoothleft', label: '左平滑', cat: 'slides' },
           { value: 'smoothright', label: '右平滑', cat: 'slides' },
-          { value: 'zoomin', label: '放大', cat: 'zooms' },
+          { value: 'smoothup', label: '上平滑', cat: 'slides' },
+          { value: 'smoothdown', label: '下平滑', cat: 'slides' },
+          { value: 'hlslice', label: '水平条带', cat: 'slides' },
+          { value: 'vuslice', label: '垂直条带', cat: 'slides' },
+          { value: 'squeezev', label: '纵向挤压', cat: 'slides' },
+          { value: 'squeezeh', label: '横向挤压', cat: 'slides' },
+          // Shapes & Iris
           { value: 'circleopen', label: '圆形展开', cat: 'shapes' },
+          { value: 'circleclose', label: '圆形收拢', cat: 'shapes' },
+          { value: 'circlecrop', label: '圆形裁剪', cat: 'shapes' },
+          { value: 'rectcrop', label: '矩形开合', cat: 'shapes' },
+          { value: 'radial', label: '径向展开', cat: 'shapes' },
+          { value: 'horzopen', label: '水平开门', cat: 'shapes' },
+          { value: 'horzclose', label: '水平关门', cat: 'shapes' },
+          { value: 'vertopen', label: '垂直开门', cat: 'shapes' },
+          { value: 'vertclose', label: '垂直关门', cat: 'shapes' },
+          // Zooms & Warps
+          { value: 'zoomin', label: '放大', cat: 'zooms' },
+          { value: 'pixelize', label: '像素化', cat: 'zooms' },
+          { value: 'distance', label: '距离推移', cat: 'zooms' },
         ];
+      },
+      // 分类筛选(对齐参考 TransitionHandle Category Pills:all/fades/wipes/slides/shapes/zooms)
+      transitionCategories() {
+        const cats = [
+          { id: 'all', label: '全部' },
+          { id: 'fades', label: '渐变与溶解' },
+          { id: 'wipes', label: '擦除' },
+          { id: 'slides', label: '滑动与推挤' },
+          { id: 'shapes', label: '形状与光圈' },
+          { id: 'zooms', label: '缩放与扭曲' },
+        ];
+        const all = this.transitionTypes();
+        return cats.map((c) => ({
+          ...c,
+          count: c.id === 'all' ? all.length : all.filter((t) => t.cat === c.id).length,
+        }));
+      },
+      filteredTransitionTypes() {
+        const cat = this.transitionModal ? this.transitionModal.cat : 'all';
+        return cat === 'all' ? this.transitionTypes() : this.transitionTypes().filter((t) => t.cat === cat);
       },
       transitionTypeLabel(type) {
         const f = this.transitionTypes().find((t) => t.value === type);
@@ -1152,10 +1206,19 @@
       onKey(e) {
         const tag = (e.target.tagName || '').toLowerCase();
         if (['input', 'textarea', 'select'].includes(tag)) return;
-        // Ctrl+Z 撤销 / Ctrl+Shift+Z 重做(对齐 vidonex undoHistory 快捷键)
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        // Ctrl+Z 撤销 / Ctrl+Shift+Z 或 Ctrl+Y 重做(对齐 vidonex undoHistory 快捷键)
+        if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y')) {
           e.preventDefault();
-          if (e.shiftKey) this.redo(); else this.undo();
+          if (e.shiftKey || e.key.toLowerCase() === 'y') this.redo(); else this.undo();
+          return;
+        }
+        // Ctrl+E 打开渲染导出(对齐 vidonex AppHeader Ctrl+E)
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+          e.preventDefault();
+          const m = window.renderModal && window.renderModal();
+          if (m && typeof m.openFor === 'function') {
+            m.openFor(window.vp.currentProjectId, (window.vp.projectViewOf || {}).output || '');
+          }
           return;
         }
         // Ctrl+D 复制选中 clip(对齐 vidonex duplicateClip 快捷键)
@@ -1176,11 +1239,34 @@
           if (pb) pb.togglePlay();
           return;
         }
-        // 方向键逐帧 / Home/End 跳首尾
-        if (e.key === 'ArrowLeft') { window.vp.playback.stepFrame(-1, this.tl ? this.tl.fps : 30); return; }
-        if (e.key === 'ArrowRight') { window.vp.playback.stepFrame(1, this.tl ? this.tl.fps : 30); return; }
+        // 方向键:有选中 clip 时 Nudge 位置(对齐 vidonex useGlobalShortcuts ±1px / Shift ±10px),否则帧步进
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          if (this.selectedId) {
+            e.preventDefault();
+            const clip = this.findClip(this.selectedId);
+            if (clip) {
+              if (!clip.position) clip.position = { x: 0, y: 0 };
+              const d = e.shiftKey ? 10 : 1;
+              if (e.key === 'ArrowLeft') clip.position.x -= d;
+              else if (e.key === 'ArrowRight') clip.position.x += d;
+              else if (e.key === 'ArrowUp') clip.position.y -= d;
+              else clip.position.y += d;
+              this.editClip(clip, () => {});
+              window.dispatchEvent(new CustomEvent('clip-selected', { detail: { clip, tl: this.tl, editor: this } }));
+            }
+            return;
+          }
+          if (e.key === 'ArrowLeft') { window.vp.playback.stepFrame(-1, this.tl ? this.tl.fps : 30); return; }
+          if (e.key === 'ArrowRight') { window.vp.playback.stepFrame(1, this.tl ? this.tl.fps : 30); return; }
+          return;
+        }
         if (e.key === 'Home') { window.vp.playback.jumpToStart(); return; }
         if (e.key === 'End') { window.vp.playback.jumpToEnd(); return; }
+        // Esc 取消选中(对齐 vidonex useGlobalShortcuts)
+        if (e.key === 'Escape') {
+          if (this.selectedId) { this.selectedId = null; window.dispatchEvent(new CustomEvent('clip-selected', { detail: { clip: null, tl: this.tl, editor: this } })); }
+          return;
+        }
         if (e.key === 's' || e.key === 'S') { this.split(); }
         else if (e.key === 'Delete' || e.key === 'Backspace') { this.deleteSelected(); }
         else if (e.key === 'n' || e.key === 'N') { this.toggleSnap(); }
@@ -2808,6 +2894,8 @@
       showGuide: { cx: false, cy: false, l: false, r: false, t: false, b: false },
       _gizmoDrag: null,       // 进行中的 gizmo 拖拽状态(startClipDrag/Resize/Rotate/Crop)
       gizmoParams: { canvasW: 1920, canvasH: 1080, dispW: 960, dispH: 540 },
+      // —— 播放态转场视觉合成(对齐 vidonex useTransitionPreview:窗口 [cut-d/2, cut+d/2] CSS 合成)——
+      transFrameCache: {},    // partner 帧 URL 缓存(clip.id → url)
 
       init() {
         // 供渲染导出弹窗等无作用域组件调用(window.vp.projectViewOf)
@@ -2938,6 +3026,160 @@
       },
       get isFit() { return this.vz().isFit; },
       get zoomDisplay() { return this.vz().display; },
+
+      // ============ 播放态转场视觉合成(对齐 vidonex useTransitionPreview)============
+      // 当前播放头是否落在某 video/overlay 轨转场窗口 [cutTime-d/2, cutTime+d/2] 内
+      transState() {
+        if (!this.tl || !this.tl.tracks) return { active: false };
+        const t = this.playhead;
+        for (let i = this.tl.tracks.length - 1; i >= 0; i--) {
+          const tr = this.tl.tracks[i];
+          if (tr.kind !== 'video' && tr.kind !== 'overlay') continue;
+          if (!tr.transitions || !tr.clips) continue;
+          for (const trans of tr.transitions) {
+            const fromClip = tr.clips.find((c) => c.id === trans.from);
+            const toClip = tr.clips.find((c) => c.id === trans.to);
+            if (!fromClip || !toClip) continue;
+            const d = Math.max(0.01, Number(trans.duration) || 1);
+            const cutTime = Number(fromClip.start) + Number(fromClip.duration);
+            const start = cutTime - d / 2;
+            const end = cutTime + d / 2;
+            if (t >= start && t <= end) {
+              const progress = Math.min(1, Math.max(0, (t - start) / d));
+              const role = t < cutTime ? 'from' : 'to'; // 主图角色(与后端抽帧同规则)
+              return { active: true, fromClip, toClip, type: (trans.type || 'dissolve').toLowerCase(), progress, role, cutTime, d };
+            }
+          }
+        }
+        return { active: false };
+      },
+      // 转场窗口内伙伴 clip 的帧 URL(主图之外的另一个;缓存避免重复抽帧)
+      get transPartnerSrc() {
+        const st = this.transState();
+        if (!st.active) return '';
+        const partner = st.role === 'from' ? st.toClip : st.fromClip;
+        const id = partner.id;
+        if (this.transFrameCache[id]) return this.transFrameCache[id];
+        // partner 帧:取窗口内命中 partner 的时刻抽帧(后端 resolveFrameTarget 同规则)
+        const pt = st.role === 'from'
+          ? Number(st.toClip.start) + st.d / 2
+          : Number(st.fromClip.start) + Math.max(0, Number(st.fromClip.duration) - st.d / 2);
+        const url = `/api/projects/${pid}/frame?t=${pt}&w=960`;
+        this.transFrameCache[id] = url;
+        return url;
+      },
+      // 叠加图(伙伴帧)样式:按主图角色取对应角色的参考映射
+      get transStyles() {
+        const st = this.transState();
+        if (!st.active) return {};
+        const mods = this.transitionModifiers(st.role, st.type, st.progress);
+        const s = { zIndex: '4' };
+        if (mods.opacity !== undefined) s.opacity = mods.opacity;
+        if (mods.clipPath) s.clipPath = mods.clipPath;
+        if (mods.transformExtra) s.transform = mods.transformExtra;
+        return s;
+      },
+      // 转场样式映射(对齐参考 getTransitionStyleModifiers 全分支;参考未覆盖的给近似)
+      transitionModifiers(role, type, progress) {
+        const p = Math.min(1, Math.max(0, progress));
+        const pct = (v) => v.toFixed(2) + '%';
+        switch (type) {
+          case 'dissolve': case 'acrossfade': case 'fadegrays': case 'pixelize':
+            return role === 'from' ? { opacity: 1 - p } : { opacity: p, zIndexExtra: 5 };
+          case 'fade': case 'fadeblack': case 'fadewhite':
+            if (role === 'from') return { opacity: p < 0.5 ? 1 - p * 2 : 0 };
+            return { opacity: p >= 0.5 ? (p - 0.5) * 2 : 0, zIndexExtra: 5 };
+          case 'wipeleft':
+            if (role === 'from') return {};
+            return { clipPath: `inset(0 0 0 ${pct((1 - p) * 100)})`, zIndexExtra: 5 };
+          case 'wiperight':
+            if (role === 'from') return {};
+            return { clipPath: `inset(0 ${pct((1 - p) * 100)} 0 0)`, zIndexExtra: 5 };
+          case 'wipeup':
+            if (role === 'from') return {};
+            return { clipPath: `inset(${pct((1 - p) * 100)} 0 0 0)`, zIndexExtra: 5 };
+          case 'wipedown':
+            if (role === 'from') return {};
+            return { clipPath: `inset(0 0 ${pct((1 - p) * 100)} 0)`, zIndexExtra: 5 };
+          case 'wipetl': case 'wipetr': case 'wipebl': case 'wipebr': {
+            // 对角擦除:出片向角收缩(对齐参考 polygon)
+            if (role === 'to') return {};
+            const q = p * 100;
+            if (type === 'wipetl') return { clipPath: `polygon(0 0, ${pct(100 - q)} 0, 0 ${pct(100 - q)})`, zIndexExtra: 5 };
+            if (type === 'wipetr') return { clipPath: `polygon(100% 0, 100% ${pct(100 - q)}, ${pct(q)} 0)`, zIndexExtra: 5 };
+            if (type === 'wipebl') return { clipPath: `polygon(0 100%, 0 ${pct(q)}, ${pct(100 - q)} 100%)`, zIndexExtra: 5 };
+            return { clipPath: `polygon(100% 100%, 100% ${pct(q)}, ${pct(q)} 100%)`, zIndexExtra: 5 };
+          }
+          case 'circleopen': case 'circlecrop': case 'radial':
+            if (role === 'from') return {};
+            return { clipPath: `circle(${pct(p * 75)} at center)`, zIndexExtra: 5 };
+          case 'circleclose':
+            if (role === 'from') return { clipPath: `circle(${pct((1 - p) * 75)} at center)`, zIndexExtra: 5 };
+            return {};
+          case 'zoomin':
+            if (role === 'from') return { transformExtra: `scale(${(1 + p * 0.2).toFixed(3)})`, opacity: Math.max(0, 1 - p * 1.2) };
+            return { transformExtra: `scale(${Math.max(0.01, p).toFixed(3)})`, opacity: Math.min(1, p * 1.5), zIndexExtra: 5 };
+          case 'zoomout':
+            if (role === 'from') return { transformExtra: `scale(${Math.max(0.01, 1 - p).toFixed(3)})`, opacity: 1 - p, zIndexExtra: 5 };
+            return { opacity: p };
+          case 'slideleft':
+            if (role === 'from') return { transformExtra: `translateX(${(-p * 100).toFixed(2)}%)` };
+            return { transformExtra: `translateX(${((1 - p) * 100).toFixed(2)}%)`, zIndexExtra: 5 };
+          case 'slideright':
+            if (role === 'from') return { transformExtra: `translateX(${(p * 100).toFixed(2)}%)` };
+            return { transformExtra: `translateX(${((p - 1) * 100).toFixed(2)}%)`, zIndexExtra: 5 };
+          case 'slideup':
+            if (role === 'from') return { transformExtra: `translateY(${(-p * 100).toFixed(2)}%)` };
+            return { transformExtra: `translateY(${((1 - p) * 100).toFixed(2)}%)`, zIndexExtra: 5 };
+          case 'slidedown':
+            if (role === 'from') return { transformExtra: `translateY(${(p * 100).toFixed(2)}%)` };
+            return { transformExtra: `translateY(${((p - 1) * 100).toFixed(2)}%)`, zIndexExtra: 5 };
+          case 'smoothleft':
+            if (role === 'from') return { transformExtra: `translateX(${(-Math.sin((p * Math.PI) / 2) * 100).toFixed(2)}%)` };
+            return { transformExtra: `translateX(${((1 - Math.sin((p * Math.PI) / 2)) * 100).toFixed(2)}%)`, zIndexExtra: 5 };
+          case 'smoothright':
+            if (role === 'from') return { transformExtra: `translateX(${(Math.sin((p * Math.PI) / 2) * 100).toFixed(2)}%)` };
+            return { transformExtra: `translateX(${((1 - Math.sin((p * Math.PI) / 2)) * -100).toFixed(2)}%)`, zIndexExtra: 5 };
+          case 'smoothup':
+            if (role === 'from') return { transformExtra: `translateY(${(-Math.sin((p * Math.PI) / 2) * 100).toFixed(2)}%)` };
+            return { transformExtra: `translateY(${((1 - Math.sin((p * Math.PI) / 2)) * 100).toFixed(2)}%)`, zIndexExtra: 5 };
+          case 'smoothdown':
+            if (role === 'from') return { transformExtra: `translateY(${(Math.sin((p * Math.PI) / 2) * 100).toFixed(2)}%)` };
+            return { transformExtra: `translateY(${((1 - Math.sin((p * Math.PI) / 2)) * -100).toFixed(2)}%)`, zIndexExtra: 5 };
+          case 'rectcrop':
+            if (role === 'from') return {};
+            return { clipPath: `inset(${pct((1 - p) * 50)} ${pct((1 - p) * 50)} ${pct((1 - p) * 50)} ${pct((1 - p) * 50)})`, zIndexExtra: 5 };
+          case 'horzopen':
+            if (role === 'from') return {};
+            return { clipPath: `inset(0 ${pct((1 - p) * 50)} 0 ${pct((1 - p) * 50)})`, zIndexExtra: 5 };
+          case 'horzclose':
+            if (role === 'from') return { clipPath: `inset(0 ${pct(p * 50)} 0 ${pct(p * 50)})`, zIndexExtra: 5 };
+            return {};
+          case 'vertopen':
+            if (role === 'from') return {};
+            return { clipPath: `inset(${pct((1 - p) * 50)} 0 ${pct((1 - p) * 50)} 0)`, zIndexExtra: 5 };
+          case 'vertclose':
+            if (role === 'from') return { clipPath: `inset(${pct(p * 50)} 0 ${pct(p * 50)} 0)`, zIndexExtra: 5 };
+            return {};
+          case 'hlslice':
+            if (role === 'from') return {};
+            return { clipPath: `inset(${pct(p * 50)} 0 ${pct(p * 50)} 0)`, zIndexExtra: 5 };
+          case 'vuslice':
+            if (role === 'from') return {};
+            return { clipPath: `inset(0 ${pct(p * 50)} 0 ${pct(p * 50)})`, zIndexExtra: 5 };
+          case 'squeezeh':
+            if (role === 'from') return {};
+            return { transformExtra: `scaleX(${Math.max(0.01, p).toFixed(3)})`, zIndexExtra: 5 };
+          case 'squeezev':
+            if (role === 'from') return {};
+            return { transformExtra: `scaleY(${Math.max(0.01, p).toFixed(3)})`, zIndexExtra: 5 };
+          case 'distance':
+            if (role === 'from') return { transformExtra: `translateX(${(p * 40).toFixed(2)}%) scale(${Math.max(0.2, 1 - p * 0.6).toFixed(3)})`, opacity: 1 - p * 0.5, zIndexExtra: 5 };
+            return { opacity: p };
+          default:
+            return role === 'from' ? { opacity: 1 - p } : { opacity: p, zIndexExtra: 5 };
+        }
+      },
 
       fmt(sec) {
         if (!isFinite(sec) || sec < 0) return '00:00:00.000';
