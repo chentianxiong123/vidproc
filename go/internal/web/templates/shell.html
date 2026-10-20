@@ -496,6 +496,20 @@
 
   <!-- 全站模态:命令面板(Ctrl+K)/ 快捷键表(Ctrl+/)/ 关于(对齐 vidonex CommandPalette + KeyboardShortcutsModal + AboutModal) -->
   <div x-data="appModals()" class="contents">
+    <!-- 更新横幅(对齐 vidonex UpdateNotificationBanner:hasUpdate && !dismissed) -->
+    <div x-show="update.hasUpdate && !updateBannerDismissed" x-cloak
+         class="fixed top-14 left-1/2 -translate-x-1/2 z-[97] flex items-center gap-3 px-4 py-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 shadow-lg shadow-indigo-500/25 text-white text-xs">
+      <span class="relative flex h-2 w-2">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+      </span>
+      <span>vidproc <b x-text="update.latest"></b> 可用(当前 <span x-text="update.current"></span>)</span>
+      <button type="button" class="px-2 py-1 rounded-md bg-white/15 hover:bg-white/25 transition" @click="view = 'about'">更新内容</button>
+      <button type="button" class="px-2 py-1 rounded-md bg-white/15 hover:bg-white/25 transition" @click="update.releaseUrl ? window.open(update.releaseUrl, '_blank', 'noopener,noreferrer') : null">立即更新</button>
+      <button type="button" class="p-1 rounded hover:bg-white/20 transition" @click="dismissUpdateBanner()" title="关闭">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" stroke-linecap="round"/></svg>
+      </button>
+    </div>
     <!-- 命令面板(对齐 vidonex UCommandPalette:分组 + 键盘导航 ↑↓ Enter + 图标) -->
     <div x-show="view === 'palette'" x-cloak
          class="fixed inset-0 z-[98] flex items-start justify-center pt-[12vh] p-4"
@@ -621,7 +635,30 @@
             <span class="font-mono text-gray-300" x-text="sys.ffmpeg"></span>
           </div>
         </div>
+        <!-- 版本检查(对齐 vidonex AboutModal Check for Updates) -->
+        <div class="mt-4 rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-left">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-gray-500">版本检查</span>
+            <span class="text-[10px] font-mono text-gray-400" x-text="update.checked ? ('当前 ' + update.current + ' · 最新 ' + (update.latest || update.current)) : (update.error || '未检查')"></span>
+          </div>
+          <template x-if="update.hasUpdate">
+            <div class="mt-2 space-y-1.5">
+              <p class="text-[11px] text-emerald-400">发现新版本 <b x-text="update.latest"></b></p>
+              <p class="text-[10px] text-gray-500 whitespace-pre-wrap max-h-16 overflow-y-auto" x-text="update.releaseNotes"></p>
+              <button type="button" class="w-full px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs text-white transition"
+                      @click="update.releaseUrl ? window.open(update.releaseUrl, '_blank', 'noopener,noreferrer') : null">
+                打开发布页
+              </button>
+            </div>
+          </template>
+          <template x-if="update.checked && !update.hasUpdate">
+            <p class="mt-1.5 text-[11px] text-gray-400">已是最新版本</p>
+          </template>
+        </div>
         <div class="mt-4 flex items-center justify-center gap-2">
+          <button type="button" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300 hover:border-indigo-500 transition" @click="checkUpdate()" :disabled="update.checking ? true : null">
+            <span x-text="update.checking ? '检查中…' : '检查更新'"></span>
+          </button>
           <button type="button" class="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800 text-xs text-gray-300 hover:border-indigo-500 transition" @click="view = null">关闭</button>
         </div>
       </div>

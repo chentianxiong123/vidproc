@@ -107,6 +107,130 @@
   };
   window.vp.currentProjectId = null;
 
+  // ============ 多轨音频同步引擎(对齐 vidonex useTimelineAudio)============
+  // HTMLAudio 池 + playhead-changed 驱动 syncAudio:
+  //   三级音量(track.volume × clip.volume × master volume/mute)+ fade_in/fade_out + 变速(25%-400%)。
+  // 源 = /api/projects/{id}/media?src=<clip.source>(后端白名单直服,Range/206 → 浏览器可 seek)。
+  // 多轨并行播放由浏览器混音(与参考一致,不自做混音)。
+  window.vp.audio = (function () {
+    const pool = new Map(); // clip.id → HTMLAudioElement
+    let audioCtx = null;
+
+    // 首次用户手势解锁 autoplay(浏览器策略:AudioContext + 池元素 play/pause 授权)
+    function unlock() {
+      try {
+        const Ctor = window.AudioContext || window.webkitAudioContext;
+        if (Ctor && !audioCtx) audioCtx = new Ctor();
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+        for (const a of pool.values()) {
+          const pr = a.play();
+          if (pr !== undefined) pr.then(() => { if (!window.vp.playback.isPlaying) a.pause(); }).catch(() => {});
+        }
+      } catch (_) { /* 环境不支持音频 */ }
+    }
+    function unlockOnGesture() {
+      const h = () => { unlock(); window.removeEventListener('click', h); window.removeEventListener('keydown', h); window.removeEventListener('touchstart', h); };
+      window.addEventListener('click', h, { passive: true, once: true });
+      window.addEventListener('keydown', h, { passive: true, once: true });
+      window.addEventListener('touchstart', h, { passive: true, once: true });
+    }
+    unlockOnGesture();
+
+    // 图片源不出声;其余(视频/音频文件)可播
+    const IMG_EXT = new Set(['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif', 'bmp', 'ico', 'tiff', 'tif']);
+    function isAudioPlayable(src) {
+      if (!src) return false;
+      const ext = src.split('?')[0].split('#')[0].toLowerCase().split('.').pop() || '';
+      return !IMG_EXT.has(ext);
+    }
+    function resolveMedia(pid, src) {
+      return `/api/projects/${pid}/media?src=${encodeURIComponent(src)}`;
+    }
+    function pauseAll() {
+      for (const a of pool.values()) { if (!a.paused) { try { a.pause(); } catch (_) {} } }
+    }
+
+    function syncAudio() {
+      const pb = window.vp.playback;
+      const pid = window.vp.currentProjectId;
+      const ed = window.vp.timelineEditorOf;
+      const tl = ed && ed.tl;
+      if (!tl || !tl.tracks || !pid) { pauseAll(); return; }
+      const t = pb.currentTime;
+      const playing = pb.isPlaying;
+      const masterVol = pb.isMuted ? 0 : (Number.isFinite(pb.volume) ? pb.volume : 1.0);
+      const active = new Set();
+
+      for (const tr of tl.tracks) {
+        if (tr.kind !== 'audio' && tr.kind !== 'video' && tr.kind !== 'overlay' && tr.kind !== 'waveform') continue;
+        if (tr.muted) continue;
+        const trackVol = Number.isFinite(tr.volume) ? tr.volume : 1.0;
+        for (const clip of tr.clips || []) {
+          if (!clip.source || clip.has_audio === false) continue;
+          if (!isAudioPlayable(clip.source)) continue;
+          const start = Number(clip.start) || 0;
+          const dur = Number(clip.duration) || 0;
+          if (t < start || t >= start + dur) continue;
+          const trim = Number(clip.trim) || 0;
+          const speed = Math.max(0.1, Number(clip.speed) || 1.0);
+          active.add(clip.id);
+
+          let audio = pool.get(clip.id);
+          const src = resolveMedia(pid, clip.source);
+          if (!audio) {
+            audio = new Audio();
+            audio.preload = 'auto';
+            audio.src = src;
+            pool.set(clip.id, audio);
+          } else if (audio.src !== src) {
+            audio.src = src;
+          }
+
+          const elapsed = t - start;
+          const target = Math.max(0, trim + elapsed * speed);
+          let vol = (Number(clip.volume) || 1.0) * trackVol * masterVol;
+          const fin = Number(clip.fade_in) || 0;
+          if (fin > 0 && elapsed < fin) vol *= elapsed / fin;
+          const fout = Number(clip.fade_out) || 0;
+          const remaining = dur - elapsed;
+          if (fout > 0 && remaining < fout) vol *= remaining / fout;
+          audio.volume = Math.max(0, Math.min(1, isNaN(vol) ? 1 : vol));
+          const rate = Math.max(0.25, Math.min(4.0, speed * (pb.playbackRate || 1.0)));
+          if (Number.isFinite(rate)) audio.playbackRate = rate;
+
+          if (playing) {
+            // 漂移 >0.35s 或暂停才 seek(避免连续 seek 卡顿)
+            if (audio.paused || Math.abs(audio.currentTime - target) > 0.35) {
+              try { audio.currentTime = target; } catch (_) { /* 元数据未就绪 */ }
+            }
+            if (audio.paused) {
+              const pr = audio.play();
+              if (pr !== undefined) pr.catch(() => {});
+            }
+          } else {
+            if (!audio.paused) audio.pause();
+            if (Math.abs(audio.currentTime - target) > 0.05) {
+              try { audio.currentTime = target; } catch (_) {}
+            }
+          }
+        }
+      }
+
+      // 暂停不再激活的池元素
+      for (const [id, a] of pool) { if (!active.has(id) && !a.paused) { try { a.pause(); } catch (_) {} } }
+      // 清理已被移除的 clip(轨道删除/撤销后池不膨胀)
+      const exist = new Set();
+      for (const tr of tl.tracks) for (const c of tr.clips || []) exist.add(c.id);
+      for (const [id, a] of pool) {
+        if (!exist.has(id)) { try { a.src = ''; } catch (_) {} pool.delete(id); }
+      }
+    }
+
+    // 播放头变化(播放 rAF 每帧 + seek/scrub/标尺)→ 同步音频
+    window.addEventListener('playhead-changed', () => syncAudio());
+    return { syncAudio, pauseAll };
+  })();
+
   // ============ 视口缩放(vp.viewportZoom)============
   // 对齐 vidonex useViewportZoom:Fit/25/50/75/100/150/200%,滚轮缩放,双击重置。
   window.vp.viewportZoom = {
@@ -1251,7 +1375,7 @@
               else if (e.key === 'ArrowRight') clip.position.x += d;
               else if (e.key === 'ArrowUp') clip.position.y -= d;
               else clip.position.y += d;
-              this.editClip(clip, () => {});
+              this.editClip(() => {});
               window.dispatchEvent(new CustomEvent('clip-selected', { detail: { clip, tl: this.tl, editor: this } }));
             }
             return;
@@ -2285,6 +2409,19 @@
       palIdx: 0, // 命令面板键盘导航高亮
       version: '0.1.0',
       architecture: 'htmx + Alpine + Go / 兼容 vidonex 的 spec',
+      // 版本检查与更新横幅(对齐 vidonex useAppUpdate + UpdateNotificationBanner)
+      update: {
+        current: '0.1.0',
+        latest: '',
+        hasUpdate: false,
+        releaseUrl: '',
+        releaseNotes: '',
+        publishedAt: '',
+        checking: false,
+        checked: false,
+        error: '',
+      },
+      updateBannerDismissed: false,
       // 系统诊断(对齐 vidonex AboutModal:OS/Arch/Cores/GPU/FFmpeg)
       sys: {
         os: typeof navigator !== 'undefined' ? navigator.userAgent.replace(/\(([^)]*)\).*/, '$1') : '',
@@ -2295,6 +2432,8 @@
       },
       sysLoaded: false,
       init() {
+        // 横幅关闭状态(sessionStorage 会话级)
+        try { this.updateBannerDismissed = sessionStorage.getItem('vidproc-update-dismissed') === '1'; } catch (_) {}
         // 事件总线入口(与其它弹窗一致:Alpine 响应式代理要求从组件内改字段;
         // 外部 vp.openShortcuts/openPalette 广播事件,这里收)
         window.addEventListener('app-modals-open', (e) => {
@@ -2346,6 +2485,30 @@
         });
       },
       open(view) { this.view = view; this.palIdx = 0; },
+      // 检查更新(对齐 vidonex checkForUpdates:/api/version/check → GitHub release)
+      checkUpdate() {
+        if (this.update.checking) return;
+        this.update.checking = true;
+        this.update.error = '';
+        fetch('/api/version/check')
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j) => {
+            if (!j) { this.update.error = '检查失败'; return; }
+            this.update.current = j.current_version || this.update.current;
+            this.update.latest = j.latest_version || '';
+            this.update.hasUpdate = !!j.has_update;
+            this.update.releaseUrl = j.release_url || '';
+            this.update.releaseNotes = (j.release_notes || '').slice(0, 400);
+            this.update.publishedAt = j.published_at || '';
+            this.update.checked = true;
+          })
+          .catch(() => { this.update.error = '检查失败(网络不可达)'; })
+          .finally(() => { this.update.checking = false; });
+      },
+      dismissUpdateBanner() {
+        this.updateBannerDismissed = true;
+        try { sessionStorage.setItem('vidproc-update-dismissed', '1'); } catch (_) {}
+      },
       // 分组命令过滤(对齐上游 commandGroups:仅显示有匹配的分组)
       get filteredGroups() {
         const q = this.query.trim().toLowerCase();

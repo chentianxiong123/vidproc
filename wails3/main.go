@@ -13,6 +13,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -77,12 +78,21 @@ func main() {
 
 	h := server.New(vidprocDataPath())
 
+	// 桌面壳绑定(wails v3 Services):JS 侧 window.go.main.App.<Method>()
+	db, dbErr := server.OpenDB(vidprocDataPath())
+	if dbErr != nil {
+		log.Printf("[shell] open db: %v", dbErr)
+		db = nil
+	}
+	appServices := []application.Service{application.NewService(newApp(db))}
+
 	// 桌面端：独立端口起后端
 	go listenBackend(h)
 
 	app = application.New(application.Options{
 		Name:        "vidproc",
 		Description: "vidproc studio — lossless concat · filtergraph engine · UDTA",
+		Services:    appServices,
 	})
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{

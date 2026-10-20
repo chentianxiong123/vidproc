@@ -3,6 +3,7 @@
 package server
 
 import (
+	"database/sql"
 	"io/fs"
 	"log"
 	"net/http"
@@ -22,18 +23,26 @@ import (
 const DefaultPort = "8398"
 
 // New 组装全部 handler(htmx 层 + 静态资产)。
+// OpenDB 打开/迁移服务数据库(与 New 同一规则;桌面壳绑定需要独立 DB 句柄)。
+func OpenDB(dataDir string) (*sql.DB, error) {
+	db, err := store.Open(filepath.Join(dataDir, "vidproc.db"))
+	if err != nil {
+		return nil, err
+	}
+	if err := store.Migrate(db, append(project.ProjectSchema, media.MediaSchema...)); err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
 func New(dataDir string) http.Handler {
 	if dataDir == "" {
 		home, _ := os.UserHomeDir()
 		dataDir = filepath.Join(home, ".config", "vidproc")
 	}
-	db, err := store.Open(filepath.Join(dataDir, "vidproc.db"))
+	db, err := OpenDB(dataDir)
 	if err != nil {
 		log.Fatalf("open db: %v", err)
-	}
-	// 组装层收集各域包 schema 传入 store(store 不 import 业务,避免环)
-	if err := store.Migrate(db, append(project.ProjectSchema, media.MediaSchema...)); err != nil {
-		log.Fatalf("migrate db: %v", err)
 	}
 
 	// 素材落盘目录(与数据库同目录)
