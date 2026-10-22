@@ -126,6 +126,9 @@ func DryRun(ctx context.Context, specPath string, opts Options) (*Filtergraph, e
 
 // Render 编译 + 执行 ffmpeg 渲染。
 func Render(ctx context.Context, specPath string, opts Options) (*Result, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	logger := opts.Logger
 	if logger == nil {
 		logger = slog.Default()

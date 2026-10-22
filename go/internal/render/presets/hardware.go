@@ -24,6 +24,8 @@ const (
 	AcceleratorQSV HardwareAccelerator = "qsv"
 	// AcceleratorVAAPI uses Linux VAAPI hardware encoding (h264_vaapi, hevc_vaapi).
 	AcceleratorVAAPI HardwareAccelerator = "vaapi"
+	// AcceleratorAMF uses AMD AMF hardware encoding (h264_amf, hevc_amf).
+	AcceleratorAMF HardwareAccelerator = "amf"
 )
 
 // DetectHardware inspects the local ffmpeg binary to identify available GPU acceleration encoders.
@@ -51,6 +53,9 @@ func DetectHardware(ctx context.Context, ffmpegBinary string) HardwareAccelerato
 	}
 	if strings.Contains(outputString, "h264_vaapi") {
 		return AcceleratorVAAPI
+	}
+	if strings.Contains(outputString, "h264_amf") {
+		return AcceleratorAMF
 	}
 
 	return AcceleratorNone
@@ -87,6 +92,13 @@ func ConfigureHardwareEncoding(options *compiler.EncodingOptions, accelerator Ha
 			options.VideoCodec = "hevc_vaapi"
 		} else {
 			options.VideoCodec = "h264_vaapi"
+		}
+
+	case AcceleratorAMF:
+		if useHEVC {
+			options.VideoCodec = "hevc_amf"
+		} else {
+			options.VideoCodec = "h264_amf"
 		}
 
 	default:

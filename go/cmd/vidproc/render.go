@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -8,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"vidproc/internal/cli"
 	"vidproc/internal/cmdrender"
+	"vidproc/internal/cli"
 )
 
 // cmdRender compiles a declarative project.yaml into a single-pass
@@ -18,7 +19,7 @@ import (
 func cmdRender(args []string) error {
 	fs := flag.NewFlagSet("render", flag.ContinueOnError)
 	outputFlag := fs.String("o", "", "Output file path (overrides spec)")
-	gpuFlag := fs.String("gpu", "", "Hardware accelerator (nvenc, videotoolbox, qsv, vaapi)")
+	gpuFlag := fs.String("gpu", "", "Hardware accelerator (nvenc, videotoolbox, qsv, vaapi, amf)")
 	logLevelFlag := fs.String("log-level", "info", "Log level (debug, info, warn, error)")
 	dryRunFlag := fs.Bool("dry-run", false, "Compile without invoking FFmpeg render")
 
@@ -38,7 +39,7 @@ func cmdRender(args []string) error {
 
 	// dry-run: 输出 filtergraph 不回显进度
 	if opts.DryRun {
-		fg, err := cmdrender.Compile(nil, specPath, opts)
+		fg, err := cmdrender.Compile(context.Background(), specPath, opts)
 		if err != nil {
 			return err
 		}
@@ -51,7 +52,7 @@ func cmdRender(args []string) error {
 	opts.Logger = logger
 
 	start := time.Now()
-	result, err := cmdrender.Render(nil, specPath, opts)
+	result, err := cmdrender.Render(context.Background(), specPath, opts)
 	if err != nil {
 		return err
 	}

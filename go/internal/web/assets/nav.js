@@ -2716,6 +2716,8 @@
     { id: 'auto', name: '自动（项目规范）' },
     { id: 'none', name: 'CPU 编码 (libx264)' },
     { id: 'nvenc', name: 'NVIDIA NVENC 硬件' },
+    { id: 'qsv', name: 'Intel QSV 硬件 (Quick Sync)' },
+    { id: 'amf', name: 'AMD AMF 硬件' },
   ];
   const RENDER_PRESETS = [
     { id: '', name: '项目默认' },
