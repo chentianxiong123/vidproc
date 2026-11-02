@@ -1,31 +1,38 @@
 # vidproc
 
-**vidproc** is a cross-platform command-line tool for lossless MP4 concatenation, metadata manipulation, and MP4 box inspection/injection. Designed for **general use** — no vendor assumptions, no file-naming conventions, pure parameter composition.
+> **⏸ 状态:项目已归档(2026-11-02)** — 核心功能完成并验证,但整体暂缓开发。
+> 归档原因与完整记录见 [docs/ARCHIVE.md](docs/ARCHIVE.md);开发过程复盘见
+> [docs/ai-oversight.md](docs/ai-oversight.md)。
 
-## Features
+**vidproc** 是一个以 CLI 为核心的跨平台视频处理工具集,附带一个 Web Studio 和一个
+wails3 桌面壳(Windows / Linux / Android 三端共用)。
 
-**MP4 container**
-- **probe** — Extract full metadata (streams + format tags) as JSON
-- **concat** — Lossless concatenation (`-c copy`) with optional stream compatibility verification
-- **metadata** — Read/write standard format tags (creation_time, location, etc.)
-- **boxes** — Inspect, extract, inject, or prune MP4 top-level boxes (free, udta, uuid, etc.)
-- **timestamp** — Copy file timestamps (mtime, atime) from reference file
-- **workflow** — One-shot composition: concat + metadata + boxes + timestamp
+## 功能概览(最终状态)
 
-**Video editing** — 13 atomic ops, each doing one thing:
-- **crop**, **rotate**, **flip** — geometry
-- **speed**, **volume**, **text** — filters
-- **audio**, **replace-audio**, **title** — audio
-- **thumbnail**, **gif**, **loop**, **split** — export
+**CLI(26 个原子操作 + 编排)**
+- MP4 容器:`probe` / `concat`(无损)/ `metadata` / `boxes` / `ts`
+- 视频编辑:`crop` `rotate` `flip` `speed` `volume` `text` `title` `audio`
+  `replace-audio` `thumbnail` `gif` `loop` `split` `sub` `mark` `fade`
+- 编码:`cpuenc`(libx264/x265)、`nvenc`(NVIDIA)、`qsv`(Intel,经 `render --gpu qsv`)、
+  `amf`(AMD,代码已接;需 AMD 硬件)
+- 编排:`run -c "a | b"` 管线、`run -f workflow.yaml`、`render project.yaml`
+  声明式渲染(filtergraph DAG 编译)
+- 持久化:`project new|list|get|update|delete|render`(SQLite)
 
-Atomic ops compose into **pipelines** (`vidproc run -c "a | b"`) and **YAML workflows**.
+**Web Studio(`vidproc studio`,htmx + Alpine + Tailwind,零构建)**
+- 时间轴编辑器(真实 clip 块/拖拽/吸附/播放头)、画布预览、媒体库、检查器
+- 真实音频播放(HTMLAudio 池 + 浏览器混音,媒体经本地 HTTP Range 直服)
+- 渲染导出(格式/GPU 加速/平台预设/CRF/码率)+ 进度;版本检查 + 更新横幅
+- 桌面壳模式:系统能力(文件对话框/导入/系统信息)走 wails 本地 API 绑定,
+  Web 模式自动回退浏览器控件
 
-MP4 container operations are **lossless** (no re-encoding). Video editing ops re-encode where the change requires it, and stream-copy video whenever a filter only touches audio. Original files are never modified — output goes to the path you specify.
+**架构**:CLI 内核 → `internal/server`(htmx 页面 + `/api/*`)→ wails3 壳;
+平台差异经 build tag 隔离(`ensurehome_*.go` / `http_*.go`);SQLite 存项目。
 
 ## Installation
 
 ### Pre-built Binaries
-Download the latest release for your platform from [Releases](https://github.com/example/vidproc/releases).
+Download the latest release for your platform from [Releases](https://github.com/chentianxiong123/vidproc/releases).
 
 | Platform | Architectures |
 |----------|---------------|
@@ -35,10 +42,19 @@ Download the latest release for your platform from [Releases](https://github.com
 
 ### Build from Source
 ```bash
-git clone https://github.com/example/vidproc
-cd vidproc
-go build -o vidproc .
+git clone https://github.com/chentianxiong123/vidproc
+cd vidproc/go
+go build -o ../vidproc.exe ./cmd/vidproc        # CLI + Studio(单二进制)
+
+# Web Studio 启动
+../vidproc.exe studio                           # → http://127.0.0.1:8398
+
+# 桌面壳(wails3,三端共用)
+cd ../wails3 && go build ./...
 ```
+
+桌面壳构建需要 [wails3](https://github.com/wailsapp/wails) 工具链;平台差异
+(数据目录/后端监听)已按 build tag 隔离,Android 端需 `GOOS=android`。
 
 ## Dependencies
 
@@ -295,6 +311,26 @@ vidproc --dry-run workflow clip*.mp4 -o out.mp4 --metadata-from clip1.mp4
 3. Add tests for new functionality
 4. Run `go test -v ./...`
 5. Submit a PR
+
+## 已知限制(归档时)
+
+- **桌面打包未实测**:wails3 编译通过 + 前端已接本地 API 绑定,但未打包启动
+  亲眼验证原生对话框行为
+- **AMD AMF 仅代码就绪**:需 AMD 硬件,未实测(Intel QSV 已实测可用)
+- **Android 无专属移动布局**:三端共用桌面 Studio 界面,手机 WebView 内显示;
+  无触控手势/竖屏重排(仅部分响应式断点)
+- **无 shell 补全**:CLI 无 bash/zsh/fish completion
+
+## 文档
+
+- [docs/ARCHIVE.md](docs/ARCHIVE.md) — 归档记录(日期/状态/待办)
+- [docs/ai-oversight.md](docs/ai-oversight.md) — 无监管 AI 方向走歪复盘(过程教训)
+
+## 归档说明
+
+本项目于 2026-11-02 归档。核心功能(CLI 26 ops + 编排 + Web Studio + 三端壳 +
+硬件编码 + 系统能力接入)已完成并验证;桌面打包实测与 Android 移动布局为遗留
+待办。代码保持在 `main` 分支,后续如需恢复开发从当前 HEAD 继续。
 
 ## License
 
