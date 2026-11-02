@@ -39,7 +39,7 @@
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         </button>
       </div>
-      <button type="button" @click="$refs.fileInput.click()"
+      <button type="button" @click="window.vp.isDesktop ? uploadFiles(null) : $refs.fileInput.click()"
               class="rounded-md font-medium inline-flex items-center disabled:cursor-not-allowed disabled:opacity-75 transition-colors px-2 py-1 text-xs gap-1 text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/15 active:bg-indigo-500/15"
               :disabled="uploading ? true : null" title="添加文件">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" stroke-linecap="round"/></svg>

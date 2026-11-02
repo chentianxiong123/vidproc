@@ -25,7 +25,40 @@
   // 对齐 vidonex playback store:currentTime/duration/play/seek/stepFrame/
   // loop/volume/mute。播放 = requestAnimationFrame 推进 → 广播 playhead-changed
   // (画布抽帧预览 + 时间轴播放头同步跟随)。
-  window.vp = window.vp || {};
+  // 桌面壳检测:wails3 注入 window.go.main.App 绑定(仅打包版有);
+  // Web 模式(vidproc.exe studio)无绑定 → 回退浏览器控件。
+  window.vp.isDesktop = !!(window.go && window.go.main && window.go.main.App);
+  // 系统能力统一收口:所有原生调用走这里,调用方按 isDesktop 分支
+  window.vp.desktop = {
+    app() { return window.go && window.go.main ? window.go.main.App : null; },
+    // 原生多选媒体文件 → 本地导入(ImportMediaFile 走 Go 侧)
+    async importMedia(pid) {
+      const App = this.app();
+      if (!App) return { used: false };
+      const paths = await App.SelectMediaFiles();
+      if (!paths || !paths.length) return { used: true, imported: 0 };
+      const items = await App.ImportLocalMedia(pid, paths);
+      return { used: true, imported: (items || []).length };
+    },
+    // 保存渲染视频对话框
+    async saveVideo(name, format) {
+      const App = this.app();
+      if (!App) return '';
+      return (await App.SaveVideoFileDialog(name || '', format || 'mp4')) || '';
+    },
+    // 选择导出目录
+    async exportDir() {
+      const App = this.app();
+      if (!App) return '';
+      return (await App.SelectExportDirectory()) || '';
+    },
+    // 系统能力(OS/CPU/加速器/FFmpeg)
+    async capabilities() {
+      const App = this.app();
+      if (!App) return null;
+      try { return await App.GetSystemCapabilities(); } catch (_) { return null; }
+    },
+  };
   window.vp.playback = {
     currentTime: 0,
     contentDuration: 0, // 内容末端(导出时长)
@@ -1790,6 +1823,15 @@
       },
       // 上传(多文件,文件选择框)
       async uploadFiles(e) {
+        // 桌面模式:系统能力走本地 API(原生对话框 + Go 侧导入)
+        if (window.vp.isDesktop) {
+          this.uploading = true;
+          try {
+            const r = await window.vp.desktop.importMedia(this.pid);
+            if (r.imported > 0) this.load();
+          } finally { this.uploading = false; }
+          return;
+        }
         const files = Array.from(e.target.files || []);
         e.target.value = '';
         if (!files.length || !this.pid) return;
@@ -2428,6 +2470,7 @@
         arch: (navigator.userAgent.match(/(x86_64|arm64|aarch64)/i) || [''])[0] || 'x64',
         cores: (navigator.hardwareConcurrency || '—') + '',
         gpu: '',
+        accels: '',
         ffmpeg: 'Detecting...',
       },
       sysLoaded: false,
@@ -2450,6 +2493,15 @@
               if (dbg) this.sys.gpu = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '';
             }
           } catch (_) {}
+          // 桌面模式:系统能力走本地 API(加速器/FFmpeg/OS)
+          if (window.vp.isDesktop) {
+            window.vp.desktop.capabilities().then((caps) => {
+              if (caps) {
+                this.sys.accels = (caps.available_accelerators || []).join(', ');
+                if (caps.ffmpeg_version) this.sys.ffmpeg = caps.ffmpeg_version;
+              }
+            }).catch(() => {});
+          }
           this.sysLoaded = true;
           // FFmpeg 探测(/api/sysinfo)
           fetch('/api/sysinfo').then((r) => (r.ok ? r.json() : null)).then((j) => {
@@ -2839,6 +2891,12 @@
         return p;
       },
       close() { this.open = false; },
+      // 桌面模式:原生保存对话框选输出路径(系统能力走本地 API)
+      async browseOutput() {
+        const p = await window.vp.desktop.saveVideo(
+          'rendered_composition.' + (this.format || 'mp4'), this.format || 'mp4');
+        if (p) this.output = p;
+      },
       // 复制错误日志(对齐上游 copyErrorText → clipboard)
       copyError() {
         if (!this.error) return;
@@ -3960,6 +4018,12 @@
           .then((r) => r.json())
           .then((p) => { self.spec = p.spec_yaml || ''; self.output = p.output_path || ''; })
           .catch(() => {});
+      },
+      // 桌面模式:原生保存对话框选输出路径(系统能力走本地 API)
+      async browseOutput() {
+        const p = await window.vp.desktop.saveVideo(
+          'project_output.mp4', 'mp4');
+        if (p) this.output = p;
       },
       save() {
         const self = this;
